@@ -1,0 +1,40 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Compiled binary
+server
+
+# ADD — ephemeral artifacts (don't commit)
+.add/away-logs/
+tests/screenshots/errors/
+
+# ADD — these SHOULD be committed (don't ignore)
+# .add/config.json
+# .add/learnings.md
+# .add/retros/
+# specs/
+# docs/plans/
+# tests/screenshots/{feature}/
