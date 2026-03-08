@@ -25,7 +25,7 @@ Thumbs.db
 .env.local
 
 # Compiled binary
-server
+/server
 
 # ADD — ephemeral artifacts (don't commit)
 .add/away-logs/
