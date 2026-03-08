@@ -17,7 +17,7 @@ Document hierarchy: PRD → Spec → Plan → User Test Cases → Automated Test
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| Language | Go | 1.24+ |
+| Language | Go | 1.26 |
 | Router | Chi | v5 |
 | State/Cache | Redis | latest |
 | Upstream | cash-drugs | 0.5.0+ (http://host1.du.nn:8083) |
@@ -28,10 +28,13 @@ Document hierarchy: PRD → Spec → Plan → User Test Cases → Automated Test
 ### Development
 ```
 docker-compose up                   # Start local dev (drug-gate + Redis)
-go test ./... -short                # Run unit tests
+make build                          # Build binary (bin/server)
+make run                            # Run locally
+make test-unit                      # Run unit tests
+make test-coverage                  # Run tests with coverage report
+make lint                           # golangci-lint
+make vet                            # go vet
 go test ./tests/e2e/...             # Run E2E tests
-golangci-lint run ./...             # Lint check
-go vet ./...                        # Type check
 ```
 
 ### ADD Workflow
@@ -55,6 +58,7 @@ internal/
   client/           — cash-drugs HTTP client
   ndc/              — NDC normalization logic
   model/            — Request/response types
+  version/          — Build version (set via -ldflags)
 specs/               — Feature specifications
 docs/plans/          — Implementation plans
 tests/
@@ -66,7 +70,7 @@ tests/
 ### Upstream API (cash-drugs)
 - Base URL: `http://host1.du.nn:8083`
 - Endpoints: `/api/cache/{slug}` with query params
-- Key slugs: `fda-ndc-by-name`, `drugnames`, `drugclasses`, `spls-by-name`, `spls-by-class`
+- Key slugs: `fda-ndc`, `fda-ndc-by-name`, `drugnames`, `drugclasses`, `spls-by-name`, `spls-by-class`
 - OpenAPI spec: `/openapi.json`
 
 ### Environments

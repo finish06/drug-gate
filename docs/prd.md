@@ -55,7 +55,7 @@ Frontend applications need access to drug information (names, therapeutic classe
 
 | Layer | Technology | Version | Notes |
 |-------|-----------|---------|-------|
-| Language | Go | 1.24+ | Same ecosystem as cash-drugs |
+| Language | Go | 1.26 | Same ecosystem as cash-drugs |
 | Backend Framework | Chi | v5 | Middleware-first router, stdlib-compatible |
 | Cache/State | Redis | latest | Rate limit counters, API key validation, session state |
 | Upstream API | cash-drugs | 0.5.0+ | Internal API cache/proxy at host1.du.nn:8083 |
@@ -91,7 +91,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 
 | Milestone | Goal | Target Maturity | Status | Success Criteria |
 |-----------|------|-----------------|--------|------------------|
-| M1: NDC Lookup | Accept NDC, return drug name + classes | alpha | NOW | NDC normalization works, cash-drugs integration verified |
+| M1: NDC Lookup | Accept NDC, return drug name + classes | alpha | DONE | NDC normalization works, cash-drugs integration verified |
 | M2: Security & Rate Limiting | Auth + rate control | alpha | NEXT | API key auth, per-key rate limits via Redis |
 | M3: Extended Lookups | Drug class search, name search | beta | LATER | Multiple query patterns supported |
 | M4: Interactions & RxNorm | SPL interactions, RxNorm integration | beta | LATER | Clinical data accessible via API |
@@ -109,10 +109,10 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 - Response shaping for frontend consumption
 - Health check endpoint
 **Success criteria:**
-- [ ] All NDC format variations resolve correctly
-- [ ] Drug name and therapeutic class(es) returned
-- [ ] cash-drugs integration tested
-- [ ] 80% test coverage
+- [x] All NDC format variations resolve correctly
+- [x] Drug name and therapeutic class(es) returned
+- [x] cash-drugs integration tested
+- [x] 80% test coverage (90-100% per package, excluding cmd entrypoint)
 
 #### M2: Security & Rate Limiting [NEXT]
 **Goal:** Protect the API with publishable API keys, CORS origin locking, and per-key rate limiting
