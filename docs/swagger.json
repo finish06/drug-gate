@@ -1,0 +1,137 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Drug information gateway — NDC lookup, therapeutic classes, and more.",
+        "title": "drug-gate API",
+        "contact": {},
+        "version": "0.1.0"
+    },
+    "host": "localhost:8081",
+    "basePath": "/",
+    "paths": {
+        "/health": {
+            "get": {
+                "description": "Returns service health status and build version.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "status and version",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/openapi.json": {
+            "get": {
+                "description": "Returns the generated OpenAPI specification as JSON.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "OpenAPI spec",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/drugs/ndc/{ndc}": {
+            "get": {
+                "description": "Accepts a product NDC (dash-separated), queries cash-drugs upstream, and returns drug name, generic name, and therapeutic classes. Supports 5-4, 4-4, and 5-3 formats with automatic fallback to padded 5-4.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drugs"
+                ],
+                "summary": "Look up drug by NDC",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product NDC with dash (e.g. 58151-158, 0069-3150, 00069-315)",
+                        "name": "ndc",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github_com_finish06_drug-gate_internal_model.DrugDetailResponse": {
+            "type": "object",
+            "properties": {
+                "classes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "generic_name": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ndc": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

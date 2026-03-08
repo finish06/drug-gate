@@ -1,4 +1,4 @@
-.PHONY: build test-unit test-coverage run vet lint
+.PHONY: build test-unit test-coverage run vet lint swagger
 
 VERSION ?= dev
 
@@ -21,3 +21,6 @@ vet:
 
 lint:
 	golangci-lint run ./...
+
+swagger:
+	swag init -g cmd/server/main.go -o docs --parseDependency --parseInternal

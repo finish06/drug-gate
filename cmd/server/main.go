@@ -9,11 +9,20 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/finish06/drug-gate/docs"
 	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/handler"
 	"github.com/finish06/drug-gate/internal/middleware"
 	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
+
+// @title       drug-gate API
+// @version     0.1.0
+// @description Drug information gateway — NDC lookup, therapeutic classes, and more.
+
+// @host     localhost:8081
+// @BasePath /
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
@@ -39,6 +48,9 @@ func main() {
 
 	r.Get("/health", handler.HealthCheck)
 	r.Get("/v1/drugs/ndc/{ndc}", drugHandler.HandleNDCLookup)
+
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
+	r.Get("/openapi.json", handler.OpenAPIJSON)
 
 	srv := &http.Server{
 		Addr:         listenAddr,

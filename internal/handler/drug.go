@@ -22,6 +22,17 @@ func NewDrugHandler(c client.DrugClient) *DrugHandler {
 }
 
 // HandleNDCLookup handles GET /v1/drugs/ndc/{ndc}.
+//
+// @Summary      Look up drug by NDC
+// @Description  Accepts a product NDC (dash-separated), queries cash-drugs upstream, and returns drug name, generic name, and therapeutic classes. Supports 5-4, 4-4, and 5-3 formats with automatic fallback to padded 5-4.
+// @Tags         drugs
+// @Produce      json
+// @Param        ndc  path  string  true  "Product NDC with dash (e.g. 58151-158, 0069-3150, 00069-315)"
+// @Success      200  {object}  model.DrugDetailResponse
+// @Failure      400  {object}  model.ErrorResponse
+// @Failure      404  {object}  model.ErrorResponse
+// @Failure      502  {object}  model.ErrorResponse
+// @Router       /v1/drugs/ndc/{ndc} [get]
 func (h *DrugHandler) HandleNDCLookup(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "ndc")
 
