@@ -1,7 +1,9 @@
-.PHONY: build test-unit test-coverage run vet
+.PHONY: build test-unit test-coverage run vet lint
+
+VERSION ?= dev
 
 build:
-	go build -o bin/server ./cmd/server
+	go build -ldflags="-X github.com/finish06/drug-gate/internal/version.Version=$(VERSION)" -o bin/server ./cmd/server
 
 run:
 	go run ./cmd/server
@@ -16,3 +18,6 @@ test-coverage:
 
 vet:
 	go vet ./...
+
+lint:
+	golangci-lint run ./...
