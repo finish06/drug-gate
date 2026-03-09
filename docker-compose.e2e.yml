@@ -1,0 +1,43 @@
+services:
+  mongodb:
+    image: mongo:latest
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  cash-drugs:
+    platform: linux/amd64
+    image: dockerhub.calebdunn.tech/finish06/cash-drugs:beta
+    volumes:
+      - ./tests/e2e/config.yaml:/config.yaml:ro
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/drugs
+      - CONFIG_PATH=/config.yaml
+      - LISTEN_ADDR=:8080
+      - LOG_LEVEL=info
+    depends_on:
+      - mongodb
+
+  redis:
+    image: redis:alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  drug-gate:
+    build: .
+    ports:
+      - "18081:8081"
+    environment:
+      - CASHDRUGS_URL=http://cash-drugs:8080
+      - LISTEN_ADDR=:8081
+      - REDIS_URL=redis:6379
+      - ADMIN_SECRET=e2e-test-secret
+    depends_on:
+      redis:
+        condition: service_healthy
+      cash-drugs:
+        condition: service_started

@@ -1,0 +1,15 @@
+log_level: debug
+
+endpoints:
+  - slug: fda-ndc
+    base_url: https://api.fda.gov
+    path: /drug/ndc.json
+    format: json
+    pagination_style: offset
+    pagesize: 100
+    data_key: results
+    total_key: meta.results.total
+    search_params:
+      - "brand_name:\"{BRAND_NAME}\""
+      - "generic_name:\"{GENERIC_NAME}\""
+      - "product_ndc:\"{NDC}\""
