@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -266,5 +267,51 @@ func TestRateLimitMiddleware_AC009_HeadersOnDenied(t *testing.T) {
 	resetHeader := rr.Header().Get("X-RateLimit-Reset")
 	if resetHeader == "" {
 		t.Error("expected X-RateLimit-Reset header on 429 response")
+	}
+}
+
+// When no API key is in context, the middleware should pass through to the
+// next handler without calling the limiter.
+func TestRateLimitMiddleware_NoAPIKey_Passthrough(t *testing.T) {
+	lim := &mockLimiter{
+		err: fmt.Errorf("should not be called"),
+	}
+
+	handler := RateLimit(lim)(okHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/drugs", nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status 200 (passthrough), got %d", rr.Code)
+	}
+}
+
+// When the limiter returns an error, the middleware should return 500.
+func TestRateLimitMiddleware_LimiterError(t *testing.T) {
+	lim := &mockLimiter{
+		err: fmt.Errorf("redis connection refused"),
+	}
+
+	handler := RateLimit(lim)(okHandler)
+
+	ak := &apikey.APIKey{
+		Key:       "pk_testkey123",
+		AppName:   "test-app",
+		RateLimit: 10,
+		Active:    true,
+		CreatedAt: time.Now(),
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/drugs", nil)
+	req = req.WithContext(contextWithAPIKey(req.Context(), ak))
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Errorf("expected status 500, got %d", rr.Code)
 	}
 }
