@@ -92,13 +92,13 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | Milestone | Goal | Target Maturity | Status | Success Criteria |
 |-----------|------|-----------------|--------|------------------|
 | M1: NDC Lookup | Accept NDC, return drug name + classes | alpha | DONE | NDC normalization works, cash-drugs integration verified |
-| M2: Security & Rate Limiting | Auth + rate control | alpha | NEXT | API key auth, per-key rate limits via Redis |
+| M2: Security & Rate Limiting | Auth + rate control | alpha | NOW | API key auth, per-key rate limits via Redis |
 | M3: Extended Lookups | Drug class search, name search | beta | LATER | Multiple query patterns supported |
 | M4: Interactions & RxNorm | SPL interactions, RxNorm integration | beta | LATER | Clinical data accessible via API |
 
 ### Milestone Detail
 
-#### M1: NDC Lookup [NOW]
+#### M1: NDC Lookup [DONE]
 **Goal:** Accept an NDC in any format and return drug name + therapeutic class(es) from cash-drugs
 **Appetite:** 1-2 cycles
 **Target maturity:** alpha
@@ -114,7 +114,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 - [x] cash-drugs integration tested
 - [x] 80% test coverage (90-100% per package, excluding cmd entrypoint)
 
-#### M2: Security & Rate Limiting [NEXT]
+#### M2: Security & Rate Limiting [NOW]
 **Goal:** Protect the API with publishable API keys, CORS origin locking, and per-key rate limiting
 **Appetite:** 1-2 cycles
 **Target maturity:** alpha

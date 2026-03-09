@@ -95,6 +95,12 @@ All gates defined in `.add/config.json`. Run `/add:verify` to check.
 - **CI/CD:** GitHub Actions (.github/workflows/ci.yml)
 - **Deploy:** Push to main → `:beta`, git tags → `:vX.Y.Z` + `:latest`
 
+## Deploy Expectations
+
+When deploying changes that modify routes, handlers, middleware, or the upstream integration:
+- Update `docs/sequence-diagram.md` to reflect the current request flows
+- Ensure new endpoints, error paths, and middleware are represented in the Mermaid diagrams
+
 ## Collaboration
 
 - **Autonomy level:** Autonomous

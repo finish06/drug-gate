@@ -6,6 +6,8 @@ services:
     environment:
       - CASHDRUGS_URL=http://host1.du.nn:8083
       - LISTEN_ADDR=:8081
+      - REDIS_URL=redis:6379
+      - ADMIN_SECRET=${ADMIN_SECRET:-changeme}
     depends_on:
       - redis
 
