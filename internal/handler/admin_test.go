@@ -89,6 +89,35 @@ func (m *mockAdminStore) Rotate(ctx context.Context, oldKey string, gracePeriod 
 	return ak, nil
 }
 
+// errAdminStore implements apikey.Store that returns errors for testing error paths.
+type errAdminStore struct {
+	createErr     error
+	listErr       error
+	getErr        error
+	deactivateErr error
+	rotateErr     error
+}
+
+func (e *errAdminStore) Create(ctx context.Context, appName string, origins []string, rateLimit int) (*apikey.APIKey, error) {
+	return nil, e.createErr
+}
+
+func (e *errAdminStore) Get(ctx context.Context, key string) (*apikey.APIKey, error) {
+	return nil, e.getErr
+}
+
+func (e *errAdminStore) List(ctx context.Context) ([]apikey.APIKey, error) {
+	return nil, e.listErr
+}
+
+func (e *errAdminStore) Deactivate(ctx context.Context, key string) error {
+	return e.deactivateErr
+}
+
+func (e *errAdminStore) Rotate(ctx context.Context, oldKey string, gracePeriod time.Duration) (*apikey.APIKey, error) {
+	return nil, e.rotateErr
+}
+
 // newAdminTestRouter creates a Chi router with admin routes registered.
 // No admin auth middleware is applied — auth is tested separately.
 func newAdminTestRouter(h *AdminHandler) *chi.Mux {
@@ -401,5 +430,96 @@ func TestAdmin_AC018_CreateKey_CustomRateLimit(t *testing.T) {
 	}
 	if int(rateLimit) != 500 {
 		t.Errorf("rate_limit = %v, want 500", rateLimit)
+	}
+}
+
+// --- Error path tests for store failures ---
+
+func TestAdmin_CreateKey_InvalidJSON(t *testing.T) {
+	store := newMockAdminStore()
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodPost, "/admin/keys", bytes.NewBufferString(`{invalid`))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+func TestAdmin_CreateKey_StoreError(t *testing.T) {
+	store := &errAdminStore{createErr: fmt.Errorf("redis down")}
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	reqBody := `{"app_name":"test","origins":[],"rate_limit":100}`
+	rr := doAdminRequest(router, http.MethodPost, "/admin/keys", bytes.NewBufferString(reqBody))
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rr.Code)
+	}
+}
+
+func TestAdmin_ListKeys_StoreError(t *testing.T) {
+	store := &errAdminStore{listErr: fmt.Errorf("redis down")}
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodGet, "/admin/keys", nil)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rr.Code)
+	}
+}
+
+func TestAdmin_GetKey_StoreError(t *testing.T) {
+	store := &errAdminStore{getErr: fmt.Errorf("redis down")}
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodGet, "/admin/keys/pk_test_1", nil)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rr.Code)
+	}
+}
+
+func TestAdmin_DeactivateKey_StoreError(t *testing.T) {
+	store := &errAdminStore{deactivateErr: fmt.Errorf("redis down")}
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodDelete, "/admin/keys/pk_test_1", nil)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rr.Code)
+	}
+}
+
+func TestAdmin_RotateKey_InvalidJSON(t *testing.T) {
+	store := newMockAdminStore()
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodPost, "/admin/keys/pk_test_1/rotate", bytes.NewBufferString(`{bad`))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+func TestAdmin_RotateKey_InvalidGracePeriod(t *testing.T) {
+	store := newMockAdminStore()
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodPost, "/admin/keys/pk_test_1/rotate", bytes.NewBufferString(`{"grace_period":"not-a-duration"}`))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+func TestAdmin_RotateKey_StoreError(t *testing.T) {
+	store := &errAdminStore{rotateErr: fmt.Errorf("redis down")}
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodPost, "/admin/keys/pk_test_1/rotate", bytes.NewBufferString(`{"grace_period":"1h"}`))
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rr.Code)
 	}
 }

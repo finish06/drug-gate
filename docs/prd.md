@@ -92,7 +92,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | Milestone | Goal | Target Maturity | Status | Success Criteria |
 |-----------|------|-----------------|--------|------------------|
 | M1: NDC Lookup | Accept NDC, return drug name + classes | alpha | DONE | NDC normalization works, cash-drugs integration verified |
-| M2: Security & Rate Limiting | Auth + rate control | alpha | NOW | API key auth, per-key rate limits via Redis |
+| M2: Security & Rate Limiting | Auth + rate control | alpha | DONE | API key auth, per-key rate limits via Redis |
 | M3: Extended Lookups | Drug class search, name search | beta | LATER | Multiple query patterns supported |
 | M4: Interactions & RxNorm | SPL interactions, RxNorm integration | beta | LATER | Clinical data accessible via API |
 
@@ -114,7 +114,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 - [x] cash-drugs integration tested
 - [x] 80% test coverage (90-100% per package, excluding cmd entrypoint)
 
-#### M2: Security & Rate Limiting [NOW]
+#### M2: Security & Rate Limiting [DONE]
 **Goal:** Protect the API with publishable API keys, CORS origin locking, and per-key rate limiting
 **Appetite:** 1-2 cycles
 **Target maturity:** alpha
@@ -140,11 +140,11 @@ Each key identifies *which application* is calling, not which user. Security is 
 - Request logging and audit trail
 - Key provisioning CLI or admin endpoint (not exposed to frontends)
 **Success criteria:**
-- [ ] Requests without valid API key rejected with 401
-- [ ] Requests from non-allowed origins rejected via CORS
-- [ ] Rate limits enforced per API key (429 + Retry-After header)
-- [ ] Redis-backed key storage with metadata (app name, origin allowlist, rate tier)
-- [ ] Key rotation works — old key invalidated, new key active immediately
+- [x] Requests without valid API key rejected with 401
+- [x] Requests from non-allowed origins rejected via CORS
+- [x] Rate limits enforced per API key (429 + Retry-After header)
+- [x] Redis-backed key storage with metadata (app name, origin allowlist, rate tier)
+- [x] Key rotation works — old key invalidated, new key active immediately
 
 ### Maturity Promotion Path
 

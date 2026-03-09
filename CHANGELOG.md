@@ -8,6 +8,9 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 ## [Unreleased]
 
 ### Added
+- E2E test suite with full-stack docker-compose (`docker-compose.e2e.yml`)
+- `make test-integration` and `make test-e2e` targets
+- Error-path tests for admin handler and rate limit middleware (100% coverage on non-Redis code)
 - API key authentication middleware (`X-API-Key` header validation via Redis store)
 - Per-key CORS middleware (origin allowlist per API key)
 - Sliding window rate limiting middleware (Redis sorted sets, per-key limits)

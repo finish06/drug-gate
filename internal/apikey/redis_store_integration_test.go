@@ -136,3 +136,129 @@ func TestRedisStore_Rotate(t *testing.T) {
 		t.Error("expected ExpiresAt on old key after rotation")
 	}
 }
+
+func TestRedisStore_Rotate_PreservesMetadata(t *testing.T) {
+	store := setupRedisStore(t)
+	ctx := context.Background()
+
+	origins := []string{"https://a.com", "https://b.com"}
+	old, _ := store.Create(ctx, "meta-app", origins, 200)
+
+	newKey, err := store.Rotate(ctx, old.Key, 1*time.Hour)
+	if err != nil {
+		t.Fatalf("Rotate: %v", err)
+	}
+
+	if len(newKey.Origins) != len(origins) {
+		t.Errorf("origins len = %d, want %d", len(newKey.Origins), len(origins))
+	}
+	for i, o := range origins {
+		if newKey.Origins[i] != o {
+			t.Errorf("origin[%d] = %q, want %q", i, newKey.Origins[i], o)
+		}
+	}
+	if newKey.RateLimit != 200 {
+		t.Errorf("RateLimit = %d, want 200", newKey.RateLimit)
+	}
+	if !newKey.Active {
+		t.Error("expected new key to be active")
+	}
+}
+
+func TestRedisStore_Rotate_NotFound(t *testing.T) {
+	store := setupRedisStore(t)
+	ctx := context.Background()
+
+	_, err := store.Rotate(ctx, "pk_nonexistent", 1*time.Hour)
+	if err == nil {
+		t.Fatal("expected error for nonexistent key")
+	}
+	if err != apikey.ErrKeyNotFound {
+		t.Errorf("err = %v, want ErrKeyNotFound", err)
+	}
+}
+
+func TestRedisStore_Deactivate_NotFound(t *testing.T) {
+	store := setupRedisStore(t)
+	ctx := context.Background()
+
+	err := store.Deactivate(ctx, "pk_nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent key")
+	}
+	if err != apikey.ErrKeyNotFound {
+		t.Errorf("err = %v, want ErrKeyNotFound", err)
+	}
+}
+
+func TestRedisStore_Deactivate_StillRetrievable(t *testing.T) {
+	store := setupRedisStore(t)
+	ctx := context.Background()
+
+	ak, _ := store.Create(ctx, "deact-retrieve", nil, 50)
+	_ = store.Deactivate(ctx, ak.Key)
+
+	got, err := store.Get(ctx, ak.Key)
+	if err != nil {
+		t.Fatalf("Get after deactivate: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected key to still exist after deactivation")
+	}
+	if got.Active {
+		t.Error("expected active=false")
+	}
+	if got.AppName != "deact-retrieve" {
+		t.Errorf("AppName = %q, want %q", got.AppName, "deact-retrieve")
+	}
+}
+
+func TestRedisStore_ListEmpty(t *testing.T) {
+	store := setupRedisStore(t)
+	ctx := context.Background()
+
+	keys, err := store.List(ctx)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if keys == nil {
+		t.Fatal("expected non-nil empty slice")
+	}
+	if len(keys) != 0 {
+		t.Errorf("len = %d, want 0", len(keys))
+	}
+}
+
+func TestRedisStore_Create_OriginsPreserved(t *testing.T) {
+	store := setupRedisStore(t)
+	ctx := context.Background()
+
+	origins := []string{"https://x.com", "https://y.com", "https://z.com"}
+	ak, err := store.Create(ctx, "origins-app", origins, 100)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	got, _ := store.Get(ctx, ak.Key)
+	if len(got.Origins) != 3 {
+		t.Fatalf("origins len = %d, want 3", len(got.Origins))
+	}
+	for i, o := range origins {
+		if got.Origins[i] != o {
+			t.Errorf("origin[%d] = %q, want %q", i, got.Origins[i], o)
+		}
+	}
+}
+
+func TestRedisStore_Create_HasPkPrefix(t *testing.T) {
+	store := setupRedisStore(t)
+	ctx := context.Background()
+
+	ak, err := store.Create(ctx, "prefix-app", nil, 50)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if len(ak.Key) < 3 || ak.Key[:3] != "pk_" {
+		t.Errorf("key %q does not have pk_ prefix", ak.Key)
+	}
+}

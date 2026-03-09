@@ -10,6 +10,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -23,10 +33,15 @@ jobs:
       - name: Unit Tests
         run: go test ./... -short -count=1
 
+      - name: Integration Tests
+        run: REDIS_URL=localhost:6379 go test -tags=integration -count=1 -v ./...
+
       - name: Coverage
         run: |
-          go test $(go list ./... | grep -v /cmd/) -coverprofile=coverage.out -count=1
+          go test $(go list ./... | grep -v /cmd/) -tags=integration -coverprofile=coverage.out -count=1
           go tool cover -func=coverage.out | tail -1
+        env:
+          REDIS_URL: localhost:6379
 
       - name: Build
         run: go build ./cmd/server
