@@ -29,6 +29,21 @@ func (m *mockDrugClient) LookupByNDC(ctx context.Context, ndc string) (*client.D
 	}
 	return result, nil
 }
+func (m *mockDrugClient) LookupByGenericName(ctx context.Context, name string) ([]client.DrugResult, error) {
+	return nil, nil
+}
+func (m *mockDrugClient) LookupByBrandName(ctx context.Context, name string) ([]client.DrugResult, error) {
+	return nil, nil
+}
+func (m *mockDrugClient) FetchDrugNames(ctx context.Context) ([]client.DrugNameRaw, error) {
+	return nil, nil
+}
+func (m *mockDrugClient) FetchDrugClasses(ctx context.Context) ([]client.DrugClassRaw, error) {
+	return nil, nil
+}
+func (m *mockDrugClient) LookupByPharmClass(ctx context.Context, class string) ([]client.DrugResult, error) {
+	return nil, nil
+}
 
 // callCountMockClient allows per-call behavior control
 type callCountMockClient struct {
@@ -37,6 +52,21 @@ type callCountMockClient struct {
 
 func (m *callCountMockClient) LookupByNDC(ctx context.Context, ndc string) (*client.DrugResult, error) {
 	return m.onCall(ndc)
+}
+func (m *callCountMockClient) LookupByGenericName(ctx context.Context, name string) ([]client.DrugResult, error) {
+	return nil, nil
+}
+func (m *callCountMockClient) LookupByBrandName(ctx context.Context, name string) ([]client.DrugResult, error) {
+	return nil, nil
+}
+func (m *callCountMockClient) FetchDrugNames(ctx context.Context) ([]client.DrugNameRaw, error) {
+	return nil, nil
+}
+func (m *callCountMockClient) FetchDrugClasses(ctx context.Context) ([]client.DrugClassRaw, error) {
+	return nil, nil
+}
+func (m *callCountMockClient) LookupByPharmClass(ctx context.Context, class string) ([]client.DrugResult, error) {
+	return nil, nil
 }
 
 func newTestRouter(h *DrugHandler) *chi.Mux {

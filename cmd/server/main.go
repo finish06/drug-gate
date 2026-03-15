@@ -17,6 +17,7 @@ import (
 	"github.com/finish06/drug-gate/internal/handler"
 	"github.com/finish06/drug-gate/internal/middleware"
 	"github.com/finish06/drug-gate/internal/ratelimit"
+	"github.com/finish06/drug-gate/internal/service"
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -69,6 +70,11 @@ func main() {
 	limiter := ratelimit.NewRedisLimiter(rdb)
 	drugClient := client.NewHTTPDrugClient(cashDrugsURL)
 	drugHandler := handler.NewDrugHandler(drugClient)
+	drugClassHandler := handler.NewDrugClassHandler(drugClient)
+	dataSvc := service.NewDrugDataService(drugClient, rdb)
+	drugNamesHandler := handler.NewDrugNamesHandler(dataSvc)
+	drugClassesHandler := handler.NewDrugClassesHandler(dataSvc)
+	drugsByClassHandler := handler.NewDrugsByClassHandler(dataSvc)
 	adminHandler := handler.NewAdminHandler(store)
 
 	r := chi.NewRouter()
@@ -85,6 +91,10 @@ func main() {
 		r.Use(middleware.PerKeyCORS)
 		r.Use(middleware.RateLimit(limiter))
 		r.Get("/drugs/ndc/{ndc}", drugHandler.HandleNDCLookup)
+		r.Get("/drugs/class", drugClassHandler.HandleDrugClassLookup)
+		r.Get("/drugs/names", drugNamesHandler.HandleDrugNames)
+		r.Get("/drugs/classes", drugClassesHandler.HandleDrugClasses)
+		r.Get("/drugs/classes/drugs", drugsByClassHandler.HandleDrugsByClass)
 	})
 
 	// Admin routes

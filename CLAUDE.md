@@ -34,7 +34,9 @@ make test-unit                      # Run unit tests
 make test-coverage                  # Run tests with coverage report
 make lint                           # golangci-lint
 make vet                            # go vet
-go test ./tests/e2e/...             # Run E2E tests
+make test-integration                # Run Redis integration tests
+make test-e2e                        # Run E2E tests (full stack)
+make swagger                         # Regenerate Swagger docs
 ```
 
 ### ADD Workflow
@@ -58,6 +60,8 @@ internal/
   client/           — cash-drugs HTTP client
   ndc/              — NDC normalization logic
   model/            — Request/response types
+  pharma/           — Pharm class parsing, brand name deduplication
+  service/          — DrugDataService (Redis-cached data layer)
   version/          — Build version (set via -ldflags)
 specs/               — Feature specifications
 docs/plans/          — Implementation plans

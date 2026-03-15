@@ -59,6 +59,216 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/drugs/class": {
+            "get": {
+                "description": "Looks up a drug by generic or brand name and returns its pharmacological classes, brand names, and generic name. Tries generic name first, falls back to brand name.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drugs"
+                ],
+                "summary": "Look up drug class by name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Drug name (generic or brand, e.g. simvastatin, Zocor)",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugClassResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or empty name parameter",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Drug not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/drugs/classes": {
+            "get": {
+                "description": "Returns a paginated list of pharmacological drug classes from DailyMed. Defaults to EPC (Established Pharmacologic Class) type. Supports filtering by type: epc, moa, pe, cs, or all.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drugs"
+                ],
+                "summary": "List drug classes",
+                "parameters": [
+                    {
+                        "enum": [
+                            "epc",
+                            "moa",
+                            "pe",
+                            "cs",
+                            "all"
+                        ],
+                        "type": "string",
+                        "description": "Filter by class type (default: epc)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Results per page (default: 50, max: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/drugs/classes/drugs": {
+            "get": {
+                "description": "Returns a paginated list of drugs belonging to a specific pharmacological class, resolved via FDA NDC data. Returns empty data (not 404) for unknown classes.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drugs"
+                ],
+                "summary": "List drugs in a class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pharmacological class name (e.g. HMG-CoA Reductase Inhibitor)",
+                        "name": "class",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Results per page (default: 100, max: 500)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or empty class parameter",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/drugs/names": {
+            "get": {
+                "description": "Returns a paginated list of drug names from the DailyMed dataset. Supports case-insensitive substring search and type filtering (generic/brand).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drugs"
+                ],
+                "summary": "List drug names",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search substring filter (case-insensitive)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "generic",
+                            "brand",
+                            "all"
+                        ],
+                        "type": "string",
+                        "description": "Filter by type: generic, brand, or all",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Results per page (default: 50, max: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/drugs/ndc/{ndc}": {
             "get": {
                 "description": "Accepts a product NDC (dash-separated), queries cash-drugs upstream, and returns drug name, generic name, and therapeutic classes. Supports 5-4, 4-4, and 5-3 formats with automatic fallback to padded 5-4.",
@@ -108,6 +318,40 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "github_com_finish06_drug-gate_internal_model.DrugClass": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.DrugClassResponse": {
+            "type": "object",
+            "properties": {
+                "brand_names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "classes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugClass"
+                    }
+                },
+                "generic_name": {
+                    "type": "string"
+                },
+                "query_name": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_finish06_drug-gate_internal_model.DrugDetailResponse": {
             "type": "object",
             "properties": {
@@ -136,6 +380,32 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.PaginatedResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "pagination": {
+                    "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.Pagination"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.Pagination": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
                 }
             }
         }
