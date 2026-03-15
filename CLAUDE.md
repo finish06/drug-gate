@@ -59,6 +59,8 @@ internal/
   handler/           — HTTP handlers (Chi routes)
   middleware/        — Auth, rate limiting, logging, CORS, metrics
   client/           — cash-drugs HTTP client
+  apikey/           — API key store (Redis-backed CRUD, rotation)
+  ratelimit/        — Per-key sliding window rate limiter (Redis)
   ndc/              — NDC normalization logic
   model/            — Request/response types
   pharma/           — Pharm class parsing, brand name deduplication

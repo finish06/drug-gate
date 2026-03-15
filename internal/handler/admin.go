@@ -38,6 +38,17 @@ type rotateKeyResponse struct {
 }
 
 // CreateKey handles POST /admin/keys.
+//
+// @Summary      Create API key
+// @Description  Provisions a new publishable API key with app name, allowed origins, and rate limit.
+// @Tags         admin
+// @Accept       json
+// @Produce      json
+// @Param        body  body  createKeyRequest  true  "Key creation parameters"
+// @Success      201  {object}  apikey.APIKey
+// @Failure      400  {object}  model.ErrorResponse  "Invalid request body or validation error"
+// @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Router       /admin/keys [post]
 func (h *AdminHandler) CreateKey(w http.ResponseWriter, r *http.Request) {
 	var req createKeyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -68,6 +79,14 @@ func (h *AdminHandler) CreateKey(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListKeys handles GET /admin/keys.
+//
+// @Summary      List all API keys
+// @Description  Returns all provisioned API keys with metadata.
+// @Tags         admin
+// @Produce      json
+// @Success      200  {array}   apikey.APIKey
+// @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Router       /admin/keys [get]
 func (h *AdminHandler) ListKeys(w http.ResponseWriter, r *http.Request) {
 	keys, err := h.store.List(r.Context())
 	if err != nil {
@@ -81,6 +100,16 @@ func (h *AdminHandler) ListKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetKey handles GET /admin/keys/{key}.
+//
+// @Summary      Get API key details
+// @Description  Returns metadata for a specific API key.
+// @Tags         admin
+// @Produce      json
+// @Param        key  path  string  true  "API key (e.g. pk_abc123)"
+// @Success      200  {object}  apikey.APIKey
+// @Failure      404  {object}  model.ErrorResponse  "Key not found"
+// @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Router       /admin/keys/{key} [get]
 func (h *AdminHandler) GetKey(w http.ResponseWriter, r *http.Request) {
 	keyStr := chi.URLParam(r, "key")
 
@@ -100,6 +129,15 @@ func (h *AdminHandler) GetKey(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeactivateKey handles DELETE /admin/keys/{key}.
+//
+// @Summary      Deactivate API key
+// @Description  Marks an API key as inactive. The key remains retrievable but will be rejected by auth middleware.
+// @Tags         admin
+// @Produce      json
+// @Param        key  path  string  true  "API key to deactivate"
+// @Success      200  {object}  map[string]string  "status: deactivated"
+// @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Router       /admin/keys/{key} [delete]
 func (h *AdminHandler) DeactivateKey(w http.ResponseWriter, r *http.Request) {
 	keyStr := chi.URLParam(r, "key")
 
@@ -116,6 +154,18 @@ func (h *AdminHandler) DeactivateKey(w http.ResponseWriter, r *http.Request) {
 }
 
 // RotateKey handles POST /admin/keys/{key}/rotate.
+//
+// @Summary      Rotate API key
+// @Description  Creates a new key with the same metadata and sets a grace period expiration on the old key. Both keys are valid during the grace period.
+// @Tags         admin
+// @Accept       json
+// @Produce      json
+// @Param        key   path  string            true  "API key to rotate"
+// @Param        body  body  rotateKeyRequest  true  "Grace period for old key"
+// @Success      200  {object}  rotateKeyResponse
+// @Failure      400  {object}  model.ErrorResponse  "Invalid request or grace period"
+// @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Router       /admin/keys/{key}/rotate [post]
 func (h *AdminHandler) RotateKey(w http.ResponseWriter, r *http.Request) {
 	oldKeyStr := chi.URLParam(r, "key")
 

@@ -15,6 +15,209 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/keys": {
+            "get": {
+                "description": "Returns all provisioned API keys with metadata.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List all API keys",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Provisions a new publishable API key with app name, allowed origins, and rate limit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Create API key",
+                "parameters": [
+                    {
+                        "description": "Key creation parameters",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.createKeyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/keys/{key}": {
+            "get": {
+                "description": "Returns metadata for a specific API key.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get API key details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "API key (e.g. pk_abc123)",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey"
+                        }
+                    },
+                    "404": {
+                        "description": "Key not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Marks an API key as inactive. The key remains retrievable but will be rejected by auth middleware.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Deactivate API key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "API key to deactivate",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: deactivated",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/keys/{key}/rotate": {
+            "post": {
+                "description": "Creates a new key with the same metadata and sets a grace period expiration on the old key. Both keys are valid during the grace period.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Rotate API key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "API key to rotate",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Grace period for old key",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.rotateKeyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.rotateKeyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request or grace period",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns service health status and build version.",
@@ -318,6 +521,35 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "github_com_finish06_drug-gate_internal_apikey.APIKey": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "app_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "origins": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rate_limit": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_finish06_drug-gate_internal_model.DrugClass": {
             "type": "object",
             "properties": {
@@ -406,6 +638,45 @@ const docTemplate = `{
                 },
                 "total_pages": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.createKeyRequest": {
+            "type": "object",
+            "properties": {
+                "app_name": {
+                    "type": "string"
+                },
+                "origins": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rate_limit": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.rotateKeyRequest": {
+            "type": "object",
+            "properties": {
+                "grace_period": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.rotateKeyResponse": {
+            "type": "object",
+            "properties": {
+                "new_key": {
+                    "type": "string"
+                },
+                "old_key": {
+                    "type": "string"
+                },
+                "old_key_expires_at": {
+                    "type": "string"
                 }
             }
         }
