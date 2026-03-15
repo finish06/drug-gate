@@ -93,7 +93,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 |-----------|------|-----------------|--------|------------------|
 | M1: NDC Lookup | Accept NDC, return drug name + classes | alpha | DONE | NDC normalization works, cash-drugs integration verified |
 | M2: Security & Rate Limiting | Auth + rate control | alpha | DONE | API key auth, per-key rate limits via Redis |
-| M3: Extended Lookups | Filterable drug name, class, and drugs-by-class listings with lazy Redis caching | beta | NOW | Paginated data APIs serving frontend tools from cached cash-drugs data |
+| M3: Extended Lookups | Filterable drug name, class, and drugs-by-class listings with lazy Redis caching | beta | DONE | Paginated data APIs serving frontend tools from cached cash-drugs data |
 | M3.5: Observability | Prometheus metrics, Redis health collector, container system metrics | alpha | DONE | /metrics endpoint, HTTP/cache/auth/rate-limit counters, Redis + system background collectors |
 | M4: Interactions & RxNorm | SPL interactions, RxNorm integration | beta | LATER | Clinical data accessible via API |
 

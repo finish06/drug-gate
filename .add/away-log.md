@@ -1,15 +1,16 @@
 # Away Mode Log
 
-**Started:** 2026-03-09
-**Expected Return:** ~1 hour
-**Duration:** 1 hour
+**Started:** 2026-03-14 23:45 CST
+**Expected Return:** 2026-03-15 11:45 CST
+**Duration:** 12 hours
 
 ## Work Plan
-1. Housekeeping — Pull merged PR into local main, update PRD to mark M2 as DONE
-2. Update CHANGELOG.md — Add M2 entries
-3. Clean up stale branch — Delete merged feature/security-rate-limiting (local + remote)
-4. Improve test coverage — Review existing packages for coverage gaps, add tests where below 80%
-5. Documentation — Ensure exported functions have godoc comments in M2 packages
+1. Update spec statuses (drug-data-listings → Complete, prometheus-metrics → Complete)
+2. Update PRD (M3 status NOW → DONE)
+3. Boost apikey coverage (3.8% → 80%+) with miniredis unit tests
+4. Boost ratelimit coverage (0% → 80%+) with miniredis unit tests
+5. Update CI if needed
+6. Update handoff
 
 ## Progress Log
 | Time | Task | Status | Notes |
