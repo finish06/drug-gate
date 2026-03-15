@@ -151,6 +151,208 @@ func TestHTTPDrugClient_LookupByNDC_MalformedJSON(t *testing.T) {
 	}
 }
 
+// LookupByGenericName happy path
+func TestHTTPDrugClient_LookupByGenericName_HappyPath(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("GENERIC_NAME") != "simvastatin" {
+			t.Errorf("unexpected GENERIC_NAME param: %s", r.URL.Query().Get("GENERIC_NAME"))
+		}
+		resp := cashDrugsResponse([]map[string]any{
+			{
+				"product_ndc":  "00069-3150",
+				"brand_name":   "Zocor",
+				"generic_name": "simvastatin",
+				"pharm_class":  []string{"HMG-CoA Reductase Inhibitor [EPC]"},
+			},
+		})
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer upstream.Close()
+
+	c := NewHTTPDrugClient(upstream.URL)
+	results, err := c.LookupByGenericName(context.Background(), "simvastatin")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("got %d results, want 1", len(results))
+	}
+	if results[0].GenericName != "simvastatin" {
+		t.Errorf("GenericName = %q, want simvastatin", results[0].GenericName)
+	}
+}
+
+// LookupByBrandName happy path
+func TestHTTPDrugClient_LookupByBrandName_HappyPath(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("BRAND_NAME") != "Lipitor" {
+			t.Errorf("unexpected BRAND_NAME param: %s", r.URL.Query().Get("BRAND_NAME"))
+		}
+		resp := cashDrugsResponse([]map[string]any{
+			{
+				"product_ndc":  "00069-3150",
+				"brand_name":   "Lipitor",
+				"generic_name": "atorvastatin calcium",
+				"pharm_class":  []string{"HMG-CoA Reductase Inhibitor [EPC]"},
+			},
+		})
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer upstream.Close()
+
+	c := NewHTTPDrugClient(upstream.URL)
+	results, err := c.LookupByBrandName(context.Background(), "Lipitor")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("got %d results, want 1", len(results))
+	}
+	if results[0].BrandName != "Lipitor" {
+		t.Errorf("BrandName = %q, want Lipitor", results[0].BrandName)
+	}
+}
+
+// LookupByGenericName returns nil for empty results
+func TestHTTPDrugClient_LookupByGenericName_NotFound(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer upstream.Close()
+
+	c := NewHTTPDrugClient(upstream.URL)
+	results, err := c.LookupByGenericName(context.Background(), "notreal")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if results != nil {
+		t.Errorf("expected nil results for 404, got %+v", results)
+	}
+}
+
+// LookupByGenericName upstream error
+func TestHTTPDrugClient_LookupByGenericName_UpstreamError(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer upstream.Close()
+
+	c := NewHTTPDrugClient(upstream.URL)
+	_, err := c.LookupByGenericName(context.Background(), "simvastatin")
+	if err == nil {
+		t.Error("expected error for 502, got nil")
+	}
+}
+
+// LookupByPharmClass happy path
+func TestHTTPDrugClient_LookupByPharmClass_HappyPath(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("PHARM_CLASS") == "" {
+			t.Error("missing PHARM_CLASS param")
+		}
+		resp := cashDrugsResponse([]map[string]any{
+			{"product_ndc": "00069-3150", "brand_name": "Zocor", "generic_name": "simvastatin"},
+			{"product_ndc": "00069-3151", "brand_name": "Lipitor", "generic_name": "atorvastatin calcium"},
+		})
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer upstream.Close()
+
+	c := NewHTTPDrugClient(upstream.URL)
+	results, err := c.LookupByPharmClass(context.Background(), "HMG-CoA Reductase Inhibitor")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("got %d results, want 2", len(results))
+	}
+}
+
+// FetchDrugNames happy path
+func TestHTTPDrugClient_FetchDrugNames_HappyPath(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/cache/drugnames" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := map[string]any{
+			"data": []map[string]any{
+				{"name_type": "G", "drug_name": "simvastatin"},
+				{"name_type": "B", "drug_name": "Zocor"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer upstream.Close()
+
+	c := NewHTTPDrugClient(upstream.URL)
+	names, err := c.FetchDrugNames(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(names) != 2 {
+		t.Fatalf("got %d names, want 2", len(names))
+	}
+	if names[0].NameType != "G" || names[0].DrugName != "simvastatin" {
+		t.Errorf("names[0] = %+v, want G/simvastatin", names[0])
+	}
+}
+
+// FetchDrugNames upstream error
+func TestHTTPDrugClient_FetchDrugNames_UpstreamError(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer upstream.Close()
+
+	c := NewHTTPDrugClient(upstream.URL)
+	_, err := c.FetchDrugNames(context.Background())
+	if err == nil {
+		t.Error("expected error for 502, got nil")
+	}
+}
+
+// FetchDrugClasses happy path
+func TestHTTPDrugClient_FetchDrugClasses_HappyPath(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/cache/drugclasses" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := map[string]any{
+			"data": []map[string]any{
+				{"class_name": "HMG-CoA Reductase Inhibitor", "class_type": "EPC"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer upstream.Close()
+
+	c := NewHTTPDrugClient(upstream.URL)
+	classes, err := c.FetchDrugClasses(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(classes) != 1 {
+		t.Fatalf("got %d classes, want 1", len(classes))
+	}
+	if classes[0].ClassName != "HMG-CoA Reductase Inhibitor" {
+		t.Errorf("ClassName = %q, want HMG-CoA Reductase Inhibitor", classes[0].ClassName)
+	}
+}
+
+// Unreachable upstream for name-based lookup
+func TestHTTPDrugClient_LookupByGenericName_Unreachable(t *testing.T) {
+	c := NewHTTPDrugClient("http://localhost:1")
+	_, err := c.LookupByGenericName(context.Background(), "simvastatin")
+	if err == nil {
+		t.Error("expected error for unreachable, got nil")
+	}
+}
+
 // Empty data array returns nil
 func TestHTTPDrugClient_LookupByNDC_EmptyResults(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

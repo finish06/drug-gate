@@ -93,7 +93,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 |-----------|------|-----------------|--------|------------------|
 | M1: NDC Lookup | Accept NDC, return drug name + classes | alpha | DONE | NDC normalization works, cash-drugs integration verified |
 | M2: Security & Rate Limiting | Auth + rate control | alpha | DONE | API key auth, per-key rate limits via Redis |
-| M3: Extended Lookups | Drug class search, name search | beta | LATER | Multiple query patterns supported |
+| M3: Extended Lookups | Filterable drug name, class, and drugs-by-class listings with lazy Redis caching | beta | NOW | Paginated data APIs serving frontend tools from cached cash-drugs data |
 | M4: Interactions & RxNorm | SPL interactions, RxNorm integration | beta | LATER | Clinical data accessible via API |
 
 ### Milestone Detail
@@ -145,6 +145,79 @@ Each key identifies *which application* is calling, not which user. Security is 
 - [x] Rate limits enforced per API key (429 + Retry-After header)
 - [x] Redis-backed key storage with metadata (app name, origin allowlist, rate tier)
 - [x] Key rotation works — old key invalidated, new key active immediately
+
+#### M3: Extended Lookups [NOW]
+**Goal:** Expose drug names, drug classes, and drug-to-class relationships as filterable, paginated APIs — enabling any frontend tool to work with FDA/DailyMed drug data
+**Appetite:** 2-3 cycles
+**Target maturity:** beta
+
+**Data relationship model:**
+
+Frontend apps need to understand how drug data connects. There are three independent data sources in cash-drugs, and the relationships between them matter:
+
+```
+┌─────────────────────┐     ┌─────────────────────┐
+│  DailyMed Drug Names│     │  DailyMed Drug Classes│
+│  (~104K entries)     │     │  (~1.2K entries)      │
+│                     │     │                       │
+│  • drug name        │     │  • class name          │
+│  • type (G/B)       │     │  • type (EPC/MoA/PE/CS)│
+│                     │     │                       │
+│  NO class info      │     │  NO drug info          │
+└─────────────────────┘     └───────────────────────┘
+          │                           │
+          │    These two lists are    │
+          │    INDEPENDENT — no       │
+          │    cross-reference        │
+          │                           │
+          ▼                           ▼
+┌──────────────────────────────────────────────────┐
+│              FDA NDC Directory                    │
+│              (~132K products)                     │
+│                                                  │
+│  • generic_name ─── links drug to...             │
+│  • brand_name                                    │
+│  • pharm_class[] ── ...its classes               │
+│                                                  │
+│  THIS is the only place where                    │
+│  drug ↔ class relationships exist                │
+└──────────────────────────────────────────────────┘
+```
+
+**How frontend apps use the endpoints:**
+
+| I want to... | Endpoint | Data source |
+|--------------|----------|-------------|
+| Browse/search all drug names | `GET /v1/drugs/names?q=simva` | DailyMed drugnames |
+| Browse drug classes by type | `GET /v1/drugs/classes?type=epc` | DailyMed drugclasses |
+| Find which class a drug belongs to | `GET /v1/drugs/class?name=simvastatin` | FDA NDC (by generic/brand name) |
+| Find all drugs in a class | `GET /v1/drugs/classes/drugs?class=HMG-CoA+Reductase+Inhibitor` | FDA NDC (by pharm_class) |
+
+**Example: Building a "match drug to class" quiz**
+1. `GET /v1/drugs/classes?type=epc&limit=4` → get 4 random EPC classes
+2. For each class: `GET /v1/drugs/classes/drugs?class={name}&limit=1` → get a drug from each class
+3. Present the 4 drugs and 4 classes as a matching exercise
+
+**Example: Drug info card**
+1. User types "simva..." → `GET /v1/drugs/names?q=simva` → autocomplete suggestions
+2. User selects "simvastatin" → `GET /v1/drugs/class?name=simvastatin` → full class info with brand names
+
+**Caching:** All bulk data is lazy-loaded into Redis on first request with a 60-minute sliding TTL. If no app requests the data for 60 minutes, it's evicted. Next request triggers a fresh fetch from cash-drugs.
+
+**Features:**
+- Drug class lookup by name (`GET /v1/drugs/class?name={name}`)
+- Paginated drug names with search and type filter (`GET /v1/drugs/names`)
+- Paginated drug classes with type filter (`GET /v1/drugs/classes`)
+- Drugs-by-class listing (`GET /v1/drugs/classes/drugs?class={name}`)
+- Lazy Redis caching with 60-minute sliding TTL
+- In-memory filtering and pagination from cached data
+
+**Success criteria:**
+- [ ] All 4 endpoints return correct, paginated data
+- [ ] Drug-to-class relationships resolved via FDA NDC data
+- [ ] Lazy caching works — first request fetches from cash-drugs, subsequent requests served from Redis
+- [ ] Cache expires after 60 minutes of inactivity
+- [ ] Upstream errors return 502 with clear message
 
 ### Maturity Promotion Path
 

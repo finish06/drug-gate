@@ -1,5 +1,27 @@
 basePath: /
 definitions:
+  github_com_finish06_drug-gate_internal_model.DrugClass:
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_finish06_drug-gate_internal_model.DrugClassResponse:
+    properties:
+      brand_names:
+        items:
+          type: string
+        type: array
+      classes:
+        items:
+          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.DrugClass'
+        type: array
+      generic_name:
+        type: string
+      query_name:
+        type: string
+    type: object
   github_com_finish06_drug-gate_internal_model.DrugDetailResponse:
     properties:
       classes:
@@ -19,6 +41,23 @@ definitions:
         type: string
       message:
         type: string
+    type: object
+  github_com_finish06_drug-gate_internal_model.PaginatedResponse:
+    properties:
+      data: {}
+      pagination:
+        $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.Pagination'
+    type: object
+  github_com_finish06_drug-gate_internal_model.Pagination:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
     type: object
 host: localhost:8081
 info:
@@ -56,6 +95,153 @@ paths:
       summary: OpenAPI spec
       tags:
       - system
+  /v1/drugs/class:
+    get:
+      description: Looks up a drug by generic or brand name and returns its pharmacological
+        classes, brand names, and generic name. Tries generic name first, falls back
+        to brand name.
+      parameters:
+      - description: Drug name (generic or brand, e.g. simvastatin, Zocor)
+        in: query
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.DrugClassResponse'
+        "400":
+          description: Missing or empty name parameter
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "404":
+          description: Drug not found
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: Look up drug class by name
+      tags:
+      - drugs
+  /v1/drugs/classes:
+    get:
+      description: 'Returns a paginated list of pharmacological drug classes from
+        DailyMed. Defaults to EPC (Established Pharmacologic Class) type. Supports
+        filtering by type: epc, moa, pe, cs, or all.'
+      parameters:
+      - description: 'Filter by class type (default: epc)'
+        enum:
+        - epc
+        - moa
+        - pe
+        - cs
+        - all
+        in: query
+        name: type
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Results per page (default: 50, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: List drug classes
+      tags:
+      - drugs
+  /v1/drugs/classes/drugs:
+    get:
+      description: Returns a paginated list of drugs belonging to a specific pharmacological
+        class, resolved via FDA NDC data. Returns empty data (not 404) for unknown
+        classes.
+      parameters:
+      - description: Pharmacological class name (e.g. HMG-CoA Reductase Inhibitor)
+        in: query
+        name: class
+        required: true
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Results per page (default: 100, max: 500)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse'
+        "400":
+          description: Missing or empty class parameter
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: List drugs in a class
+      tags:
+      - drugs
+  /v1/drugs/names:
+    get:
+      description: Returns a paginated list of drug names from the DailyMed dataset.
+        Supports case-insensitive substring search and type filtering (generic/brand).
+      parameters:
+      - description: Search substring filter (case-insensitive)
+        in: query
+        name: q
+        type: string
+      - description: 'Filter by type: generic, brand, or all'
+        enum:
+        - generic
+        - brand
+        - all
+        in: query
+        name: type
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Results per page (default: 50, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: List drug names
+      tags:
+      - drugs
   /v1/drugs/ndc/{ndc}:
     get:
       description: Accepts a product NDC (dash-separated), queries cash-drugs upstream,
