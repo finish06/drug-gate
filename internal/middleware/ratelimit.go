@@ -6,13 +6,19 @@ import (
 	"strconv"
 
 	"github.com/finish06/drug-gate/internal/apikey"
+	"github.com/finish06/drug-gate/internal/metrics"
 	"github.com/finish06/drug-gate/internal/model"
 	"github.com/finish06/drug-gate/internal/ratelimit"
 )
 
 // RateLimit returns middleware that enforces per-key rate limiting.
 // It reads the APIKey from context (set by APIKeyAuth) and calls the Limiter.
-func RateLimit(limiter ratelimit.Limiter) func(http.Handler) http.Handler {
+// Pass optional metrics to record rate limit rejections.
+func RateLimit(limiter ratelimit.Limiter, m ...*metrics.Metrics) func(http.Handler) http.Handler {
+	var met *metrics.Metrics
+	if len(m) > 0 {
+		met = m[0]
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ak, ok := r.Context().Value(APIKeyContextKey).(*apikey.APIKey)
@@ -32,6 +38,9 @@ func RateLimit(limiter ratelimit.Limiter) func(http.Handler) http.Handler {
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(result.ResetAt.Unix(), 10))
 
 			if !result.Allowed {
+				if met != nil {
+					met.RateLimitRejectionsTotal.WithLabelValues(ak.Key).Inc()
+				}
 				w.Header().Set("Retry-After", strconv.Itoa(int(result.RetryAfter.Seconds())))
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)

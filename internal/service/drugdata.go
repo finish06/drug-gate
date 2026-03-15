@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/finish06/drug-gate/internal/client"
+	"github.com/finish06/drug-gate/internal/metrics"
 	"github.com/finish06/drug-gate/internal/model"
 	"github.com/redis/go-redis/v9"
 )
@@ -17,13 +18,25 @@ const cacheTTL = 60 * time.Minute
 
 // DrugDataService provides drug data with lazy Redis caching.
 type DrugDataService struct {
-	client client.DrugClient
-	rdb    *redis.Client
+	client  client.DrugClient
+	rdb     *redis.Client
+	metrics *metrics.Metrics
 }
 
 // NewDrugDataService creates a service with the given client and Redis connection.
-func NewDrugDataService(c client.DrugClient, rdb *redis.Client) *DrugDataService {
-	return &DrugDataService{client: c, rdb: rdb}
+// Pass optional metrics to record cache hit/miss counters.
+func NewDrugDataService(c client.DrugClient, rdb *redis.Client, m ...*metrics.Metrics) *DrugDataService {
+	var met *metrics.Metrics
+	if len(m) > 0 {
+		met = m[0]
+	}
+	return &DrugDataService{client: c, rdb: rdb, metrics: met}
+}
+
+func (s *DrugDataService) recordCache(keyType, outcome string) {
+	if s.metrics != nil {
+		s.metrics.CacheHitsTotal.WithLabelValues(keyType, outcome).Inc()
+	}
 }
 
 // GetDrugNames returns all drug names, loading from cache or upstream.
@@ -37,10 +50,13 @@ func (s *DrugDataService) GetDrugNames(ctx context.Context) ([]model.DrugNameEnt
 		s.rdb.Expire(ctx, key, cacheTTL)
 		var entries []model.DrugNameEntry
 		if err := json.Unmarshal(data, &entries); err == nil {
+			s.recordCache("drugnames", "hit")
 			return entries, nil
 		}
 		slog.Warn("failed to unmarshal cached drug names, fetching fresh")
 	}
+
+	s.recordCache("drugnames", "miss")
 
 	// Cache miss — fetch from upstream
 	raw, err := s.client.FetchDrugNames(ctx)
@@ -80,10 +96,13 @@ func (s *DrugDataService) GetDrugClasses(ctx context.Context) ([]model.DrugClass
 		s.rdb.Expire(ctx, key, cacheTTL)
 		var entries []model.DrugClassEntry
 		if err := json.Unmarshal(data, &entries); err == nil {
+			s.recordCache("drugclasses", "hit")
 			return entries, nil
 		}
 		slog.Warn("failed to unmarshal cached drug classes, fetching fresh")
 	}
+
+	s.recordCache("drugclasses", "miss")
 
 	// Cache miss — fetch from upstream
 	raw, err := s.client.FetchDrugClasses(ctx)
@@ -118,10 +137,13 @@ func (s *DrugDataService) GetDrugsByClass(ctx context.Context, className string)
 		s.rdb.Expire(ctx, key, cacheTTL)
 		var entries []model.DrugInClassEntry
 		if err := json.Unmarshal(data, &entries); err == nil {
+			s.recordCache("drugsbyclass", "hit")
 			return entries, nil
 		}
 		slog.Warn("failed to unmarshal cached drugs-by-class, fetching fresh")
 	}
+
+	s.recordCache("drugsbyclass", "miss")
 
 	// Cache miss — fetch from upstream
 	results, err := s.client.LookupByPharmClass(ctx, className)

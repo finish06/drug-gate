@@ -6,15 +6,19 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
 	_ "github.com/finish06/drug-gate/docs"
 	"github.com/finish06/drug-gate/internal/apikey"
 	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/handler"
+	"github.com/finish06/drug-gate/internal/metrics"
 	"github.com/finish06/drug-gate/internal/middleware"
 	"github.com/finish06/drug-gate/internal/ratelimit"
 	"github.com/finish06/drug-gate/internal/service"
@@ -65,13 +69,40 @@ func main() {
 		slog.Warn("redis not reachable at startup", "addr", redisURL, "err", err)
 	}
 
+	// Prometheus metrics
+	m := metrics.NewMetrics(prometheus.DefaultRegisterer)
+
+	// Start background Redis health collector
+	redisCollector := metrics.NewRedisCollector(rdb, m, 30*time.Second)
+	redisCollector.Start()
+
+	// Start background system metrics collector (Linux only)
+	sysMetricsInterval := os.Getenv("SYSTEM_METRICS_INTERVAL")
+	sysInterval := 15 * time.Second
+	if sysMetricsInterval != "" {
+		if d, err := time.ParseDuration(sysMetricsInterval); err == nil {
+			sysInterval = d
+		} else {
+			slog.Warn("invalid SYSTEM_METRICS_INTERVAL, using 15s", "value", sysMetricsInterval, "err", err)
+		}
+	}
+	var sysCollector *metrics.SystemCollector
+	if runtime.GOOS == "linux" {
+		sysSource := metrics.NewProcfsSource()
+		sysCollector = metrics.NewSystemCollector(sysSource, m, sysInterval, "/")
+		sysCollector.Start()
+		slog.Info("system metrics collector started", "interval", sysInterval)
+	} else {
+		slog.Info("system metrics collector skipped (not linux)", "os", runtime.GOOS)
+	}
+
 	// Dependencies
 	store := apikey.NewRedisStore(rdb)
 	limiter := ratelimit.NewRedisLimiter(rdb)
 	drugClient := client.NewHTTPDrugClient(cashDrugsURL)
 	drugHandler := handler.NewDrugHandler(drugClient)
 	drugClassHandler := handler.NewDrugClassHandler(drugClient)
-	dataSvc := service.NewDrugDataService(drugClient, rdb)
+	dataSvc := service.NewDrugDataService(drugClient, rdb, m)
 	drugNamesHandler := handler.NewDrugNamesHandler(dataSvc)
 	drugClassesHandler := handler.NewDrugClassesHandler(dataSvc)
 	drugsByClassHandler := handler.NewDrugsByClassHandler(dataSvc)
@@ -79,17 +110,19 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger)
+	r.Use(middleware.MetricsMiddleware(m))
 
 	// Public routes (no auth)
 	r.Get("/health", handler.HealthCheck)
+	r.Handle("/metrics", promhttp.Handler())
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	r.Get("/openapi.json", handler.OpenAPIJSON)
 
 	// Protected API routes
 	r.Route("/v1", func(r chi.Router) {
-		r.Use(middleware.APIKeyAuth(store))
+		r.Use(middleware.APIKeyAuth(store, m))
 		r.Use(middleware.PerKeyCORS)
-		r.Use(middleware.RateLimit(limiter))
+		r.Use(middleware.RateLimit(limiter, m))
 		r.Get("/drugs/ndc/{ndc}", drugHandler.HandleNDCLookup)
 		r.Get("/drugs/class", drugClassHandler.HandleDrugClassLookup)
 		r.Get("/drugs/names", drugNamesHandler.HandleDrugNames)
@@ -128,6 +161,10 @@ func main() {
 	<-quit
 
 	slog.Info("shutting down")
+	redisCollector.Stop()
+	if sysCollector != nil {
+		sysCollector.Stop()
+	}
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
