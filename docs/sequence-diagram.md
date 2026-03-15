@@ -5,16 +5,18 @@
 All `/v1/*` routes pass through the following middleware chain in order:
 
 1. **RequestLogger** -- logs method, path, status, duration
-2. **APIKeyAuth** -- validates X-API-Key header against Redis store
-3. **PerKeyCORS** -- sets CORS headers based on the key's allowed origins
-4. **RateLimit** -- enforces per-key rate limits via Redis sliding window
+2. **MetricsMiddleware** -- records `druggate_http_requests_total` and `druggate_http_request_duration_seconds` per route/method/status
+3. **APIKeyAuth** -- validates X-API-Key header against Redis store; increments `druggate_auth_rejections_total` on failure
+4. **PerKeyCORS** -- sets CORS headers based on the key's allowed origins
+5. **RateLimit** -- enforces per-key rate limits via Redis sliding window; increments `druggate_ratelimit_rejections_total` on 429
 
 Admin `/admin/*` routes use a separate chain:
 
 1. **RequestLogger** -- same global logger
-2. **AdminAuth** -- validates Bearer token against ADMIN_SECRET env var
+2. **MetricsMiddleware** -- same global metrics recorder
+3. **AdminAuth** -- validates Bearer token against ADMIN_SECRET env var
 
-Public routes (`/health`, `/swagger/*`, `/openapi.json`) only pass through **RequestLogger**.
+Public routes (`/health`, `/metrics`, `/swagger/*`, `/openapi.json`) pass through **RequestLogger** and **MetricsMiddleware**.
 
 ---
 
@@ -25,13 +27,108 @@ sequenceDiagram
     actor Client as Frontend Client
     participant GW as drug-gate<br/>:8081
     participant LOG as RequestLogger
+    participant MET as MetricsMiddleware
     participant HC as HealthCheck
 
     Client->>GW: GET /health
     GW->>LOG: Pass request
-    LOG->>HC: Next handler
+    LOG->>MET: Next handler
+    MET->>HC: Next handler
     HC-->>Client: 200 {"status": "ok", "version": "..."}
+    MET->>MET: Record request count + duration
     LOG->>LOG: Log {method, path, status, duration_ms}
+```
+
+---
+
+## Prometheus Metrics Scrape (GET /metrics)
+
+```mermaid
+sequenceDiagram
+    actor Prom as Prometheus Scraper
+    participant GW as drug-gate<br/>:8081
+    participant LOG as RequestLogger
+    participant MET as MetricsMiddleware
+    participant PH as promhttp.Handler
+
+    Prom->>GW: GET /metrics
+    GW->>LOG: Pass request
+    LOG->>MET: Next handler
+    MET->>PH: Next handler
+    PH->>PH: Gather all registered collectors
+    PH-->>Prom: 200 text/plain (Prometheus exposition format)
+    MET->>MET: Record request count + duration
+    LOG->>LOG: Log {method, path, status, duration_ms}
+
+    Note over PH: Exposes druggate_http_requests_total,<br/>druggate_http_request_duration_seconds,<br/>druggate_cache_hits_total,<br/>druggate_ratelimit_rejections_total,<br/>druggate_auth_rejections_total,<br/>druggate_redis_up,<br/>druggate_redis_ping_duration_seconds,<br/>druggate_container_* (Linux only)
+```
+
+---
+
+## Redis Health Collector (Background Loop)
+
+```mermaid
+sequenceDiagram
+    participant RC as RedisCollector<br/>(goroutine)
+    participant RDS as Redis
+    participant MET as Metrics
+
+    Note over RC: Starts on boot, runs every 30s
+
+    loop Every 30 seconds
+        RC->>RDS: PING
+        alt Redis healthy
+            RDS-->>RC: PONG
+            RC->>MET: redis_up = 1
+            RC->>MET: redis_ping_duration_seconds = {latency}
+        end
+        alt Redis unreachable
+            RDS-->>RC: error / timeout
+            RC->>MET: redis_up = 0
+        end
+    end
+
+    Note over RC: Stopped gracefully on SIGINT/SIGTERM
+```
+
+---
+
+## System Metrics Collector (Background Loop, Linux Only)
+
+```mermaid
+sequenceDiagram
+    participant SC as SystemCollector<br/>(goroutine)
+    participant PS as ProcfsSource
+    participant MET as Metrics
+
+    Note over SC: Starts on boot (Linux only),<br/>interval = SYSTEM_METRICS_INTERVAL (default 15s)
+
+    loop Every SYSTEM_METRICS_INTERVAL
+        SC->>PS: CPUUsage()
+        PS->>PS: syscall.Getrusage(RUSAGE_SELF)
+        PS-->>SC: userSec, sysSec
+        SC->>MET: container_cpu_usage_seconds_total = user + sys
+        SC->>MET: container_cpu_cores_available = runtime.NumCPU()
+
+        SC->>PS: MemoryInfo()
+        PS->>PS: Parse /proc/self/status (VmRSS, VmSize)
+        PS->>PS: Read cgroup memory.max (v2) or memory.limit_in_bytes (v1)
+        PS-->>SC: MemInfo{RSS, VMS, Limit}
+        SC->>MET: container_memory_rss_bytes, container_memory_vms_bytes
+        SC->>MET: container_memory_limit_bytes, container_memory_usage_ratio
+
+        SC->>PS: DiskUsage("/")
+        PS->>PS: syscall.Statfs("/")
+        PS-->>SC: DiskInfo{Total, Free, Used}
+        SC->>MET: container_disk_total_bytes, container_disk_free_bytes, container_disk_used_bytes
+
+        SC->>PS: NetworkStats()
+        PS->>PS: Parse /proc/net/dev
+        PS-->>SC: []NetStat per interface
+        SC->>MET: container_network_{receive,transmit}_{bytes,packets}_total per interface
+    end
+
+    Note over SC: Stopped gracefully on SIGINT/SIGTERM
 ```
 
 ---
@@ -43,6 +140,7 @@ sequenceDiagram
     actor Client as Frontend Client
     participant GW as drug-gate<br/>:8081
     participant LOG as RequestLogger
+    participant MET as MetricsMiddleware
     participant AUTH as APIKeyAuth
     participant RDS as Redis<br/>(API Key Store)
     participant CORS as PerKeyCORS
@@ -55,7 +153,8 @@ sequenceDiagram
 
     Client->>GW: GET /v1/drugs/ndc/{ndc}<br/>X-API-Key: pk_...
     GW->>LOG: Pass request
-    LOG->>AUTH: Next handler
+    LOG->>MET: Next handler
+    MET->>AUTH: Next handler
 
     AUTH->>AUTH: Extract X-API-Key header
 
@@ -140,6 +239,7 @@ sequenceDiagram
         end
     end
 
+    MET->>MET: Record request count + duration
     LOG->>LOG: Log {method, path, status, duration_ms}
 ```
 
@@ -150,14 +250,14 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client as Frontend Client
-    participant MW as Middleware Chain<br/>(Logger→Auth→CORS→RateLimit)
+    participant MW as Middleware Chain<br/>(Logger→Metrics→Auth→CORS→RateLimit)
     participant DCH as DrugClassHandler
     participant DC as HTTPDrugClient
     participant PH as pharma.Parse
     participant CD as cash-drugs<br/>:8083
 
     Client->>MW: GET /v1/drugs/class?name=atorvastatin<br/>X-API-Key: pk_...
-    MW->>MW: Auth + CORS + RateLimit (see NDC flow)
+    MW->>MW: Logger + Metrics + Auth + CORS + RateLimit (see NDC flow)
 
     alt Missing name param
         MW->>DCH: HandleDrugClassLookup(w, r)
@@ -212,7 +312,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client as Frontend Client
-    participant MW as Middleware Chain<br/>(Logger→Auth→CORS→RateLimit)
+    participant MW as Middleware Chain<br/>(Logger→Metrics→Auth→CORS→RateLimit)
     participant DNH as DrugNamesHandler
     participant SVC as DrugDataService
     participant RDS as Redis<br/>(Data Cache)
@@ -220,7 +320,7 @@ sequenceDiagram
     participant CD as cash-drugs<br/>:8083
 
     Client->>MW: GET /v1/drugs/names?type=brand&q=lipitor&page=1&limit=50<br/>X-API-Key: pk_...
-    MW->>MW: Auth + CORS + RateLimit (see NDC flow)
+    MW->>MW: Logger + Metrics + Auth + CORS + RateLimit (see NDC flow)
     MW->>DNH: HandleDrugNames(w, r)
 
     DNH->>SVC: GetDrugNames(ctx)
@@ -229,11 +329,13 @@ sequenceDiagram
     alt Cache hit
         RDS-->>SVC: cached JSON
         SVC->>RDS: EXPIRE cache:drugnames 60m (sliding TTL)
+        SVC->>SVC: Record cache_hits_total{drugnames, hit}
         SVC-->>DNH: []DrugNameEntry
     end
 
     alt Cache miss
         RDS-->>SVC: nil
+        SVC->>SVC: Record cache_hits_total{drugnames, miss}
         SVC->>DC: FetchDrugNames(ctx)
         DC->>CD: GET /api/cache/drugnames
         CD-->>DC: 200 {"data": [...]}
@@ -263,7 +365,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client as Frontend Client
-    participant MW as Middleware Chain<br/>(Logger→Auth→CORS→RateLimit)
+    participant MW as Middleware Chain<br/>(Logger→Metrics→Auth→CORS→RateLimit)
     participant DCH as DrugClassesHandler
     participant SVC as DrugDataService
     participant RDS as Redis<br/>(Data Cache)
@@ -271,7 +373,7 @@ sequenceDiagram
     participant CD as cash-drugs<br/>:8083
 
     Client->>MW: GET /v1/drugs/classes?type=epc&page=1&limit=50<br/>X-API-Key: pk_...
-    MW->>MW: Auth + CORS + RateLimit (see NDC flow)
+    MW->>MW: Logger + Metrics + Auth + CORS + RateLimit (see NDC flow)
     MW->>DCH: HandleDrugClasses(w, r)
 
     DCH->>SVC: GetDrugClasses(ctx)
@@ -280,11 +382,13 @@ sequenceDiagram
     alt Cache hit
         RDS-->>SVC: cached JSON
         SVC->>RDS: EXPIRE cache:drugclasses 60m (sliding TTL)
+        SVC->>SVC: Record cache_hits_total{drugclasses, hit}
         SVC-->>DCH: []DrugClassEntry
     end
 
     alt Cache miss
         RDS-->>SVC: nil
+        SVC->>SVC: Record cache_hits_total{drugclasses, miss}
         SVC->>DC: FetchDrugClasses(ctx)
         DC->>CD: GET /api/cache/drugclasses
         CD-->>DC: 200 {"data": [...]}
@@ -311,7 +415,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client as Frontend Client
-    participant MW as Middleware Chain<br/>(Logger→Auth→CORS→RateLimit)
+    participant MW as Middleware Chain<br/>(Logger→Metrics→Auth→CORS→RateLimit)
     participant DBH as DrugsByClassHandler
     participant SVC as DrugDataService
     participant RDS as Redis<br/>(Data Cache)
@@ -319,7 +423,7 @@ sequenceDiagram
     participant CD as cash-drugs<br/>:8083
 
     Client->>MW: GET /v1/drugs/classes/drugs?class=Statin&page=1&limit=100<br/>X-API-Key: pk_...
-    MW->>MW: Auth + CORS + RateLimit (see NDC flow)
+    MW->>MW: Logger + Metrics + Auth + CORS + RateLimit (see NDC flow)
     MW->>DBH: HandleDrugsByClass(w, r)
 
     alt Missing class param
@@ -332,11 +436,13 @@ sequenceDiagram
     alt Cache hit
         RDS-->>SVC: cached JSON
         SVC->>RDS: EXPIRE cache:drugsbyclass:statin 60m (sliding TTL)
+        SVC->>SVC: Record cache_hits_total{drugsbyclass, hit}
         SVC-->>DBH: []DrugInClassEntry
     end
 
     alt Cache miss
         RDS-->>SVC: nil
+        SVC->>SVC: Record cache_hits_total{drugsbyclass, miss}
         SVC->>DC: LookupByPharmClass(ctx, "Statin")
         DC->>CD: GET /api/cache/fda-ndc?PHARM_CLASS=Statin
         CD-->>DC: 200 {"data": [...]}
@@ -364,13 +470,15 @@ sequenceDiagram
     actor Admin as Admin User
     participant GW as drug-gate<br/>:8081
     participant LOG as RequestLogger
+    participant MET as MetricsMiddleware
     participant ADM as AdminAuth
     participant AH as AdminHandler
     participant RDS as Redis<br/>(API Key Store)
 
     Admin->>GW: POST /admin/keys<br/>Authorization: Bearer {secret}
     GW->>LOG: Pass request
-    LOG->>ADM: Next handler
+    LOG->>MET: Next handler
+    MET->>ADM: Next handler
     ADM->>ADM: Validate Bearer token against ADMIN_SECRET
 
     alt Missing / invalid token
@@ -392,6 +500,8 @@ sequenceDiagram
     RDS->>RDS: GenerateKey() -> pk_...
     RDS-->>AH: *APIKey
     AH-->>Admin: 201 {key, app_name, origins, rate_limit, active, created_at}
+
+    MET->>MET: Record request count + duration
 
     Note over Admin, RDS: Other admin endpoints follow the same auth pattern:
     Note over Admin, RDS: GET /admin/keys -- ListKeys (list all keys)
@@ -465,6 +575,9 @@ sequenceDiagram
         GW->>RD: SET cache:drugnames (TTL 60m)
     end
     GW-->>Dev: 200 {"data": [...], "pagination": {...}}
+
+    Dev->>GW: GET /metrics
+    GW-->>Dev: 200 (Prometheus exposition format)
 ```
 
 ---
@@ -474,6 +587,7 @@ sequenceDiagram
 | Method | Path | Auth | Handler | Description |
 |--------|------|------|---------|-------------|
 | GET | `/health` | None | `HealthCheck` | Service health + version |
+| GET | `/metrics` | None | `promhttp.Handler` | Prometheus metrics endpoint |
 | GET | `/swagger/*` | None | `httpSwagger.WrapHandler` | Swagger UI |
 | GET | `/openapi.json` | None | `OpenAPIJSON` | OpenAPI spec JSON |
 | GET | `/v1/drugs/ndc/{ndc}` | API Key | `DrugHandler.HandleNDCLookup` | NDC drug lookup with fallback |
@@ -486,3 +600,47 @@ sequenceDiagram
 | GET | `/admin/keys/{key}` | Admin Bearer | `AdminHandler.GetKey` | Get single API key |
 | DELETE | `/admin/keys/{key}` | Admin Bearer | `AdminHandler.DeactivateKey` | Deactivate API key |
 | POST | `/admin/keys/{key}/rotate` | Admin Bearer | `AdminHandler.RotateKey` | Rotate API key with grace period |
+
+---
+
+## Metrics Reference
+
+### HTTP Metrics (via MetricsMiddleware)
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `druggate_http_requests_total` | Counter | route, method, status_code | Total HTTP requests |
+| `druggate_http_request_duration_seconds` | Histogram | route, method | Request latency |
+
+### Cache Metrics (via DrugDataService)
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `druggate_cache_hits_total` | Counter | key_type, outcome | Redis cache hit/miss by key type |
+
+### Auth & Rate Limit Metrics
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `druggate_auth_rejections_total` | Counter | reason | Auth failures by reason |
+| `druggate_ratelimit_rejections_total` | Counter | api_key | Rate limit 429s by key |
+
+### Redis Health Metrics (via RedisCollector, every 30s)
+| Metric | Type | Description |
+|--------|------|-------------|
+| `druggate_redis_up` | Gauge | Redis health (1=healthy, 0=unhealthy) |
+| `druggate_redis_ping_duration_seconds` | Gauge | Last Redis ping latency |
+
+### Container System Metrics (via SystemCollector, Linux only, every 15s default)
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `druggate_container_cpu_usage_seconds_total` | Gauge | | Total CPU time consumed |
+| `druggate_container_cpu_cores_available` | Gauge | | Available CPU cores |
+| `druggate_container_memory_rss_bytes` | Gauge | | Resident set size |
+| `druggate_container_memory_vms_bytes` | Gauge | | Virtual memory size |
+| `druggate_container_memory_limit_bytes` | Gauge | | Memory limit (-1 if unlimited) |
+| `druggate_container_memory_usage_ratio` | Gauge | | RSS / limit ratio |
+| `druggate_container_disk_total_bytes` | Gauge | | Total disk space |
+| `druggate_container_disk_free_bytes` | Gauge | | Free disk space |
+| `druggate_container_disk_used_bytes` | Gauge | | Used disk space |
+| `druggate_container_network_receive_bytes_total` | Gauge | interface | Bytes received per NIC |
+| `druggate_container_network_transmit_bytes_total` | Gauge | interface | Bytes transmitted per NIC |
+| `druggate_container_network_receive_packets_total` | Gauge | interface | Packets received per NIC |
+| `druggate_container_network_transmit_packets_total` | Gauge | interface | Packets transmitted per NIC |

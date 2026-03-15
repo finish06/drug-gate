@@ -94,6 +94,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M1: NDC Lookup | Accept NDC, return drug name + classes | alpha | DONE | NDC normalization works, cash-drugs integration verified |
 | M2: Security & Rate Limiting | Auth + rate control | alpha | DONE | API key auth, per-key rate limits via Redis |
 | M3: Extended Lookups | Filterable drug name, class, and drugs-by-class listings with lazy Redis caching | beta | NOW | Paginated data APIs serving frontend tools from cached cash-drugs data |
+| M3.5: Observability | Prometheus metrics, Redis health collector, container system metrics | alpha | DONE | /metrics endpoint, HTTP/cache/auth/rate-limit counters, Redis + system background collectors |
 | M4: Interactions & RxNorm | SPL interactions, RxNorm integration | beta | LATER | Clinical data accessible via API |
 
 ### Milestone Detail
@@ -245,7 +246,7 @@ Sliding window rate limiter backed by Redis. Configurable per API key tier. Retu
 - **Performance:** < 200ms p95 response time for cached drug lookups. drug-gate adds minimal overhead on top of cash-drugs latency.
 - **Security:** All endpoints require publishable API key. No direct exposure of cash-drugs internals. Input validation on all parameters. CORS origin-locked per API key. Drug data is public (DailyMed/FDA) — security protects uptime, not secrets.
 - **Availability:** Must handle upstream cash-drugs being temporarily unavailable (graceful degradation, error responses).
-- **Observability:** Structured logging (slog), request ID tracing, health check endpoint.
+- **Observability:** Structured logging (slog), request ID tracing, health check endpoint. Prometheus metrics (`/metrics`) covering HTTP request counts/latency, cache hit/miss ratios, auth/rate-limit rejections, Redis health, and container system metrics (CPU, memory, disk, network on Linux).
 
 ## 9. Future Discovery
 

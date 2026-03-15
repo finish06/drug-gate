@@ -21,6 +21,7 @@ Document hierarchy: PRD → Spec → Plan → User Test Cases → Automated Test
 | Router | Chi | v5 |
 | State/Cache | Redis | latest |
 | Upstream | cash-drugs | 0.5.0+ (http://host1.du.nn:8083) |
+| Metrics | Prometheus client_golang | promhttp + custom collectors |
 | Containers | Docker Compose | local dev + production |
 
 ## Commands
@@ -56,12 +57,13 @@ make swagger                         # Regenerate Swagger docs
 cmd/server/          — Application entrypoint
 internal/
   handler/           — HTTP handlers (Chi routes)
-  middleware/        — Auth, rate limiting, logging, CORS
+  middleware/        — Auth, rate limiting, logging, CORS, metrics
   client/           — cash-drugs HTTP client
   ndc/              — NDC normalization logic
   model/            — Request/response types
   pharma/           — Pharm class parsing, brand name deduplication
   service/          — DrugDataService (Redis-cached data layer)
+  metrics/          — Prometheus metrics, Redis health collector, system metrics collector
   version/          — Build version (set via -ldflags)
 specs/               — Feature specifications
 docs/plans/          — Implementation plans
@@ -76,6 +78,16 @@ tests/
 - Endpoints: `/api/cache/{slug}` with query params
 - Key slugs: `fda-ndc`, `fda-ndc-by-name`, `drugnames`, `drugclasses`, `spls-by-name`, `spls-by-class`
 - OpenAPI spec: `/openapi.json`
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CASHDRUGS_URL` | `http://localhost:8083` | Upstream cash-drugs base URL |
+| `LISTEN_ADDR` | `:8081` | HTTP listen address |
+| `REDIS_URL` | `redis:6379` | Redis connection address |
+| `ADMIN_SECRET` | (none) | Bearer token for admin endpoints |
+| `SYSTEM_METRICS_INTERVAL` | `15s` | System metrics collection interval (Go duration, Linux only) |
 
 ### Environments
 
