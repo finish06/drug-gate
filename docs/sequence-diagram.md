@@ -354,7 +354,7 @@ sequenceDiagram
 
     DNH->>DNH: Filter by ?type= (brand/generic)
     DNH->>DNH: Filter by ?q= (substring search)
-    DNH->>DNH: Paginate (page/limit, default 50, max 100)
+    DNH->>DNH: Paginate results
     DNH-->>Client: 200 {"data": [...], "pagination": {page, limit, total, total_pages}}
 ```
 
@@ -403,8 +403,8 @@ sequenceDiagram
         DCH-->>Client: 502 {"error": "upstream_error"}
     end
 
-    DCH->>DCH: Filter by ?type= (default epc, or all)
-    DCH->>DCH: Paginate (page/limit, default 50, max 100)
+    DCH->>DCH: Filter by ?type= (default epc)
+    DCH->>DCH: Paginate results
     DCH-->>Client: 200 {"data": [...], "pagination": {page, limit, total, total_pages}}
 ```
 
@@ -457,7 +457,7 @@ sequenceDiagram
         DBH-->>Client: 502 {"error": "upstream_error"}
     end
 
-    DBH->>DBH: Paginate (page/limit, default 100, max 500)
+    DBH->>DBH: Paginate results
     DBH-->>Client: 200 {"data": [...], "pagination": {page, limit, total, total_pages}}
 ```
 
