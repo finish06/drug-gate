@@ -11,7 +11,8 @@ import (
 // --- JSON deserialization tests (verify struct tags match upstream) ---
 
 func TestRxNormCandidateRaw_MatchesUpstreamJSON(t *testing.T) {
-	raw := `{"rxcui":"153165","name":"atorvastatin calcium","score":"100"}`
+	// Real cash-drugs format: flat array entries
+	raw := `{"rxcui":"153165","name":"atorvastatin calcium","score":"100","source":"RXNORM","rank":"1"}`
 	var c RxNormCandidateRaw
 	if err := json.Unmarshal([]byte(raw), &c); err != nil {
 		t.Fatalf("unmarshal: %v", err)
@@ -28,7 +29,8 @@ func TestRxNormCandidateRaw_MatchesUpstreamJSON(t *testing.T) {
 }
 
 func TestRxNormConceptRaw_MatchesUpstreamJSON(t *testing.T) {
-	raw := `{"rxcui":"83367","name":"atorvastatin"}`
+	// Real cash-drugs format: flat entries with tty field
+	raw := `{"rxcui":"83367","name":"atorvastatin","tty":"IN","language":"ENG"}`
 	var c RxNormConceptRaw
 	if err := json.Unmarshal([]byte(raw), &c); err != nil {
 		t.Fatalf("unmarshal: %v", err)
@@ -39,26 +41,12 @@ func TestRxNormConceptRaw_MatchesUpstreamJSON(t *testing.T) {
 	if c.Name != "atorvastatin" {
 		t.Errorf("Name = %q, want %q", c.Name, "atorvastatin")
 	}
-}
-
-func TestRxNormConceptGroupRaw_MatchesUpstreamJSON(t *testing.T) {
-	raw := `{"tty":"IN","conceptProperties":[{"rxcui":"83367","name":"atorvastatin"}]}`
-	var g RxNormConceptGroupRaw
-	if err := json.Unmarshal([]byte(raw), &g); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if g.TTY != "IN" {
-		t.Errorf("TTY = %q, want %q", g.TTY, "IN")
-	}
-	if len(g.ConceptProperties) != 1 {
-		t.Fatalf("ConceptProperties len = %d, want 1", len(g.ConceptProperties))
-	}
-	if g.ConceptProperties[0].Name != "atorvastatin" {
-		t.Errorf("ConceptProperties[0].Name = %q, want %q", g.ConceptProperties[0].Name, "atorvastatin")
+	if c.TTY != "IN" {
+		t.Errorf("TTY = %q, want %q", c.TTY, "IN")
 	}
 }
 
-// --- HTTP client tests ---
+// --- HTTP client tests (mock cash-drugs response shapes) ---
 
 func rxnormServer(t *testing.T, expectedPath string, response any) *httptest.Server {
 	t.Helper()
@@ -72,14 +60,11 @@ func rxnormServer(t *testing.T, expectedPath string, response any) *httptest.Ser
 }
 
 func TestHTTPRxNormClient_SearchApproximate_HappyPath(t *testing.T) {
+	// cash-drugs returns flat array in data[]
 	resp := map[string]any{
-		"data": map[string]any{
-			"approximateGroup": map[string]any{
-				"candidate": []map[string]any{
-					{"rxcui": "153165", "name": "atorvastatin calcium", "score": "100"},
-					{"rxcui": "83367", "name": "atorvastatin", "score": "75"},
-				},
-			},
+		"data": []map[string]any{
+			{"rxcui": "153165", "name": "atorvastatin calcium", "score": "100"},
+			{"rxcui": "83367", "name": "atorvastatin", "score": "75"},
 		},
 	}
 	srv := rxnormServer(t, "/api/cache/rxnorm-approximate-match", resp)
@@ -103,9 +88,7 @@ func TestHTTPRxNormClient_SearchApproximate_HappyPath(t *testing.T) {
 
 func TestHTTPRxNormClient_SearchApproximate_EmptyResults(t *testing.T) {
 	resp := map[string]any{
-		"data": map[string]any{
-			"approximateGroup": map[string]any{},
-		},
+		"data": []map[string]any{},
 	}
 	srv := rxnormServer(t, "/api/cache/rxnorm-approximate-match", resp)
 	defer srv.Close()
@@ -129,11 +112,14 @@ func TestHTTPRxNormClient_SearchApproximate_Unreachable(t *testing.T) {
 }
 
 func TestHTTPRxNormClient_FetchSpellingSuggestions_HappyPath(t *testing.T) {
+	// cash-drugs wraps in data[] array with nested suggestionGroup
 	resp := map[string]any{
-		"data": map[string]any{
-			"suggestionGroup": map[string]any{
-				"suggestionList": map[string]any{
-					"suggestion": []string{"lipitor", "lisinopril"},
+		"data": []map[string]any{
+			{
+				"suggestionGroup": map[string]any{
+					"suggestionList": map[string]any{
+						"suggestion": []string{"lipitor", "lisinopril"},
+					},
 				},
 			},
 		},
@@ -155,11 +141,14 @@ func TestHTTPRxNormClient_FetchSpellingSuggestions_HappyPath(t *testing.T) {
 }
 
 func TestHTTPRxNormClient_FetchNDCs_HappyPath(t *testing.T) {
+	// cash-drugs wraps in data[] array with nested ndcGroup
 	resp := map[string]any{
-		"data": map[string]any{
-			"ndcGroup": map[string]any{
-				"ndcList": map[string]any{
-					"ndc": []string{"0071-0155-23", "0071-0156-23"},
+		"data": []map[string]any{
+			{
+				"ndcGroup": map[string]any{
+					"ndcList": map[string]any{
+						"ndc": []string{"0071-0155-23", "0071-0156-23"},
+					},
 				},
 			},
 		},
@@ -181,9 +170,14 @@ func TestHTTPRxNormClient_FetchNDCs_HappyPath(t *testing.T) {
 }
 
 func TestHTTPRxNormClient_FetchNDCs_EmptyResults(t *testing.T) {
+	// cash-drugs returns nested ndcGroup with empty ndcList
 	resp := map[string]any{
-		"data": map[string]any{
-			"ndcGroup": map[string]any{},
+		"data": []map[string]any{
+			{
+				"ndcGroup": map[string]any{
+					"ndcList": map[string]any{},
+				},
+			},
 		},
 	}
 	srv := rxnormServer(t, "/api/cache/rxnorm-ndcs", resp)
@@ -200,13 +194,10 @@ func TestHTTPRxNormClient_FetchNDCs_EmptyResults(t *testing.T) {
 }
 
 func TestHTTPRxNormClient_FetchGenericProduct_HappyPath(t *testing.T) {
+	// cash-drugs returns flat array of concepts in data[]
 	resp := map[string]any{
-		"data": map[string]any{
-			"minConceptGroup": map[string]any{
-				"minConcept": []map[string]any{
-					{"rxcui": "83367", "name": "atorvastatin"},
-				},
-			},
+		"data": []map[string]any{
+			{"rxcui": "83367", "name": "atorvastatin", "tty": "IN"},
 		},
 	}
 	srv := rxnormServer(t, "/api/cache/rxnorm-generic-product", resp)
@@ -226,30 +217,12 @@ func TestHTTPRxNormClient_FetchGenericProduct_HappyPath(t *testing.T) {
 }
 
 func TestHTTPRxNormClient_FetchAllRelated_HappyPath(t *testing.T) {
+	// cash-drugs returns flat array with tty on each entry — client re-groups
 	resp := map[string]any{
-		"data": map[string]any{
-			"allRelatedGroup": map[string]any{
-				"conceptGroup": []map[string]any{
-					{
-						"tty": "IN",
-						"conceptProperties": []map[string]any{
-							{"rxcui": "83367", "name": "atorvastatin"},
-						},
-					},
-					{
-						"tty": "BN",
-						"conceptProperties": []map[string]any{
-							{"rxcui": "153165", "name": "Lipitor"},
-						},
-					},
-					{
-						"tty": "DF",
-						"conceptProperties": []map[string]any{
-							{"rxcui": "317541", "name": "Oral Tablet"},
-						},
-					},
-				},
-			},
+		"data": []map[string]any{
+			{"rxcui": "83367", "name": "atorvastatin", "tty": "IN"},
+			{"rxcui": "153165", "name": "Lipitor", "tty": "BN"},
+			{"rxcui": "317541", "name": "Oral Tablet", "tty": "DF"},
 		},
 	}
 	srv := rxnormServer(t, "/api/cache/rxnorm-all-related", resp)
@@ -263,11 +236,18 @@ func TestHTTPRxNormClient_FetchAllRelated_HappyPath(t *testing.T) {
 	if len(groups) != 3 {
 		t.Fatalf("got %d groups, want 3", len(groups))
 	}
-	if groups[0].TTY != "IN" {
-		t.Errorf("groups[0].TTY = %q, want %q", groups[0].TTY, "IN")
+	// Find the IN group
+	found := false
+	for _, g := range groups {
+		if g.TTY == "IN" {
+			found = true
+			if len(g.ConceptProperties) != 1 || g.ConceptProperties[0].Name != "atorvastatin" {
+				t.Errorf("IN group ConceptProperties = %v, want [atorvastatin]", g.ConceptProperties)
+			}
+		}
 	}
-	if groups[0].ConceptProperties[0].Name != "atorvastatin" {
-		t.Errorf("groups[0].ConceptProperties[0].Name = %q, want %q", groups[0].ConceptProperties[0].Name, "atorvastatin")
+	if !found {
+		t.Error("expected IN group in results")
 	}
 }
 

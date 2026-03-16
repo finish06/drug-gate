@@ -10,6 +10,7 @@ import (
 )
 
 // RxNormCandidateRaw is the raw upstream approximate match candidate.
+// cash-drugs flattens the RxNorm approximateGroup.candidate array into data[].
 type RxNormCandidateRaw struct {
 	RxCUI string `json:"rxcui"`
 	Name  string `json:"name"`
@@ -17,12 +18,17 @@ type RxNormCandidateRaw struct {
 }
 
 // RxNormConceptRaw is the raw upstream concept (used in generics, related).
+// cash-drugs flattens concept arrays into data[].
 type RxNormConceptRaw struct {
 	RxCUI string `json:"rxcui"`
 	Name  string `json:"name"`
+	TTY   string `json:"tty"`
 }
 
 // RxNormConceptGroupRaw is a group of concepts by TTY from allRelated.
+// Note: cash-drugs flattens allRelatedGroup.conceptGroup[].conceptProperties
+// into a single data[] array with tty on each entry. This type is used
+// internally after we re-group by TTY.
 type RxNormConceptGroupRaw struct {
 	TTY               string             `json:"tty"`
 	ConceptProperties []RxNormConceptRaw `json:"conceptProperties"`
@@ -53,10 +59,7 @@ func NewHTTPRxNormClient(baseURL string) *HTTPRxNormClient {
 	}
 }
 
-// SearchApproximate searches for drugs by approximate name match.
-func (c *HTTPRxNormClient) SearchApproximate(ctx context.Context, name string) ([]RxNormCandidateRaw, error) {
-	reqURL := fmt.Sprintf("%s/api/cache/rxnorm-approximate-match?DRUG_NAME=%s", c.baseURL, url.QueryEscape(name))
-
+func (c *HTTPRxNormClient) doGet(ctx context.Context, reqURL string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
@@ -66,47 +69,49 @@ func (c *HTTPRxNormClient) SearchApproximate(ctx context.Context, name string) (
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
-	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("%w: upstream returned status %d", ErrUpstream, resp.StatusCode)
 	}
 
+	return resp, nil
+}
+
+// SearchApproximate searches for drugs by approximate name match.
+// cash-drugs returns: {"data": [{rxcui, name, score, ...}, ...]}
+func (c *HTTPRxNormClient) SearchApproximate(ctx context.Context, name string) ([]RxNormCandidateRaw, error) {
+	reqURL := fmt.Sprintf("%s/api/cache/rxnorm-approximate-match?DRUG_NAME=%s", c.baseURL, url.QueryEscape(name))
+
+	resp, err := c.doGet(ctx, reqURL)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
 	var upstream struct {
-		Data struct {
-			ApproximateGroup struct {
-				Candidate []RxNormCandidateRaw `json:"candidate"`
-			} `json:"approximateGroup"`
-		} `json:"data"`
+		Data []RxNormCandidateRaw `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&upstream); err != nil {
 		return nil, fmt.Errorf("%w: failed to decode response: %v", ErrUpstream, err)
 	}
 
-	return upstream.Data.ApproximateGroup.Candidate, nil
+	return upstream.Data, nil
 }
 
 // FetchSpellingSuggestions fetches spelling suggestions for a drug name.
+// cash-drugs returns: {"data": [{"suggestionGroup": {"suggestionList": {"suggestion": [...]}}}]}
 func (c *HTTPRxNormClient) FetchSpellingSuggestions(ctx context.Context, name string) ([]string, error) {
 	reqURL := fmt.Sprintf("%s/api/cache/rxnorm-spelling-suggestions?DRUG_NAME=%s", c.baseURL, url.QueryEscape(name))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	resp, err := c.doGet(ctx, reqURL)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
+		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: upstream returned status %d", ErrUpstream, resp.StatusCode)
-	}
-
 	var upstream struct {
-		Data struct {
+		Data []struct {
 			SuggestionGroup struct {
 				SuggestionList struct {
 					Suggestion []string `json:"suggestion"`
@@ -118,30 +123,25 @@ func (c *HTTPRxNormClient) FetchSpellingSuggestions(ctx context.Context, name st
 		return nil, fmt.Errorf("%w: failed to decode response: %v", ErrUpstream, err)
 	}
 
-	return upstream.Data.SuggestionGroup.SuggestionList.Suggestion, nil
+	if len(upstream.Data) > 0 {
+		return upstream.Data[0].SuggestionGroup.SuggestionList.Suggestion, nil
+	}
+	return nil, nil
 }
 
 // FetchNDCs fetches NDC codes for the given RxCUI.
+// cash-drugs returns: {"data": [{"ndcGroup": {"ndcList": {"ndc": [...]}}}]}
 func (c *HTTPRxNormClient) FetchNDCs(ctx context.Context, rxcui string) ([]string, error) {
 	reqURL := fmt.Sprintf("%s/api/cache/rxnorm-ndcs?RXCUI=%s", c.baseURL, url.QueryEscape(rxcui))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	resp, err := c.doGet(ctx, reqURL)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
+		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: upstream returned status %d", ErrUpstream, resp.StatusCode)
-	}
-
 	var upstream struct {
-		Data struct {
+		Data []struct {
 			NDCGroup struct {
 				NDCList struct {
 					NDC []string `json:"ndc"`
@@ -153,71 +153,65 @@ func (c *HTTPRxNormClient) FetchNDCs(ctx context.Context, rxcui string) ([]strin
 		return nil, fmt.Errorf("%w: failed to decode response: %v", ErrUpstream, err)
 	}
 
-	return upstream.Data.NDCGroup.NDCList.NDC, nil
+	if len(upstream.Data) > 0 {
+		return upstream.Data[0].NDCGroup.NDCList.NDC, nil
+	}
+	return nil, nil
 }
 
 // FetchGenericProduct fetches generic product concepts for the given RxCUI.
+// cash-drugs returns: {"data": [{rxcui, name, tty}, ...]}
 func (c *HTTPRxNormClient) FetchGenericProduct(ctx context.Context, rxcui string) ([]RxNormConceptRaw, error) {
 	reqURL := fmt.Sprintf("%s/api/cache/rxnorm-generic-product?RXCUI=%s", c.baseURL, url.QueryEscape(rxcui))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	resp, err := c.doGet(ctx, reqURL)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
+		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: upstream returned status %d", ErrUpstream, resp.StatusCode)
-	}
-
 	var upstream struct {
-		Data struct {
-			MinConceptGroup struct {
-				MinConcept []RxNormConceptRaw `json:"minConcept"`
-			} `json:"minConceptGroup"`
-		} `json:"data"`
+		Data []RxNormConceptRaw `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&upstream); err != nil {
 		return nil, fmt.Errorf("%w: failed to decode response: %v", ErrUpstream, err)
 	}
 
-	return upstream.Data.MinConceptGroup.MinConcept, nil
+	return upstream.Data, nil
 }
 
 // FetchAllRelated fetches all related concept groups for the given RxCUI.
+// cash-drugs returns: {"data": [{rxcui, name, tty, ...}, ...]} — flat array
+// with tty on each entry. We re-group by TTY before returning.
 func (c *HTTPRxNormClient) FetchAllRelated(ctx context.Context, rxcui string) ([]RxNormConceptGroupRaw, error) {
 	reqURL := fmt.Sprintf("%s/api/cache/rxnorm-all-related?RXCUI=%s", c.baseURL, url.QueryEscape(rxcui))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	resp, err := c.doGet(ctx, reqURL)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
+		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: upstream returned status %d", ErrUpstream, resp.StatusCode)
-	}
-
 	var upstream struct {
-		Data struct {
-			AllRelatedGroup struct {
-				ConceptGroup []RxNormConceptGroupRaw `json:"conceptGroup"`
-			} `json:"allRelatedGroup"`
-		} `json:"data"`
+		Data []RxNormConceptRaw `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&upstream); err != nil {
 		return nil, fmt.Errorf("%w: failed to decode response: %v", ErrUpstream, err)
 	}
 
-	return upstream.Data.AllRelatedGroup.ConceptGroup, nil
+	// Re-group flat entries by TTY
+	groupMap := make(map[string][]RxNormConceptRaw)
+	for _, entry := range upstream.Data {
+		groupMap[entry.TTY] = append(groupMap[entry.TTY], entry)
+	}
+
+	groups := make([]RxNormConceptGroupRaw, 0, len(groupMap))
+	for tty, concepts := range groupMap {
+		groups = append(groups, RxNormConceptGroupRaw{
+			TTY:               tty,
+			ConceptProperties: concepts,
+		})
+	}
+
+	return groups, nil
 }

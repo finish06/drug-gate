@@ -24,6 +24,11 @@ Thumbs.db
 .env
 .env.local
 
+# SSH keys
+staging-key
+staging-key.pub
+*.pem
+
 # Compiled binary
 /server
 
