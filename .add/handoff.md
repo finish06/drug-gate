@@ -1,27 +1,32 @@
 # Session Handoff
-**Written:** 2026-03-09
+**Written:** 2026-03-15
 
 ## In Progress
-- PR #2 (`chore/m2-housekeeping`) open — awaiting review/merge
+- PR #6 (`chore/coverage-and-status-updates`) open — awaiting review/merge
 
 ## Completed This Session
-- Merged M2 PR #1 to main (`faf02ca`)
-- Committed E2E tests + Makefile targets (`0b3f4df`)
-- Updated PRD: M2 marked DONE, success criteria checked
-- Updated spec status: security-rate-limiting → Complete
-- Added 10 error-path tests: admin handler + ratelimit middleware at 100% coverage
-- Cleaned up `feature/security-rate-limiting` branch (local + remote)
-- Updated CHANGELOG with E2E and coverage additions
-- Created PR #2 for housekeeping (`cc68084`)
+- M3 Extended Lookups: 4 endpoints, pharma package, service layer, Redis caching (v0.3.0)
+- Service unit tests (19 miniredis) + integration tests (22 real Redis)
+- Swagger annotations on all M3 + admin handlers (12/12 endpoints)
+- Prometheus metrics: HTTP, cache, auth, rate limit, Redis health, container system (v0.4.0)
+- Docs: sequence diagrams, CLAUDE.md, PRD all synced
+- CHANGELOG restructured with versioned sections
+- apikey unit tests (14 tests, 3.8% → 77.2%)
+- ratelimit unit tests (10 tests, 0% → 89.5%)
+- Total coverage: 71.8% → 80.8%
 
 ## Decisions Made
-- Kept Redis impl coverage at 0% in standard runs (behind `//go:build integration` tag) — this is intentional, not a gap
+- Metrics use variadic optional `*Metrics` params to avoid breaking existing constructors
+- ProcfsSource has a non-Linux stub so main.go compiles on macOS
+- Container system metrics use `//go:build linux` tags, skipped on non-Linux
+- M3.5 Observability added as milestone between M3 and M4
 
 ## Blockers
 - None
 
 ## Next Steps
-1. Review and merge PR #2 (housekeeping)
-2. Run M3 spec interview — Extended Lookups (drug class search, name search)
-3. Consider production deployment of M2
-4. Assess alpha → beta promotion criteria
+1. Merge PR #6 (coverage + status updates)
+2. M4 spec interview — Interactions & RxNorm (needs human input)
+3. Assess alpha → beta promotion criteria
+4. Consider Grafana dashboard JSON for metrics
+5. Production deployment planning

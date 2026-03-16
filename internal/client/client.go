@@ -39,8 +39,8 @@ type DrugNameRaw struct {
 
 // DrugClassRaw is the raw upstream drug class entry from cash-drugs.
 type DrugClassRaw struct {
-	ClassName string `json:"class_name"`
-	ClassType string `json:"class_type"`
+	ClassName string `json:"name"`
+	ClassType string `json:"type"`
 }
 
 // HTTPDrugClient queries the cash-drugs API over HTTP.

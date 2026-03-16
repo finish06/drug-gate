@@ -1,0 +1,340 @@
+{
+  "$schema": "https://github.com/MountainUnicorn/add/docs-manifest.schema.json",
+  "version": "1.0.0",
+  "generated": "2026-03-15T12:00:00Z",
+  "stack": {
+    "language": "go",
+    "framework": "chi",
+    "frontend": null,
+    "database": "redis",
+    "doc_tools": ["swaggo/swag"]
+  },
+  "directories": {
+    "handlers": ["internal/handler/"],
+    "models": ["internal/model/"],
+    "schemas": [],
+    "services": ["internal/service/"],
+    "middleware": ["internal/middleware/"],
+    "client": ["internal/client/"],
+    "ndc": ["internal/ndc/"],
+    "pharma": ["internal/pharma/"],
+    "apikey": ["internal/apikey/"],
+    "ratelimit": ["internal/ratelimit/"],
+    "metrics": ["internal/metrics/"],
+    "version": ["internal/version/"],
+    "tests": ["tests/"],
+    "docs": ["docs/"]
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "handler_file": "internal/handler/health.go",
+      "handler_function": "HealthCheck",
+      "middleware": ["RequestLogger", "MetricsMiddleware"],
+      "tags": ["public"],
+      "response_model": null
+    },
+    {
+      "method": "GET",
+      "path": "/metrics",
+      "handler_file": null,
+      "handler_function": "promhttp.Handler",
+      "middleware": ["RequestLogger", "MetricsMiddleware"],
+      "tags": ["public"],
+      "response_model": null
+    },
+    {
+      "method": "GET",
+      "path": "/swagger/*",
+      "handler_file": null,
+      "handler_function": "httpSwagger.WrapHandler",
+      "middleware": ["RequestLogger", "MetricsMiddleware"],
+      "tags": ["public"],
+      "response_model": null
+    },
+    {
+      "method": "GET",
+      "path": "/openapi.json",
+      "handler_file": "internal/handler/swagger.go",
+      "handler_function": "OpenAPIJSON",
+      "middleware": ["RequestLogger", "MetricsMiddleware"],
+      "tags": ["public"],
+      "response_model": null
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/ndc/{ndc}",
+      "handler_file": "internal/handler/drug.go",
+      "handler_function": "DrugHandler.HandleNDCLookup",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["drugs", "v1"],
+      "response_model": "DrugDetailResponse"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/class",
+      "handler_file": "internal/handler/drugclass.go",
+      "handler_function": "DrugClassHandler.HandleDrugClassLookup",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["drugs", "v1"],
+      "response_model": "DrugClassResponse"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/names",
+      "handler_file": "internal/handler/drugnames.go",
+      "handler_function": "DrugNamesHandler.HandleDrugNames",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["drugs", "v1"],
+      "response_model": "PaginatedResponse"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/classes",
+      "handler_file": "internal/handler/drugclasses.go",
+      "handler_function": "DrugClassesHandler.HandleDrugClasses",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["drugs", "v1"],
+      "response_model": "PaginatedResponse"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/classes/drugs",
+      "handler_file": "internal/handler/drugsbyclass.go",
+      "handler_function": "DrugsByClassHandler.HandleDrugsByClass",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["drugs", "v1"],
+      "response_model": "PaginatedResponse"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/keys",
+      "handler_file": "internal/handler/admin.go",
+      "handler_function": "AdminHandler.CreateKey",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "AdminAuth"],
+      "tags": ["admin"],
+      "response_model": null
+    },
+    {
+      "method": "GET",
+      "path": "/admin/keys",
+      "handler_file": "internal/handler/admin.go",
+      "handler_function": "AdminHandler.ListKeys",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "AdminAuth"],
+      "tags": ["admin"],
+      "response_model": null
+    },
+    {
+      "method": "GET",
+      "path": "/admin/keys/{key}",
+      "handler_file": "internal/handler/admin.go",
+      "handler_function": "AdminHandler.GetKey",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "AdminAuth"],
+      "tags": ["admin"],
+      "response_model": null
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/keys/{key}",
+      "handler_file": "internal/handler/admin.go",
+      "handler_function": "AdminHandler.DeactivateKey",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "AdminAuth"],
+      "tags": ["admin"],
+      "response_model": null
+    },
+    {
+      "method": "POST",
+      "path": "/admin/keys/{key}/rotate",
+      "handler_file": "internal/handler/admin.go",
+      "handler_function": "AdminHandler.RotateKey",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "AdminAuth"],
+      "tags": ["admin"],
+      "response_model": null
+    }
+  ],
+  "middleware_chain": [
+    {
+      "name": "RequestLogger",
+      "file": "internal/middleware/logging.go",
+      "order": 1,
+      "purpose": "Logs method, path, status, and duration for every request"
+    },
+    {
+      "name": "MetricsMiddleware",
+      "file": "internal/middleware/metrics.go",
+      "order": 2,
+      "purpose": "Records HTTP request count and duration per route/method/status"
+    },
+    {
+      "name": "APIKeyAuth",
+      "file": "internal/middleware/auth.go",
+      "order": 3,
+      "purpose": "Validates X-API-Key header against Redis store; rejects invalid/inactive/expired keys"
+    },
+    {
+      "name": "PerKeyCORS",
+      "file": "internal/middleware/cors.go",
+      "order": 4,
+      "purpose": "Sets CORS headers based on the API key's allowed origins"
+    },
+    {
+      "name": "RateLimit",
+      "file": "internal/middleware/ratelimit.go",
+      "order": 5,
+      "purpose": "Enforces per-key rate limits via Redis sliding window"
+    },
+    {
+      "name": "AdminAuth",
+      "file": "internal/middleware/admin.go",
+      "order": 3,
+      "purpose": "Validates Bearer token against ADMIN_SECRET env var for admin routes"
+    }
+  ],
+  "models": [
+    {
+      "name": "DrugDetailResponse",
+      "file": "internal/model/response.go",
+      "field_count": 4,
+      "relationships": []
+    },
+    {
+      "name": "ErrorResponse",
+      "file": "internal/model/response.go",
+      "field_count": 2,
+      "relationships": []
+    },
+    {
+      "name": "DrugClassResponse",
+      "file": "internal/model/response.go",
+      "field_count": 4,
+      "relationships": ["DrugClass"]
+    },
+    {
+      "name": "DrugClass",
+      "file": "internal/model/response.go",
+      "field_count": 2,
+      "relationships": []
+    },
+    {
+      "name": "DrugNameEntry",
+      "file": "internal/model/response.go",
+      "field_count": 2,
+      "relationships": []
+    },
+    {
+      "name": "DrugClassEntry",
+      "file": "internal/model/response.go",
+      "field_count": 2,
+      "relationships": []
+    },
+    {
+      "name": "DrugInClassEntry",
+      "file": "internal/model/response.go",
+      "field_count": 2,
+      "relationships": []
+    },
+    {
+      "name": "PaginatedResponse",
+      "file": "internal/model/response.go",
+      "field_count": 2,
+      "relationships": ["Pagination"]
+    },
+    {
+      "name": "Pagination",
+      "file": "internal/model/response.go",
+      "field_count": 4,
+      "relationships": []
+    }
+  ],
+  "services": [
+    {
+      "name": "DrugDataService",
+      "file": "internal/service/drugdata.go",
+      "public_functions": ["GetDrugNames", "GetDrugClasses", "GetDrugsByClass"]
+    },
+    {
+      "name": "HTTPDrugClient",
+      "file": "internal/client/client.go",
+      "public_functions": ["LookupByNDC", "LookupByGenericName", "LookupByBrandName", "LookupByPharmClass", "FetchDrugNames", "FetchDrugClasses"]
+    },
+    {
+      "name": "RedisStore (apikey)",
+      "file": "internal/apikey/store.go",
+      "public_functions": ["Create", "Get", "List", "Deactivate", "Rotate"]
+    },
+    {
+      "name": "RedisLimiter (ratelimit)",
+      "file": "internal/ratelimit/limiter.go",
+      "public_functions": ["Allow"]
+    },
+    {
+      "name": "Metrics",
+      "file": "internal/metrics/metrics.go",
+      "public_functions": ["NewMetrics", "NewRedisCollector", "NewSystemCollector"]
+    }
+  ],
+  "existing_docs": [
+    {
+      "path": "docs/sequence-diagram.md",
+      "topic": "request-flows",
+      "type": "diagram"
+    },
+    {
+      "path": "docs/prd.md",
+      "topic": "product-requirements",
+      "type": "other"
+    },
+    {
+      "path": "docs/cash-drugs-enhancement-m3.md",
+      "topic": "upstream-integration",
+      "type": "other"
+    },
+    {
+      "path": "CLAUDE.md",
+      "topic": "project-overview",
+      "type": "readme"
+    }
+  ],
+  "flows": {
+    "documented": [
+      "GET /health",
+      "GET /metrics",
+      "GET /swagger/*",
+      "GET /openapi.json",
+      "GET /v1/drugs/ndc/{ndc}",
+      "GET /v1/drugs/class",
+      "GET /v1/drugs/names",
+      "GET /v1/drugs/classes",
+      "GET /v1/drugs/classes/drugs",
+      "POST /admin/keys",
+      "GET /admin/keys",
+      "GET /admin/keys/{key}",
+      "DELETE /admin/keys/{key}",
+      "POST /admin/keys/{key}/rotate"
+    ],
+    "undocumented": [],
+    "stale": []
+  },
+  "fingerprints": {
+    "cmd/server/main.go": "29862533522eaf6bd954aca89fd2866a79b511a0a0d44861657a072c64baf75a",
+    "internal/handler/drug.go": "4d948741527f8b8dcadc06b9e8b4e1131dc7f644de8b6e3349a3906d834586f6",
+    "internal/handler/drugclass.go": "98af2eaa2d76680cf1e15549a039ec93485821d0a772c9a143fd9be3532c8ca5",
+    "internal/handler/drugclasses.go": "611ad8e62068ac354784a1fc7e12e4bbd98c1d10fc97ec6b63591b3b242346b2",
+    "internal/handler/drugnames.go": "99307c943fedde793af58c2a6c7aa3b6fb4d0c21811691c56a0ad556e3b614bd",
+    "internal/handler/drugsbyclass.go": "48d314795a859ea8ceec48b4fe03019ae1ea251ecc348ec3ebb54947c35c89cc",
+    "internal/handler/admin.go": "14516c683ffd50cb0bb300e7788741b3a16bcf14761b0f87c5b5fb0a8c5f9cd9",
+    "internal/handler/health.go": "2d02b9acc3b7502c9b53126178864bceeea5c7c9b2b2d356cf3db86ce35d3a78",
+    "internal/handler/swagger.go": "81fc5cdcb3ff36aea5fea042bfdeaad69ea311638fa3a38a17111f13db0e9eac",
+    "internal/handler/pagination.go": "006730ca57e72e25407c48a76563a3926a54e0f7341a6c7811f5a60d293c3399",
+    "internal/middleware/auth.go": "1402d7fdd71277c25f8cf8d2c3192726d62b2a96d6d3da610d7a03ef3afafa03",
+    "internal/middleware/admin.go": "5df78d012261640a05c434dac451b7835ba26cf70e1866c89d075d82421b3b3b",
+    "internal/middleware/ratelimit.go": "7d0f370f1fdb14aaea11c95641c2671e25c15c070dca5637b647da500cd12f85",
+    "internal/middleware/cors.go": "18f4d2139e58431071df10966ddb72af208250a628e74397f8fa5f37a06b9b7e",
+    "internal/middleware/logging.go": "88704f4763ada0f4ae81018d222e8fbee81935ac3eb1ddc65c67532f19cac3cb",
+    "internal/middleware/metrics.go": "5c65ddbeaaf54cc8d07b7021ea0ef096a93c75d647152df63f469c2a8850c018",
+    "internal/model/response.go": "2403e52215e9ec055b56d0b01fbb8efeb64440431a2aa7e6379c0125d726aa3c",
+    "internal/service/drugdata.go": "756b7b144c94c0a4b830fc1caae57269300be5f96fc04e946ea42a51f96792cf",
+    "internal/client/client.go": "cfa72e5f86a11609f90ef127f29e1bf246ecd8af6edc33f0df0b134f08212ab4"
+  }
+}
