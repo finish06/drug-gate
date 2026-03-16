@@ -16,8 +16,9 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
   - `GET /{rxcui}/related` — related concepts grouped by type (IN/BN/DF/SCD/SBD)
 - RxNorm Redis caching: 24h sliding TTL for search/profile, 7d for RxCUI-based lookups
 - Grafana dashboard JSON (`grafana/drug-gate-dashboard.json`) for all drug-gate metrics
-- Staging environment on 192.168.1.145:8082 with Watchtower auto-deploy
-- `docker-compose.staging.yml` with Watchtower for automatic `:beta` image pulls
+- Staging environment on 192.168.1.145:8082 (auto-deploys via cron every 5m)
+- `docker-compose.staging.yml` for staging deployment
+- `DELETE /admin/cache` endpoint for Redis cache clearing (prefix-based, SCAN-safe)
 
 ## [0.4.1] - 2026-03-15
 

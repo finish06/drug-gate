@@ -2,7 +2,7 @@
 
 ## Overview
 
-drug-gate staging runs on the same host as cash-drugs staging, connecting over the shared Docker `internal` network. It pulls the `:beta` image on every push to `main`, providing a pre-production validation layer for the API gateway.
+drug-gate staging runs on the same host as cash-drugs staging, connecting over the shared Docker `internal` network. A cron job (`/opt/staging-autopull.sh`) runs every 5 minutes, pulling the latest `:beta` image and restarting if changed. This provides automatic deployment of every push to `main`.
 
 ## Environment Details
 
@@ -16,6 +16,7 @@ drug-gate staging runs on the same host as cash-drugs staging, connecting over t
 | **Upstream** | `http://cash-drugs:8080` (container DNS on `internal` network) |
 | **Docker Network** | `internal` (shared with cash-drugs, newt/pangolin) |
 | **Deploy Path** | `/opt/drug-gate/` |
+| **Auto-deploy** | Cron job every 5m (`/opt/staging-autopull.sh`) |
 
 ### Environment Comparison
 

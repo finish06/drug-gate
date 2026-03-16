@@ -94,7 +94,7 @@ tests/
 ### Environments
 
 - **Local:** docker-compose up (drug-gate on :8081, Redis on :6379)
-- **Staging:** 192.168.1.145:8082 (auto-deploys :beta via Watchtower)
+- **Staging:** 192.168.1.145:8082 (auto-deploys `:beta` via cron every 5m)
 - **Production:** Self-hosted, behind firewall, same network as cash-drugs
 
 ## Quality Gates

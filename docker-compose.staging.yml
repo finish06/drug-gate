@@ -8,8 +8,6 @@ services:
   drug-gate:
     image: dockerhub.calebdunn.tech/finish06/drug-gate:beta
     container_name: drug-gate
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "8082:8081"
     environment:
@@ -35,21 +33,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
-    restart: unless-stopped
-    networks:
-      - internal
-
-  watchtower:
-    image: containrrr/watchtower
-    container_name: drug-gate-watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /opt/drug-gate/docker-config.json:/config.json:ro
-    environment:
-      - WATCHTOWER_POLL_INTERVAL=60
-      - WATCHTOWER_LABEL_ENABLE=true
-      - WATCHTOWER_CLEANUP=true
-      - DOCKER_CONFIG=/config.json
     restart: unless-stopped
     networks:
       - internal
