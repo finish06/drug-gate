@@ -81,7 +81,11 @@ func (h *RxNormHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
 // @Router       /v1/drugs/rxnorm/{rxcui}/ndcs [get]
 func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
-	rxcui := chi.URLParam(r, "rxcui")
+	rxcui := strings.TrimSpace(chi.URLParam(r, "rxcui"))
+	if rxcui == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "rxcui path parameter is required")
+		return
+	}
 
 	result, err := h.svc.GetNDCs(r.Context(), rxcui)
 	if err != nil {
@@ -90,6 +94,11 @@ func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Unexpected error")
+		return
+	}
+
+	if len(result.NDCs) == 0 {
+		writeError(w, http.StatusNotFound, "not_found", "No data found for RxCUI '"+rxcui+"'")
 		return
 	}
 
@@ -109,7 +118,11 @@ func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
 // @Router       /v1/drugs/rxnorm/{rxcui}/generics [get]
 func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
-	rxcui := chi.URLParam(r, "rxcui")
+	rxcui := strings.TrimSpace(chi.URLParam(r, "rxcui"))
+	if rxcui == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "rxcui path parameter is required")
+		return
+	}
 
 	result, err := h.svc.GetGenerics(r.Context(), rxcui)
 	if err != nil {
@@ -118,6 +131,11 @@ func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Unexpected error")
+		return
+	}
+
+	if len(result.Generics) == 0 {
+		writeError(w, http.StatusNotFound, "not_found", "No data found for RxCUI '"+rxcui+"'")
 		return
 	}
 
@@ -137,7 +155,11 @@ func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
 // @Router       /v1/drugs/rxnorm/{rxcui}/related [get]
 func (h *RxNormHandler) HandleRelated(w http.ResponseWriter, r *http.Request) {
-	rxcui := chi.URLParam(r, "rxcui")
+	rxcui := strings.TrimSpace(chi.URLParam(r, "rxcui"))
+	if rxcui == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "rxcui path parameter is required")
+		return
+	}
 
 	result, err := h.svc.GetRelated(r.Context(), rxcui)
 	if err != nil {
@@ -146,6 +168,13 @@ func (h *RxNormHandler) HandleRelated(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Unexpected error")
+		return
+	}
+
+	// 404 only when ALL groups are empty (unknown RxCUI). Individual empty groups are valid.
+	if len(result.Ingredients) == 0 && len(result.BrandNames) == 0 && len(result.DoseForms) == 0 &&
+		len(result.ClinicalDrugs) == 0 && len(result.BrandedDrugs) == 0 {
+		writeError(w, http.StatusNotFound, "not_found", "No data found for RxCUI '"+rxcui+"'")
 		return
 	}
 

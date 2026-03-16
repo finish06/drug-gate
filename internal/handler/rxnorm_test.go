@@ -238,6 +238,117 @@ func TestRxNormHandler_Profile_HappyPath(t *testing.T) {
 	}
 }
 
+func TestRxNormHandler_NDCs_UpstreamError(t *testing.T) {
+	svc := &mockRxNormService{ndcErr: client.ErrUpstream}
+	h := NewRxNormHandler(svc)
+	r := rxnormRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/drugs/rxnorm/153165/ndcs", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("status = %d, want 502", w.Code)
+	}
+}
+
+func TestRxNormHandler_NDCs_NotFound(t *testing.T) {
+	svc := &mockRxNormService{
+		ndcResult: &model.RxNormNDCResponse{RxCUI: "999999", NDCs: []string{}},
+	}
+	h := NewRxNormHandler(svc)
+	r := rxnormRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/drugs/rxnorm/999999/ndcs", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", w.Code)
+	}
+}
+
+func TestRxNormHandler_Generics_UpstreamError(t *testing.T) {
+	svc := &mockRxNormService{genericErr: client.ErrUpstream}
+	h := NewRxNormHandler(svc)
+	r := rxnormRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/drugs/rxnorm/153165/generics", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("status = %d, want 502", w.Code)
+	}
+}
+
+func TestRxNormHandler_Generics_NotFound(t *testing.T) {
+	svc := &mockRxNormService{
+		genericResult: &model.RxNormGenericResponse{RxCUI: "999999", Generics: []model.RxNormConcept{}},
+	}
+	h := NewRxNormHandler(svc)
+	r := rxnormRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/drugs/rxnorm/999999/generics", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", w.Code)
+	}
+}
+
+func TestRxNormHandler_Related_UpstreamError(t *testing.T) {
+	svc := &mockRxNormService{relatedErr: client.ErrUpstream}
+	h := NewRxNormHandler(svc)
+	r := rxnormRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/drugs/rxnorm/153165/related", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("status = %d, want 502", w.Code)
+	}
+}
+
+func TestRxNormHandler_Related_NotFound(t *testing.T) {
+	svc := &mockRxNormService{
+		relatedResult: &model.RxNormRelatedResponse{
+			RxCUI:         "999999",
+			Ingredients:   []model.RxNormConcept{},
+			BrandNames:    []model.RxNormConcept{},
+			DoseForms:     []model.RxNormConcept{},
+			ClinicalDrugs: []model.RxNormConcept{},
+			BrandedDrugs:  []model.RxNormConcept{},
+		},
+	}
+	h := NewRxNormHandler(svc)
+	r := rxnormRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/drugs/rxnorm/999999/related", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", w.Code)
+	}
+}
+
+func TestRxNormHandler_Profile_UpstreamError(t *testing.T) {
+	svc := &mockRxNormService{profileErr: client.ErrUpstream}
+	h := NewRxNormHandler(svc)
+	r := rxnormRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/drugs/rxnorm/profile?name=test", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("status = %d, want 502", w.Code)
+	}
+}
+
 func TestRxNormHandler_Profile_MissingName(t *testing.T) {
 	h := NewRxNormHandler(&mockRxNormService{})
 	r := rxnormRouter(h)

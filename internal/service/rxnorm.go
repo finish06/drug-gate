@@ -68,7 +68,10 @@ func (s *RxNormService) Search(ctx context.Context, name string) (*model.RxNormS
 
 	candidates := make([]model.RxNormCandidate, 0, len(rawCandidates))
 	for _, rc := range rawCandidates {
-		score, _ := strconv.Atoi(rc.Score)
+		score, err := strconv.Atoi(rc.Score)
+		if err != nil {
+			slog.Warn("failed to parse rxnorm score, defaulting to 0", "score_raw", rc.Score, "rxcui", rc.RxCUI)
+		}
 		candidates = append(candidates, model.RxNormCandidate{
 			RxCUI: rc.RxCUI,
 			Name:  rc.Name,
