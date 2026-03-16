@@ -65,14 +65,16 @@
       "verify": ["unit_tests"]
     },
     "staging": {
-      "deploy_trigger": null,
-      "url": null,
-      "verify": ["unit_tests", "integration_tests"]
+      "deploy_trigger": "push to main (beta image)",
+      "url": "http://192.168.1.145:8082",
+      "verify": ["unit_tests", "integration_tests", "e2e"],
+      "deploy_path": "/opt/drug-gate/",
+      "host": "192.168.1.145"
     },
     "production": {
       "deploy_trigger": "merge to main",
       "verify": ["smoke_tests"],
-      "url": "TBD",
+      "url": "https://drug-gate.calebdunn.tech",
       "requires_approval": true
     }
   },
