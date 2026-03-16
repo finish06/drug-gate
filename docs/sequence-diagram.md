@@ -750,6 +750,7 @@ sequenceDiagram
 | GET | `/admin/keys/{key}` | Admin Bearer | `AdminHandler.GetKey` | Get single API key |
 | DELETE | `/admin/keys/{key}` | Admin Bearer | `AdminHandler.DeactivateKey` | Deactivate API key |
 | POST | `/admin/keys/{key}/rotate` | Admin Bearer | `AdminHandler.RotateKey` | Rotate API key with grace period |
+| DELETE | `/admin/cache` | Admin Bearer | `CacheHandler.ClearCache` | Clear Redis cache (all or by prefix) |
 
 ---
 

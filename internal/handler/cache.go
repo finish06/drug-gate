@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	_ "github.com/finish06/drug-gate/internal/model"
 	"github.com/redis/go-redis/v9"
 )
 

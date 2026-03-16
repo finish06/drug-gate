@@ -79,6 +79,7 @@ REDIS_URL=localhost:6379 ADMIN_SECRET=your-secret make run
 | GET | `/admin/keys/{key}` | Get a single API key |
 | DELETE | `/admin/keys/{key}` | Deactivate an API key |
 | POST | `/admin/keys/{key}/rotate` | Rotate a key with grace period |
+| DELETE | `/admin/cache` | Clear Redis cache (all or by prefix) |
 
 ## Usage Examples
 

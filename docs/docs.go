@@ -15,6 +15,40 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/cache": {
+            "delete": {
+                "description": "Deletes all cache keys matching cache:*, or a subset matching cache:{prefix}* if the prefix query parameter is provided. Does not affect API key or rate limit data.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Clear Redis cache",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Key prefix filter (e.g. rxnorm, drugnames)",
+                        "name": "prefix",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.cacheClearResult"
+                        }
+                    },
+                    "502": {
+                        "description": "Redis unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/keys": {
             "get": {
                 "description": "Returns all provisioned API keys with metadata.",
@@ -998,6 +1032,17 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "internal_handler.cacheClearResult": {
+            "type": "object",
+            "properties": {
+                "keys_deleted": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },

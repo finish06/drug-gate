@@ -1,7 +1,7 @@
 {
   "$schema": "https://github.com/MountainUnicorn/add/docs-manifest.schema.json",
   "version": "1.0.0",
-  "generated": "2026-03-16T12:30:00Z",
+  "generated": "2026-03-16T17:55:00Z",
   "stack": {
     "language": "go",
     "framework": "chi",
@@ -196,6 +196,15 @@
       "middleware": ["RequestLogger", "MetricsMiddleware", "AdminAuth"],
       "tags": ["admin"],
       "response_model": null
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/cache",
+      "handler_file": "internal/handler/cache.go",
+      "handler_function": "CacheHandler.ClearCache",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "AdminAuth"],
+      "tags": ["admin"],
+      "response_model": "cacheClearResult"
     }
   ],
   "middleware_chain": [
@@ -409,6 +418,7 @@
       "GET /admin/keys/{key}",
       "DELETE /admin/keys/{key}",
       "POST /admin/keys/{key}/rotate",
+      "DELETE /admin/cache",
       "GET /v1/drugs/rxnorm/search",
       "GET /v1/drugs/rxnorm/profile",
       "GET /v1/drugs/rxnorm/{rxcui}/ndcs",
@@ -419,7 +429,7 @@
     "stale": []
   },
   "fingerprints": {
-    "cmd/server/main.go": "dfd7695f08336ff5f624afe3727ada9041516cee2cf79281502a0d3df2442107",
+    "cmd/server/main.go": "7f3f50269dcfaed51c40b38b0b9cbf74ea43fbf7bb61f1beb53653b45fef72f2",
     "internal/handler/drug.go": "4d948741527f8b8dcadc06b9e8b4e1131dc7f644de8b6e3349a3906d834586f6",
     "internal/handler/drugclass.go": "98af2eaa2d76680cf1e15549a039ec93485821d0a772c9a143fd9be3532c8ca5",
     "internal/handler/drugclasses.go": "611ad8e62068ac354784a1fc7e12e4bbd98c1d10fc97ec6b63591b3b242346b2",
@@ -441,6 +451,7 @@
     "internal/client/rxnorm.go": "750868d8fefe51404457c82b937119751ebe49719eeac245ef9978ee92028562",
     "internal/handler/rxnorm.go": "91d1f8051221439801e5985164818fe53fef1449f792092b91cbb65df7c14b28",
     "internal/model/rxnorm.go": "3affefc40dfe7009ce897d33cfd61b2688794992bbc53619471625108a69cbe9",
-    "internal/service/rxnorm.go": "f3b608aa485c1634007426b5413f7af3fd36a76ab276a7da587394678f25c38f"
+    "internal/service/rxnorm.go": "f3b608aa485c1634007426b5413f7af3fd36a76ab276a7da587394678f25c38f",
+    "internal/handler/cache.go": "f9a736eef0fdca8f73e9627b07c18c6afb7ed513461aa6439e92061c519d3efa"
   }
 }

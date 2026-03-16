@@ -171,6 +171,13 @@ definitions:
           type: string
         type: array
     type: object
+  internal_handler.cacheClearResult:
+    properties:
+      keys_deleted:
+        type: integer
+      status:
+        type: string
+    type: object
   internal_handler.createKeyRequest:
     properties:
       app_name:
@@ -203,6 +210,30 @@ info:
   title: drug-gate API
   version: 0.1.0
 paths:
+  /admin/cache:
+    delete:
+      description: Deletes all cache keys matching cache:*, or a subset matching cache:{prefix}*
+        if the prefix query parameter is provided. Does not affect API key or rate
+        limit data.
+      parameters:
+      - description: Key prefix filter (e.g. rxnorm, drugnames)
+        in: query
+        name: prefix
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handler.cacheClearResult'
+        "502":
+          description: Redis unavailable
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: Clear Redis cache
+      tags:
+      - admin
   /admin/keys:
     get:
       description: Returns all provisioned API keys with metadata.
