@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -389,4 +390,396 @@ func TestE2E_AC013_RotateKey(t *testing.T) {
 	}
 
 	t.Logf("Old key: %s..., New key: %s...", oldKey[:10], newKey[:10])
+}
+
+// --- Drug Names listing (AC-001, AC-002, AC-003, AC-004, AC-017, AC-018, AC-021) ---
+
+func authedGet(t *testing.T, key, path string) *http.Response {
+	return authedGetRetry(t, key, path, true)
+}
+
+func authedGetNoRetry(t *testing.T, key, path string) *http.Response {
+	return authedGetRetry(t, key, path, false)
+}
+
+func authedGetRetry(t *testing.T, key, path string, retry bool) *http.Response {
+	t.Helper()
+	req, _ := http.NewRequest(http.MethodGet, baseURL+path, nil)
+	req.Header.Set("X-API-Key", key)
+
+	maxAttempts := 1
+	if retry {
+		maxAttempts = 10
+	}
+
+	var resp *http.Response
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		var err error
+		resp, err = http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("GET %s: %v", path, err)
+		}
+		if !retry || resp.StatusCode != http.StatusBadGateway {
+			break
+		}
+		resp.Body.Close()
+		t.Logf("attempt %d: upstream not ready (502), retrying...", attempt+1)
+		time.Sleep(2 * time.Second)
+		req, _ = http.NewRequest(http.MethodGet, baseURL+path, nil)
+		req.Header.Set("X-API-Key", key)
+	}
+	return resp
+}
+
+type paginatedResponse struct {
+	Data       []map[string]interface{} `json:"data"`
+	Pagination struct {
+		Page       int `json:"page"`
+		Limit      int `json:"limit"`
+		Total      int `json:"total"`
+		TotalPages int `json:"total_pages"`
+	} `json:"pagination"`
+}
+
+func decodePaginated(t *testing.T, resp *http.Response) paginatedResponse {
+	t.Helper()
+	var pr paginatedResponse
+	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	return pr
+}
+
+func TestE2E_AC001_DrugNamesReturnsData(t *testing.T) {
+	key := createTestKey(t, "e2e-drug-names", 250)
+	resp := authedGet(t, key, "/v1/drugs/names?page=1&limit=10")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	pr := decodePaginated(t, resp)
+
+	if len(pr.Data) == 0 {
+		t.Fatal("expected non-empty data array for drug names")
+	}
+	if len(pr.Data) > 10 {
+		t.Errorf("expected at most 10 entries, got %d", len(pr.Data))
+	}
+
+	// AC-003: each entry has name and type
+	for i, entry := range pr.Data {
+		if entry["name"] == nil || entry["name"] == "" {
+			t.Errorf("entry %d: missing name", i)
+		}
+		if entry["type"] == nil || entry["type"] == "" {
+			t.Errorf("entry %d: missing type", i)
+		}
+	}
+
+	// AC-017: pagination metadata
+	if pr.Pagination.Page != 1 {
+		t.Errorf("page = %d, want 1", pr.Pagination.Page)
+	}
+	if pr.Pagination.Limit != 10 {
+		t.Errorf("limit = %d, want 10", pr.Pagination.Limit)
+	}
+	if pr.Pagination.Total == 0 {
+		t.Error("expected total > 0")
+	}
+
+	t.Logf("Drug names: %d total, first=%v", pr.Pagination.Total, pr.Data[0]["name"])
+}
+
+func TestE2E_AC002_DrugNamesSearch(t *testing.T) {
+	key := createTestKey(t, "e2e-drug-search", 250)
+	resp := authedGet(t, key, "/v1/drugs/names?q=simva")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	pr := decodePaginated(t, resp)
+
+	if len(pr.Data) == 0 {
+		t.Fatal("expected results for 'simva' search")
+	}
+	for i, entry := range pr.Data {
+		name, _ := entry["name"].(string)
+		if !strings.Contains(strings.ToLower(name), "simva") {
+			t.Errorf("entry %d: name %q does not contain 'simva'", i, name)
+		}
+	}
+}
+
+func TestE2E_AC021_DrugNamesTypeFilter(t *testing.T) {
+	key := createTestKey(t, "e2e-drug-type", 250)
+	resp := authedGet(t, key, "/v1/drugs/names?type=generic&q=simva")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	pr := decodePaginated(t, resp)
+	for i, entry := range pr.Data {
+		typ, _ := entry["type"].(string)
+		if typ != "generic" {
+			t.Errorf("entry %d: type = %q, want 'generic'", i, typ)
+		}
+	}
+}
+
+func TestE2E_AC018_DrugNamesLimitClamped(t *testing.T) {
+	key := createTestKey(t, "e2e-drug-clamp", 250)
+	resp := authedGet(t, key, "/v1/drugs/names?limit=500")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	pr := decodePaginated(t, resp)
+	if pr.Pagination.Limit != 100 {
+		t.Errorf("limit = %d, want 100 (clamped from 500)", pr.Pagination.Limit)
+	}
+}
+
+// --- Drug Classes listing (AC-005, AC-006, AC-007, AC-008) ---
+
+func TestE2E_AC005_DrugClassesReturnsData(t *testing.T) {
+	key := createTestKey(t, "e2e-drug-classes", 250)
+	resp := authedGet(t, key, "/v1/drugs/classes?page=1&limit=10")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	pr := decodePaginated(t, resp)
+
+	if len(pr.Data) == 0 {
+		t.Fatal("expected non-empty data array for drug classes")
+	}
+	if len(pr.Data) > 10 {
+		t.Errorf("expected at most 10 entries, got %d", len(pr.Data))
+	}
+
+	// AC-007: each entry has name and type
+	for i, entry := range pr.Data {
+		if entry["name"] == nil || entry["name"] == "" {
+			t.Errorf("entry %d: missing name", i)
+		}
+		if entry["type"] == nil || entry["type"] == "" {
+			t.Errorf("entry %d: missing type", i)
+		}
+	}
+
+	// Default filter is epc
+	for i, entry := range pr.Data {
+		typ, _ := entry["type"].(string)
+		if typ != "epc" {
+			t.Errorf("entry %d: type = %q, want 'epc' (default filter)", i, typ)
+		}
+	}
+
+	if pr.Pagination.Total == 0 {
+		t.Error("expected total > 0 for EPC classes")
+	}
+
+	t.Logf("Drug classes (EPC): %d total, first=%v", pr.Pagination.Total, pr.Data[0]["name"])
+}
+
+func TestE2E_AC006_DrugClassesMoAFilter(t *testing.T) {
+	key := createTestKey(t, "e2e-classes-moa", 250)
+	resp := authedGet(t, key, "/v1/drugs/classes?type=moa&limit=10")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	pr := decodePaginated(t, resp)
+	if len(pr.Data) == 0 {
+		t.Fatal("expected MoA classes to exist")
+	}
+	for i, entry := range pr.Data {
+		typ, _ := entry["type"].(string)
+		if typ != "moa" {
+			t.Errorf("entry %d: type = %q, want 'moa'", i, typ)
+		}
+	}
+}
+
+func TestE2E_AC006_DrugClassesAllFilter(t *testing.T) {
+	key := createTestKey(t, "e2e-classes-all", 250)
+	resp := authedGet(t, key, "/v1/drugs/classes?type=all&limit=10")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	pr := decodePaginated(t, resp)
+	if len(pr.Data) == 0 {
+		t.Fatal("expected classes with type=all")
+	}
+	if pr.Pagination.Total == 0 {
+		t.Error("expected total > 0 for all classes")
+	}
+}
+
+// --- Drugs by class (AC-009, AC-010, AC-011, AC-012, AC-022) ---
+
+func TestE2E_AC010_DrugsbyClassMissingParam(t *testing.T) {
+	key := createTestKey(t, "e2e-byclass-missing", 250)
+	resp := authedGet(t, key, "/v1/drugs/classes/drugs")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", resp.StatusCode)
+	}
+
+	var errResp map[string]string
+	json.NewDecoder(resp.Body).Decode(&errResp)
+	if errResp["error"] != "validation_error" {
+		t.Errorf("error = %q, want 'validation_error'", errResp["error"])
+	}
+}
+
+func TestE2E_AC009_DrugsbyClassReturnsData(t *testing.T) {
+	key := createTestKey(t, "e2e-byclass-data", 250)
+	resp := authedGet(t, key, "/v1/drugs/classes/drugs?class=HMG-CoA+Reductase+Inhibitor&limit=10")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	pr := decodePaginated(t, resp)
+	if len(pr.Data) == 0 {
+		t.Fatal("expected drugs in HMG-CoA Reductase Inhibitor class")
+	}
+
+	// AC-011: each entry has generic_name and brand_name
+	for i, entry := range pr.Data {
+		if entry["generic_name"] == nil || entry["generic_name"] == "" {
+			t.Errorf("entry %d: missing generic_name", i)
+		}
+		// brand_name may be empty string but should be present
+		if _, ok := entry["brand_name"]; !ok {
+			t.Errorf("entry %d: missing brand_name field", i)
+		}
+	}
+
+	t.Logf("Drugs in HMG-CoA class: %d total", pr.Pagination.Total)
+}
+
+func TestE2E_AC022_DrugsbyClassUnknown(t *testing.T) {
+	key := createTestKey(t, "e2e-byclass-unknown", 250)
+	resp := authedGetNoRetry(t, key, "/v1/drugs/classes/drugs?class=NotARealDrugClass")
+	defer resp.Body.Close()
+
+	// 502 is acceptable — upstream FDA may timeout on unknown class search
+	if resp.StatusCode == http.StatusBadGateway {
+		t.Logf("upstream returned 502 for unknown class (FDA timeout), acceptable in E2E")
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200 or 502", resp.StatusCode)
+	}
+
+	pr := decodePaginated(t, resp)
+	if len(pr.Data) != 0 {
+		t.Errorf("expected empty data for unknown class, got %d entries", len(pr.Data))
+	}
+}
+
+// --- Drug class lookup by name (drug-class-lookup spec) ---
+
+func TestE2E_DrugClassLookup_GenericName(t *testing.T) {
+	key := createTestKey(t, "e2e-classlookup", 250)
+	resp := authedGet(t, key, "/v1/drugs/class?name=simvastatin")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+
+	if result["query_name"] != "simvastatin" {
+		t.Errorf("query_name = %v, want 'simvastatin'", result["query_name"])
+	}
+	if result["generic_name"] == nil || result["generic_name"] == "" {
+		t.Error("expected non-empty generic_name")
+	}
+
+	classes, ok := result["classes"].([]interface{})
+	if !ok || len(classes) == 0 {
+		t.Error("expected non-empty classes array")
+	}
+
+	brandNames, ok := result["brand_names"].([]interface{})
+	if !ok {
+		t.Error("expected brand_names array")
+	}
+
+	t.Logf("Class lookup: generic=%v, brands=%v, classes=%d",
+		result["generic_name"], brandNames, len(classes))
+}
+
+func TestE2E_DrugClassLookup_BrandFallback(t *testing.T) {
+	key := createTestKey(t, "e2e-classlookup-brand", 250)
+	resp := authedGetNoRetry(t, key, "/v1/drugs/class?name=Lipitor")
+	defer resp.Body.Close()
+
+	// Brand fallback requires two upstream calls — may 502 if FDA is slow
+	if resp.StatusCode == http.StatusBadGateway {
+		t.Logf("upstream returned 502 for brand fallback (FDA timeout), acceptable in E2E")
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200 or 502", resp.StatusCode)
+	}
+
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+
+	if result["query_name"] != "Lipitor" {
+		t.Errorf("query_name = %v, want 'Lipitor'", result["query_name"])
+	}
+	if result["generic_name"] == nil || result["generic_name"] == "" {
+		t.Error("expected generic_name resolved from brand fallback")
+	}
+
+	t.Logf("Brand fallback: query=Lipitor, resolved generic=%v", result["generic_name"])
+}
+
+func TestE2E_DrugClassLookup_MissingName(t *testing.T) {
+	key := createTestKey(t, "e2e-classlookup-miss", 250)
+	resp := authedGet(t, key, "/v1/drugs/class")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", resp.StatusCode)
+	}
+}
+
+func TestE2E_DrugClassLookup_NotFound(t *testing.T) {
+	key := createTestKey(t, "e2e-classlookup-404", 250)
+	resp := authedGetNoRetry(t, key, "/v1/drugs/class?name=notarealdrug12345")
+	defer resp.Body.Close()
+
+	// 502 is acceptable — upstream FDA may timeout on unknown drug search
+	if resp.StatusCode == http.StatusBadGateway {
+		t.Logf("upstream returned 502 for unknown drug (FDA timeout), acceptable in E2E")
+		return
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("status = %d, want 404 or 502", resp.StatusCode)
+	}
 }
