@@ -1,16 +1,14 @@
 # Away Mode Log
 
-**Started:** 2026-03-14 23:45 CST
-**Expected Return:** 2026-03-15 11:45 CST
+**Started:** 2026-03-15 23:20
+**Expected Return:** 2026-03-16 11:20
 **Duration:** 12 hours
 
 ## Work Plan
-1. Update spec statuses (drug-data-listings → Complete, prometheus-metrics → Complete)
-2. Update PRD (M3 status NOW → DONE)
-3. Boost apikey coverage (3.8% → 80%+) with miniredis unit tests
-4. Boost ratelimit coverage (0% → 80%+) with miniredis unit tests
-5. Update CI if needed
-6. Update handoff
+1. Update CHANGELOG.md for v0.4.1 release
+2. Add client-level deserialization tests for all *Raw structs
+3. Run coverage analysis and add targeted tests for uncovered paths
+4. Update PRD M3 success criteria checkboxes
 
 ## Progress Log
 | Time | Task | Status | Notes |

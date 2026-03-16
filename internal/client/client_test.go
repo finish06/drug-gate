@@ -371,3 +371,58 @@ func TestHTTPDrugClient_LookupByNDC_EmptyResults(t *testing.T) {
 		t.Errorf("LookupByNDC() should return nil for empty data, got %+v", result)
 	}
 }
+
+// --- Raw struct JSON deserialization tests ---
+// These verify that struct tags match the actual upstream JSON field names.
+// If the upstream format changes, these tests catch it before production.
+
+func TestDrugClassRaw_MatchesUpstreamJSON(t *testing.T) {
+	// Real upstream format from cash-drugs /api/cache/drugclasses
+	raw := `{"name":"HMG-CoA Reductase Inhibitor","type":"EPC","code":"N0000175559","codingSystem":"2.16.840.1.113883.6.345"}`
+	var entry DrugClassRaw
+	if err := json.Unmarshal([]byte(raw), &entry); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if entry.ClassName != "HMG-CoA Reductase Inhibitor" {
+		t.Errorf("ClassName = %q, want %q", entry.ClassName, "HMG-CoA Reductase Inhibitor")
+	}
+	if entry.ClassType != "EPC" {
+		t.Errorf("ClassType = %q, want %q", entry.ClassType, "EPC")
+	}
+}
+
+func TestDrugNameRaw_MatchesUpstreamJSON(t *testing.T) {
+	// Real upstream format from cash-drugs /api/cache/drugnames
+	raw := `{"name_type":"G","drug_name":"simvastatin"}`
+	var entry DrugNameRaw
+	if err := json.Unmarshal([]byte(raw), &entry); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if entry.DrugName != "simvastatin" {
+		t.Errorf("DrugName = %q, want %q", entry.DrugName, "simvastatin")
+	}
+	if entry.NameType != "G" {
+		t.Errorf("NameType = %q, want %q", entry.NameType, "G")
+	}
+}
+
+func TestDrugResult_MatchesUpstreamJSON(t *testing.T) {
+	// Real upstream format from cash-drugs /api/cache/fda-ndc
+	raw := `{"product_ndc":"0069-3150","brand_name":"Zocor","generic_name":"simvastatin","pharm_class":["HMG-CoA Reductase Inhibitor [EPC]"]}`
+	var entry DrugResult
+	if err := json.Unmarshal([]byte(raw), &entry); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if entry.ProductNDC != "0069-3150" {
+		t.Errorf("ProductNDC = %q, want %q", entry.ProductNDC, "0069-3150")
+	}
+	if entry.BrandName != "Zocor" {
+		t.Errorf("BrandName = %q, want %q", entry.BrandName, "Zocor")
+	}
+	if entry.GenericName != "simvastatin" {
+		t.Errorf("GenericName = %q, want %q", entry.GenericName, "simvastatin")
+	}
+	if len(entry.PharmClass) != 1 || entry.PharmClass[0] != "HMG-CoA Reductase Inhibitor [EPC]" {
+		t.Errorf("PharmClass = %v, want [HMG-CoA Reductase Inhibitor [EPC]]", entry.PharmClass)
+	}
+}
