@@ -323,7 +323,7 @@ func TestHTTPDrugClient_FetchDrugClasses_HappyPath(t *testing.T) {
 		}
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"class_name": "HMG-CoA Reductase Inhibitor", "class_type": "EPC"},
+				{"name": "HMG-CoA Reductase Inhibitor", "type": "EPC"},
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
