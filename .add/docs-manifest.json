@@ -1,7 +1,7 @@
 {
   "$schema": "https://github.com/MountainUnicorn/add/docs-manifest.schema.json",
   "version": "1.0.0",
-  "generated": "2026-03-15T12:00:00Z",
+  "generated": "2026-03-16T12:30:00Z",
   "stack": {
     "language": "go",
     "framework": "chi",
@@ -106,6 +106,51 @@
       "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
       "tags": ["drugs", "v1"],
       "response_model": "PaginatedResponse"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/rxnorm/search",
+      "handler_file": "internal/handler/rxnorm.go",
+      "handler_function": "RxNormHandler.HandleSearch",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["rxnorm", "v1"],
+      "response_model": "RxNormSearchResult"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/rxnorm/profile",
+      "handler_file": "internal/handler/rxnorm.go",
+      "handler_function": "RxNormHandler.HandleProfile",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["rxnorm", "v1"],
+      "response_model": "RxNormProfile"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/rxnorm/{rxcui}/ndcs",
+      "handler_file": "internal/handler/rxnorm.go",
+      "handler_function": "RxNormHandler.HandleNDCs",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["rxnorm", "v1"],
+      "response_model": "RxNormNDCResponse"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/rxnorm/{rxcui}/generics",
+      "handler_file": "internal/handler/rxnorm.go",
+      "handler_function": "RxNormHandler.HandleGenerics",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["rxnorm", "v1"],
+      "response_model": "RxNormGenericResponse"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/drugs/rxnorm/{rxcui}/related",
+      "handler_file": "internal/handler/rxnorm.go",
+      "handler_function": "RxNormHandler.HandleRelated",
+      "middleware": ["RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
+      "tags": ["rxnorm", "v1"],
+      "response_model": "RxNormRelatedResponse"
     },
     {
       "method": "POST",
@@ -245,6 +290,48 @@
       "file": "internal/model/response.go",
       "field_count": 4,
       "relationships": []
+    },
+    {
+      "name": "RxNormSearchResult",
+      "file": "internal/model/rxnorm.go",
+      "field_count": 3,
+      "relationships": ["RxNormCandidate"]
+    },
+    {
+      "name": "RxNormCandidate",
+      "file": "internal/model/rxnorm.go",
+      "field_count": 3,
+      "relationships": []
+    },
+    {
+      "name": "RxNormConcept",
+      "file": "internal/model/rxnorm.go",
+      "field_count": 2,
+      "relationships": []
+    },
+    {
+      "name": "RxNormNDCResponse",
+      "file": "internal/model/rxnorm.go",
+      "field_count": 2,
+      "relationships": []
+    },
+    {
+      "name": "RxNormGenericResponse",
+      "file": "internal/model/rxnorm.go",
+      "field_count": 2,
+      "relationships": ["RxNormConcept"]
+    },
+    {
+      "name": "RxNormRelatedResponse",
+      "file": "internal/model/rxnorm.go",
+      "field_count": 6,
+      "relationships": ["RxNormConcept"]
+    },
+    {
+      "name": "RxNormProfile",
+      "file": "internal/model/rxnorm.go",
+      "field_count": 7,
+      "relationships": ["RxNormConcept", "RxNormRelatedResponse"]
     }
   ],
   "services": [
@@ -267,6 +354,16 @@
       "name": "RedisLimiter (ratelimit)",
       "file": "internal/ratelimit/limiter.go",
       "public_functions": ["Allow"]
+    },
+    {
+      "name": "RxNormService",
+      "file": "internal/service/rxnorm.go",
+      "public_functions": ["Search", "GetNDCs", "GetGenerics", "GetRelated", "GetProfile"]
+    },
+    {
+      "name": "HTTPRxNormClient",
+      "file": "internal/client/rxnorm.go",
+      "public_functions": ["SearchApproximate", "FetchSpellingSuggestions", "FetchNDCs", "FetchGenericProduct", "FetchAllRelated"]
     },
     {
       "name": "Metrics",
@@ -311,13 +408,18 @@
       "GET /admin/keys",
       "GET /admin/keys/{key}",
       "DELETE /admin/keys/{key}",
-      "POST /admin/keys/{key}/rotate"
+      "POST /admin/keys/{key}/rotate",
+      "GET /v1/drugs/rxnorm/search",
+      "GET /v1/drugs/rxnorm/profile",
+      "GET /v1/drugs/rxnorm/{rxcui}/ndcs",
+      "GET /v1/drugs/rxnorm/{rxcui}/generics",
+      "GET /v1/drugs/rxnorm/{rxcui}/related"
     ],
     "undocumented": [],
     "stale": []
   },
   "fingerprints": {
-    "cmd/server/main.go": "29862533522eaf6bd954aca89fd2866a79b511a0a0d44861657a072c64baf75a",
+    "cmd/server/main.go": "dfd7695f08336ff5f624afe3727ada9041516cee2cf79281502a0d3df2442107",
     "internal/handler/drug.go": "4d948741527f8b8dcadc06b9e8b4e1131dc7f644de8b6e3349a3906d834586f6",
     "internal/handler/drugclass.go": "98af2eaa2d76680cf1e15549a039ec93485821d0a772c9a143fd9be3532c8ca5",
     "internal/handler/drugclasses.go": "611ad8e62068ac354784a1fc7e12e4bbd98c1d10fc97ec6b63591b3b242346b2",
@@ -335,6 +437,10 @@
     "internal/middleware/metrics.go": "5c65ddbeaaf54cc8d07b7021ea0ef096a93c75d647152df63f469c2a8850c018",
     "internal/model/response.go": "2403e52215e9ec055b56d0b01fbb8efeb64440431a2aa7e6379c0125d726aa3c",
     "internal/service/drugdata.go": "756b7b144c94c0a4b830fc1caae57269300be5f96fc04e946ea42a51f96792cf",
-    "internal/client/client.go": "cfa72e5f86a11609f90ef127f29e1bf246ecd8af6edc33f0df0b134f08212ab4"
+    "internal/client/client.go": "cfa72e5f86a11609f90ef127f29e1bf246ecd8af6edc33f0df0b134f08212ab4",
+    "internal/client/rxnorm.go": "750868d8fefe51404457c82b937119751ebe49719eeac245ef9978ee92028562",
+    "internal/handler/rxnorm.go": "91d1f8051221439801e5985164818fe53fef1449f792092b91cbb65df7c14b28",
+    "internal/model/rxnorm.go": "3affefc40dfe7009ce897d33cfd61b2688794992bbc53619471625108a69cbe9",
+    "internal/service/rxnorm.go": "f3b608aa485c1634007426b5413f7af3fd36a76ab276a7da587394678f25c38f"
   }
 }
