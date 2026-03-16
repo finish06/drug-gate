@@ -9,6 +9,9 @@ Public-facing Go microservice gateway that provides frontend applications with d
 - **Drug Names Listing** — Paginated, filterable list of ~104K drug names (generic/brand) with substring search
 - **Drug Classes Listing** — Paginated, filterable list of drug classes by type (EPC, MoA, PE, CS)
 - **Drugs by Class** — List drugs belonging to a specific pharmacological class
+- **RxNorm Drug Search** — Fuzzy drug name search via RxNorm approximate matching (top 5 candidates + spelling suggestions)
+- **RxNorm Drug Profile** — Unified drug profile: RxCUI, generic equivalents, NDCs, brand names, related concepts
+- **RxNorm Granular Lookups** — NDCs, generics, and related concepts by RxCUI
 - **API Key Authentication** — Per-app API keys via `X-API-Key` header, stored in Redis
 - **Per-Key Rate Limiting** — Sliding window rate limiter (Redis sorted sets) with configurable limits per key
 - **CORS Origin Locking** — Per-key allowed origins list, or origin-free for server-to-server use
@@ -61,6 +64,11 @@ REDIS_URL=localhost:6379 ADMIN_SECRET=your-secret make run
 | GET | `/v1/drugs/names` | Paginated drug names (filter: `q`, `type`, `page`, `limit`) |
 | GET | `/v1/drugs/classes` | Paginated drug classes (filter: `type`, `page`, `limit`) |
 | GET | `/v1/drugs/classes/drugs?class={name}` | Drugs in a pharmacological class |
+| GET | `/v1/drugs/rxnorm/search?name={name}` | RxNorm fuzzy drug search (top 5 + suggestions) |
+| GET | `/v1/drugs/rxnorm/profile?name={name}` | Unified drug profile (RxCUI, generics, NDCs, related) |
+| GET | `/v1/drugs/rxnorm/{rxcui}/ndcs` | NDC codes for an RxCUI |
+| GET | `/v1/drugs/rxnorm/{rxcui}/generics` | Generic equivalents for an RxCUI |
+| GET | `/v1/drugs/rxnorm/{rxcui}/related` | Related concepts grouped by type |
 
 ### Admin (requires `Authorization: Bearer <ADMIN_SECRET>`)
 
@@ -129,7 +137,7 @@ graph LR
     DG[drug-gate<br/>:8081]
     Redis[(Redis)]
     CD[cash-drugs<br/>:8083]
-    FDA[(FDA/DailyMed<br/>cached data)]
+    FDA[(FDA/DailyMed/RxNorm<br/>cached data)]
 
     Client -->|X-API-Key| DG
     DG -->|API keys<br/>rate limits| Redis

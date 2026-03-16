@@ -64,7 +64,7 @@ internal/
   ndc/              — NDC normalization logic
   model/            — Request/response types
   pharma/           — Pharm class parsing, brand name deduplication
-  service/          — DrugDataService (Redis-cached data layer)
+  service/          — DrugDataService + RxNormService (Redis-cached data layer)
   metrics/          — Prometheus metrics, Redis health collector, system metrics collector
   version/          — Build version (set via -ldflags)
 specs/               — Feature specifications
@@ -78,7 +78,7 @@ tests/
 ### Upstream API (cash-drugs)
 - Base URL: `http://host1.du.nn:8083`
 - Endpoints: `/api/cache/{slug}` with query params
-- Key slugs: `fda-ndc`, `fda-ndc-by-name`, `drugnames`, `drugclasses`, `spls-by-name`, `spls-by-class`
+- Key slugs: `fda-ndc`, `drugnames`, `drugclasses`, `spls-by-name`, `spls-by-class`, `rxnorm-approximate-match`, `rxnorm-spelling-suggestions`, `rxnorm-ndcs`, `rxnorm-generic-product`, `rxnorm-all-related`
 - OpenAPI spec: `/openapi.json`
 
 ### Environment Variables
@@ -94,6 +94,7 @@ tests/
 ### Environments
 
 - **Local:** docker-compose up (drug-gate on :8081, Redis on :6379)
+- **Staging:** 192.168.1.145:8082 (auto-deploys :beta via Watchtower)
 - **Production:** Self-hosted, behind firewall, same network as cash-drugs
 
 ## Quality Gates

@@ -106,6 +106,9 @@ func main() {
 	drugNamesHandler := handler.NewDrugNamesHandler(dataSvc)
 	drugClassesHandler := handler.NewDrugClassesHandler(dataSvc)
 	drugsByClassHandler := handler.NewDrugsByClassHandler(dataSvc)
+	rxnormClient := client.NewHTTPRxNormClient(cashDrugsURL)
+	rxnormSvc := service.NewRxNormService(rxnormClient, rdb, m)
+	rxnormHandler := handler.NewRxNormHandler(rxnormSvc)
 	adminHandler := handler.NewAdminHandler(store)
 
 	r := chi.NewRouter()
@@ -128,6 +131,11 @@ func main() {
 		r.Get("/drugs/names", drugNamesHandler.HandleDrugNames)
 		r.Get("/drugs/classes", drugClassesHandler.HandleDrugClasses)
 		r.Get("/drugs/classes/drugs", drugsByClassHandler.HandleDrugsByClass)
+		r.Get("/drugs/rxnorm/search", rxnormHandler.HandleSearch)
+		r.Get("/drugs/rxnorm/profile", rxnormHandler.HandleProfile)
+		r.Get("/drugs/rxnorm/{rxcui}/ndcs", rxnormHandler.HandleNDCs)
+		r.Get("/drugs/rxnorm/{rxcui}/generics", rxnormHandler.HandleGenerics)
+		r.Get("/drugs/rxnorm/{rxcui}/related", rxnormHandler.HandleRelated)
 	})
 
 	// Admin routes

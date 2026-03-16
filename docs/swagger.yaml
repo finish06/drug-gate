@@ -78,6 +78,99 @@ definitions:
       total_pages:
         type: integer
     type: object
+  github_com_finish06_drug-gate_internal_model.RxNormCandidate:
+    properties:
+      name:
+        type: string
+      rxcui:
+        type: string
+      score:
+        type: integer
+    type: object
+  github_com_finish06_drug-gate_internal_model.RxNormConcept:
+    properties:
+      name:
+        type: string
+      rxcui:
+        type: string
+    type: object
+  github_com_finish06_drug-gate_internal_model.RxNormGenericResponse:
+    properties:
+      generics:
+        items:
+          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+        type: array
+      rxcui:
+        type: string
+    type: object
+  github_com_finish06_drug-gate_internal_model.RxNormNDCResponse:
+    properties:
+      ndcs:
+        items:
+          type: string
+        type: array
+      rxcui:
+        type: string
+    type: object
+  github_com_finish06_drug-gate_internal_model.RxNormProfile:
+    properties:
+      brand_names:
+        items:
+          type: string
+        type: array
+      generic:
+        $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+      name:
+        type: string
+      ndcs:
+        items:
+          type: string
+        type: array
+      query:
+        type: string
+      related:
+        $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse'
+      rxcui:
+        type: string
+    type: object
+  github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse:
+    properties:
+      brand_names:
+        items:
+          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+        type: array
+      branded_drugs:
+        items:
+          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+        type: array
+      clinical_drugs:
+        items:
+          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+        type: array
+      dose_forms:
+        items:
+          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+        type: array
+      ingredients:
+        items:
+          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+        type: array
+      rxcui:
+        type: string
+    type: object
+  github_com_finish06_drug-gate_internal_model.RxNormSearchResult:
+    properties:
+      candidates:
+        items:
+          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormCandidate'
+        type: array
+      query:
+        type: string
+      suggestions:
+        items:
+          type: string
+        type: array
+    type: object
   internal_handler.createKeyRequest:
     properties:
       app_name:
@@ -456,4 +549,151 @@ paths:
       summary: Look up drug by NDC
       tags:
       - drugs
+  /v1/drugs/rxnorm/{rxcui}/generics:
+    get:
+      description: Returns generic product information for the given RxNorm concept
+        identifier.
+      parameters:
+      - description: RxNorm concept unique identifier
+        in: path
+        name: rxcui
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormGenericResponse'
+        "404":
+          description: RxCUI not found
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: Get generic products for an RxCUI
+      tags:
+      - rxnorm
+  /v1/drugs/rxnorm/{rxcui}/ndcs:
+    get:
+      description: Returns NDC codes associated with the given RxNorm concept identifier.
+      parameters:
+      - description: RxNorm concept unique identifier
+        in: path
+        name: rxcui
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormNDCResponse'
+        "404":
+          description: RxCUI not found
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: Get NDCs for an RxCUI
+      tags:
+      - rxnorm
+  /v1/drugs/rxnorm/{rxcui}/related:
+    get:
+      description: Returns all related concepts grouped by type (ingredients, brand
+        names, dose forms, clinical drugs, branded drugs).
+      parameters:
+      - description: RxNorm concept unique identifier
+        in: path
+        name: rxcui
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse'
+        "404":
+          description: RxCUI not found
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: Get related concepts for an RxCUI
+      tags:
+      - rxnorm
+  /v1/drugs/rxnorm/profile:
+    get:
+      description: Resolves a drug name via approximate match, then assembles NDCs,
+        generic equivalents, and related concepts into a single response.
+      parameters:
+      - description: Drug name (generic or brand)
+        in: query
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormProfile'
+        "400":
+          description: Missing name parameter
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "404":
+          description: Drug not found
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: Get unified drug profile
+      tags:
+      - rxnorm
+  /v1/drugs/rxnorm/search:
+    get:
+      description: Approximate match search via RxNorm. Returns up to 5 candidates
+        ranked by score. Includes spelling suggestions when no matches are found.
+      parameters:
+      - description: Drug name to search for
+        in: query
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormSearchResult'
+        "400":
+          description: Missing name parameter
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "404":
+          description: No drugs found
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+      summary: Search drugs by name (RxNorm)
+      tags:
+      - rxnorm
 swagger: "2.0"
