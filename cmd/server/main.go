@@ -110,6 +110,7 @@ func main() {
 	rxnormSvc := service.NewRxNormService(rxnormClient, rdb, m)
 	rxnormHandler := handler.NewRxNormHandler(rxnormSvc)
 	adminHandler := handler.NewAdminHandler(store)
+	cacheHandler := handler.NewCacheHandler(rdb)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger)
@@ -146,6 +147,7 @@ func main() {
 		r.Get("/keys/{key}", adminHandler.GetKey)
 		r.Delete("/keys/{key}", adminHandler.DeactivateKey)
 		r.Post("/keys/{key}/rotate", adminHandler.RotateKey)
+		r.Delete("/cache", cacheHandler.ClearCache)
 	})
 
 	srv := &http.Server{
