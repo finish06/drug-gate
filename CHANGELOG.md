@@ -7,7 +7,21 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-03-15
+
+### Fixed
+- `DrugClassRaw` JSON struct tags used `class_name`/`class_type` but upstream returns `name`/`type` — caused empty `/v1/drugs/classes` responses
+- Client unit test mock JSON updated to match real upstream field names
+- CI GitHub Actions bumped to Node.js 24 compatible versions (`actions/checkout` v4→v6, `actions/setup-go` v5→v6)
+
+### Added
+- 15 E2E tests covering drug names, drug classes, drugs-by-class, and drug class lookup endpoints
+- E2E config updated with `drugnames` and `drugclasses` slugs, `pharm_class` search param on `fda-ndc`
+- Docs manifest (`.add/docs-manifest.json`) for incremental documentation freshness checks
+
 ### Documentation
+- README.md updated with M3 endpoints, Prometheus metrics, `SYSTEM_METRICS_INTERVAL`, architecture diagrams
+- Swagger docs regenerated
 - Add swag annotations to all 5 admin endpoints (CreateKey, ListKeys, GetKey, DeactivateKey, RotateKey)
 - Add apikey/ and ratelimit/ to CLAUDE.md Key Directories
 - Update sequence diagrams, CLAUDE.md, and PRD for metrics

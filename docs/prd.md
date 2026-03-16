@@ -147,7 +147,7 @@ Each key identifies *which application* is calling, not which user. Security is 
 - [x] Redis-backed key storage with metadata (app name, origin allowlist, rate tier)
 - [x] Key rotation works — old key invalidated, new key active immediately
 
-#### M3: Extended Lookups [NOW]
+#### M3: Extended Lookups [DONE]
 **Goal:** Expose drug names, drug classes, and drug-to-class relationships as filterable, paginated APIs — enabling any frontend tool to work with FDA/DailyMed drug data
 **Appetite:** 2-3 cycles
 **Target maturity:** beta
@@ -214,11 +214,11 @@ Frontend apps need to understand how drug data connects. There are three indepen
 - In-memory filtering and pagination from cached data
 
 **Success criteria:**
-- [ ] All 4 endpoints return correct, paginated data
-- [ ] Drug-to-class relationships resolved via FDA NDC data
-- [ ] Lazy caching works — first request fetches from cash-drugs, subsequent requests served from Redis
-- [ ] Cache expires after 60 minutes of inactivity
-- [ ] Upstream errors return 502 with clear message
+- [x] All 4 endpoints return correct, paginated data
+- [x] Drug-to-class relationships resolved via FDA NDC data
+- [x] Lazy caching works — first request fetches from cash-drugs, subsequent requests served from Redis
+- [x] Cache expires after 60 minutes of inactivity
+- [x] Upstream errors return 502 with clear message
 
 ### Maturity Promotion Path
 
