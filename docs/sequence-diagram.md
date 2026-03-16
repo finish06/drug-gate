@@ -582,6 +582,151 @@ sequenceDiagram
 
 ---
 
+## RxNorm Drug Search (GET /v1/drugs/rxnorm/search?name=)
+
+```mermaid
+sequenceDiagram
+    actor Client as Frontend Client
+    participant MW as Middleware Chain<br/>(Logger→Metrics→Auth→CORS→RateLimit)
+    participant RSH as RxNormHandler
+    participant SVC as RxNormService
+    participant RDS as Redis<br/>(Data Cache)
+    participant RC as HTTPRxNormClient
+    participant CD as cash-drugs<br/>:8083
+
+    Client->>MW: GET /v1/drugs/rxnorm/search?name=lipitor<br/>X-API-Key: pk_...
+    MW->>MW: Logger + Metrics + Auth + CORS + RateLimit
+    MW->>RSH: HandleSearch(w, r)
+
+    alt Missing name param
+        RSH-->>Client: 400 {"error": "validation_error"}
+    end
+
+    RSH->>SVC: Search(ctx, "lipitor")
+    SVC->>RDS: GET cache:rxnorm:search:lipitor
+
+    alt Cache hit
+        RDS-->>SVC: cached JSON
+        SVC->>RDS: EXPIRE cache:rxnorm:search:lipitor 24h
+        SVC-->>RSH: *RxNormSearchResult
+    end
+
+    alt Cache miss
+        RDS-->>SVC: nil
+        SVC->>RC: SearchApproximate(ctx, "lipitor")
+        RC->>CD: GET /api/cache/rxnorm-approximate-match?DRUG_NAME=lipitor
+        CD-->>RC: 200 {approximateGroup: {candidate: [...]}}
+        RC-->>SVC: []RxNormCandidateRaw
+        SVC->>SVC: Sort by score desc, cap at 5
+        SVC->>RDS: SET cache:rxnorm:search:lipitor {json} EX 24h
+        SVC-->>RSH: *RxNormSearchResult
+    end
+
+    alt No candidates found
+        SVC->>RC: FetchSpellingSuggestions(ctx, "lipitor")
+        RC->>CD: GET /api/cache/rxnorm-spelling-suggestions?DRUG_NAME=lipitor
+        CD-->>RC: 200 {suggestionGroup: {suggestionList: {suggestion: [...]}}}
+        RC-->>SVC: []string
+
+        alt No suggestions either
+            RSH-->>Client: 404 {"error": "not_found"}
+        end
+    end
+
+    RSH-->>Client: 200 {query, candidates, suggestions}
+```
+
+---
+
+## RxNorm Drug Profile (GET /v1/drugs/rxnorm/profile?name=)
+
+```mermaid
+sequenceDiagram
+    actor Client as Frontend Client
+    participant MW as Middleware Chain
+    participant RSH as RxNormHandler
+    participant SVC as RxNormService
+    participant RDS as Redis<br/>(Data Cache)
+    participant RC as HTTPRxNormClient
+    participant CD as cash-drugs<br/>:8083
+
+    Client->>MW: GET /v1/drugs/rxnorm/profile?name=lipitor<br/>X-API-Key: pk_...
+    MW->>RSH: HandleProfile(w, r)
+
+    RSH->>SVC: GetProfile(ctx, "lipitor")
+    SVC->>RDS: GET cache:rxnorm:profile:lipitor
+
+    alt Cache hit
+        RDS-->>SVC: cached assembled profile
+        SVC-->>RSH: *RxNormProfile
+    end
+
+    alt Cache miss — orchestrate 4 calls
+        SVC->>SVC: Search(ctx, "lipitor") → best candidate (rxcui)
+        SVC->>SVC: GetNDCs(ctx, rxcui)
+        SVC->>SVC: GetGenerics(ctx, rxcui)
+        SVC->>SVC: GetRelated(ctx, rxcui)
+
+        Note over SVC,CD: Each sub-call checks its own cache first,<br/>then fetches from cash-drugs on miss
+
+        SVC->>SVC: Assemble profile from sub-results
+        SVC->>RDS: SET cache:rxnorm:profile:lipitor {json} EX 24h
+        SVC-->>RSH: *RxNormProfile
+    end
+
+    alt Drug not found
+        RSH-->>Client: 404 {"error": "not_found"}
+    end
+
+    RSH-->>Client: 200 {query, rxcui, name, brand_names, generic, ndcs, related}
+```
+
+---
+
+## RxNorm Granular Lookups (NDCs / Generics / Related)
+
+```mermaid
+sequenceDiagram
+    actor Client as Frontend Client
+    participant MW as Middleware Chain
+    participant RSH as RxNormHandler
+    participant SVC as RxNormService
+    participant RDS as Redis<br/>(Data Cache)
+    participant RC as HTTPRxNormClient
+    participant CD as cash-drugs<br/>:8083
+
+    Client->>MW: GET /v1/drugs/rxnorm/{rxcui}/ndcs<br/>X-API-Key: pk_...
+    MW->>RSH: HandleNDCs(w, r)
+
+    RSH->>SVC: GetNDCs(ctx, "153165")
+    SVC->>RDS: GET cache:rxnorm:ndcs:153165
+
+    alt Cache hit
+        RDS-->>SVC: cached JSON
+        SVC->>RDS: EXPIRE 7d (sliding TTL)
+        SVC-->>RSH: *RxNormNDCResponse
+    end
+
+    alt Cache miss
+        SVC->>RC: FetchNDCs(ctx, "153165")
+        RC->>CD: GET /api/cache/rxnorm-ndcs?RXCUI=153165
+        CD-->>RC: 200 {ndcGroup: {ndcList: {ndc: [...]}}}
+        RC-->>SVC: []string
+        SVC->>RDS: SET cache:rxnorm:ndcs:153165 {json} EX 7d
+        SVC-->>RSH: *RxNormNDCResponse
+    end
+
+    alt Empty results (unknown RxCUI)
+        RSH-->>Client: 404 {"error": "not_found"}
+    end
+
+    RSH-->>Client: 200 {rxcui, ndcs}
+
+    Note over Client,CD: /generics and /related follow the same pattern:<br/>cache check → upstream fetch → TTY grouping (related only) → cache write
+```
+
+---
+
 ## Route Table
 
 | Method | Path | Auth | Handler | Description |
@@ -595,6 +740,11 @@ sequenceDiagram
 | GET | `/v1/drugs/names` | API Key | `DrugNamesHandler.HandleDrugNames` | Paginated drug names listing |
 | GET | `/v1/drugs/classes` | API Key | `DrugClassesHandler.HandleDrugClasses` | Paginated drug classes listing |
 | GET | `/v1/drugs/classes/drugs` | API Key | `DrugsByClassHandler.HandleDrugsByClass` | Paginated drugs-by-class listing |
+| GET | `/v1/drugs/rxnorm/search` | API Key | `RxNormHandler.HandleSearch` | RxNorm fuzzy drug search |
+| GET | `/v1/drugs/rxnorm/profile` | API Key | `RxNormHandler.HandleProfile` | Unified drug profile |
+| GET | `/v1/drugs/rxnorm/{rxcui}/ndcs` | API Key | `RxNormHandler.HandleNDCs` | NDCs for an RxCUI |
+| GET | `/v1/drugs/rxnorm/{rxcui}/generics` | API Key | `RxNormHandler.HandleGenerics` | Generic equivalents |
+| GET | `/v1/drugs/rxnorm/{rxcui}/related` | API Key | `RxNormHandler.HandleRelated` | Related concepts by type |
 | POST | `/admin/keys` | Admin Bearer | `AdminHandler.CreateKey` | Create API key |
 | GET | `/admin/keys` | Admin Bearer | `AdminHandler.ListKeys` | List all API keys |
 | GET | `/admin/keys/{key}` | Admin Bearer | `AdminHandler.GetKey` | Get single API key |

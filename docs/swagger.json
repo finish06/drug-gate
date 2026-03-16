@@ -512,6 +512,223 @@
                     }
                 }
             }
+        },
+        "/v1/drugs/rxnorm/profile": {
+            "get": {
+                "description": "Resolves a drug name via approximate match, then assembles NDCs, generic equivalents, and related concepts into a single response.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rxnorm"
+                ],
+                "summary": "Get unified drug profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Drug name (generic or brand)",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormProfile"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing name parameter",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Drug not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/drugs/rxnorm/search": {
+            "get": {
+                "description": "Approximate match search via RxNorm. Returns up to 5 candidates ranked by score. Includes spelling suggestions when no matches are found.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rxnorm"
+                ],
+                "summary": "Search drugs by name (RxNorm)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Drug name to search for",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormSearchResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing name parameter",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "No drugs found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/drugs/rxnorm/{rxcui}/generics": {
+            "get": {
+                "description": "Returns generic product information for the given RxNorm concept identifier.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rxnorm"
+                ],
+                "summary": "Get generic products for an RxCUI",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RxNorm concept unique identifier",
+                        "name": "rxcui",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormGenericResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "RxCUI not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/drugs/rxnorm/{rxcui}/ndcs": {
+            "get": {
+                "description": "Returns NDC codes associated with the given RxNorm concept identifier.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rxnorm"
+                ],
+                "summary": "Get NDCs for an RxCUI",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RxNorm concept unique identifier",
+                        "name": "rxcui",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormNDCResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "RxCUI not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/drugs/rxnorm/{rxcui}/related": {
+            "get": {
+                "description": "Returns all related concepts grouped by type (ingredients, brand names, dose forms, clinical drugs, branded drugs).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rxnorm"
+                ],
+                "summary": "Get related concepts for an RxCUI",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RxNorm concept unique identifier",
+                        "name": "rxcui",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "RxCUI not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -632,6 +849,149 @@
                 },
                 "total_pages": {
                     "type": "integer"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.RxNormCandidate": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "rxcui": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.RxNormConcept": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "rxcui": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.RxNormGenericResponse": {
+            "type": "object",
+            "properties": {
+                "generics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
+                    }
+                },
+                "rxcui": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.RxNormNDCResponse": {
+            "type": "object",
+            "properties": {
+                "ndcs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rxcui": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.RxNormProfile": {
+            "type": "object",
+            "properties": {
+                "brand_names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "generic": {
+                    "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ndcs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "query": {
+                    "type": "string"
+                },
+                "related": {
+                    "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse"
+                },
+                "rxcui": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse": {
+            "type": "object",
+            "properties": {
+                "brand_names": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
+                    }
+                },
+                "branded_drugs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
+                    }
+                },
+                "clinical_drugs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
+                    }
+                },
+                "dose_forms": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
+                    }
+                },
+                "ingredients": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
+                    }
+                },
+                "rxcui": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_finish06_drug-gate_internal_model.RxNormSearchResult": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormCandidate"
+                    }
+                },
+                "query": {
+                    "type": "string"
+                },
+                "suggestions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
