@@ -141,8 +141,8 @@
     "lastDetected": null
   },
   "changelog": {
-    "lastProcessedCommit": "1dd95ed3ea08854bfb56171e9b839a71fbd7be69",
-    "lastVersionTag": "v0.4.0"
+    "lastProcessedCommit": "0388e6b024d4cb8503997dc7ff1ffc7a503bb9ef",
+    "lastVersionTag": "v0.5.0"
   },
   "planning": {
     "current_milestone": null,

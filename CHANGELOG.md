@@ -7,6 +7,9 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Fixed
+- RxNorm client JSON parsing aligned with cash-drugs response shapes (cash-drugs flattens nested RxNorm structures into `data[]`)
+
 ### Added
 - RxNorm integration: 5 new endpoints under `/v1/drugs/rxnorm/`
   - `GET /search?name=` — approximate match drug search (top 5 candidates + spelling suggestions)
