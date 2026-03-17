@@ -68,8 +68,15 @@ func (s *RxNormService) Search(ctx context.Context, name string) (*model.RxNormS
 
 	candidates := make([]model.RxNormCandidate, 0, len(rawCandidates))
 	for _, rc := range rawCandidates {
-		score, err := strconv.Atoi(rc.Score)
-		if err != nil {
+		// Skip entries with no name (e.g., MMSL source entries)
+		if rc.Name == "" {
+			continue
+		}
+		// Scores are floats from RxNorm — parse and truncate to int
+		score := 0
+		if f, err := strconv.ParseFloat(rc.Score, 64); err == nil {
+			score = int(f)
+		} else {
 			slog.Warn("failed to parse rxnorm score, defaulting to 0", "score_raw", rc.Score, "rxcui", rc.RxCUI)
 		}
 		candidates = append(candidates, model.RxNormCandidate{
