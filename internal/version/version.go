@@ -1,5 +1,9 @@
 package version
 
-// Version is set at build time via -ldflags "-X github.com/finish06/drug-gate/internal/version.Version={tag}".
-// Defaults to "dev" for local builds.
-var Version = "dev"
+// These variables are set at build time via -ldflags.
+// Defaults are used for local builds without ldflags.
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	GitBranch = "unknown"
+)
