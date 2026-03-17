@@ -118,6 +118,7 @@ func main() {
 
 	// Public routes (no auth)
 	r.Get("/health", handler.HealthCheck)
+	r.Get("/version", handler.VersionInfo)
 	r.Handle("/metrics", promhttp.Handler())
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	r.Get("/openapi.json", handler.OpenAPIJSON)

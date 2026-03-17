@@ -81,7 +81,10 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64
-          build-args: VERSION=${{ steps.version.outputs.tag }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.tag }}
+            GIT_COMMIT=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
           tags: dockerhub.calebdunn.tech/finish06/drug-gate:beta
 
       - name: Build and push release
@@ -91,7 +94,10 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64
-          build-args: VERSION=${{ steps.version.outputs.tag }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.tag }}
+            GIT_COMMIT=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
           tags: |
             dockerhub.calebdunn.tech/finish06/drug-gate:${{ steps.version.outputs.tag }}
             dockerhub.calebdunn.tech/finish06/drug-gate:latest

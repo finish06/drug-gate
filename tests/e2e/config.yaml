@@ -32,3 +32,39 @@ endpoints:
     page_param: page
     pagesize_param: pagesize
     pagesize: 100
+
+  - slug: rxnorm-approximate-match
+    base_url: https://rxnav.nlm.nih.gov
+    path: /REST/approximateTerm.json
+    format: json
+    query_params:
+      term: "{DRUG_NAME}"
+      maxEntries: "20"
+      option: "1"
+    data_key: approximateGroup.candidate
+
+  - slug: rxnorm-spelling-suggestions
+    base_url: https://rxnav.nlm.nih.gov
+    path: /REST/spellingsuggestions.json
+    format: json
+    query_params:
+      name: "{DRUG_NAME}"
+    data_key: suggestionGroup.suggestionList.suggestion
+
+  - slug: rxnorm-ndcs
+    base_url: https://rxnav.nlm.nih.gov
+    path: /REST/rxcui/{RXCUI}/ndcs.json
+    format: json
+    data_key: ndcGroup.ndcList.ndc
+
+  - slug: rxnorm-generic-product
+    base_url: https://rxnav.nlm.nih.gov
+    path: /REST/rxcui/{RXCUI}/generic.json
+    format: json
+    data_key: minConceptGroup.minConcept
+
+  - slug: rxnorm-all-related
+    base_url: https://rxnav.nlm.nih.gov
+    path: /REST/rxcui/{RXCUI}/allrelated.json
+    format: json
+    data_key: allRelatedGroup.conceptGroup

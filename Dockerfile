@@ -8,7 +8,13 @@ RUN go mod download
 COPY . .
 
 ARG VERSION=dev
-RUN CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/finish06/drug-gate/internal/version.Version=${VERSION}" -o /server ./cmd/server
+ARG GIT_COMMIT=unknown
+ARG GIT_BRANCH=unknown
+RUN CGO_ENABLED=0 go build -ldflags="-s -w \
+  -X github.com/finish06/drug-gate/internal/version.Version=${VERSION} \
+  -X github.com/finish06/drug-gate/internal/version.GitCommit=${GIT_COMMIT} \
+  -X github.com/finish06/drug-gate/internal/version.GitBranch=${GIT_BRANCH}" \
+  -o /server ./cmd/server
 
 FROM alpine:3.21
 

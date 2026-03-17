@@ -51,6 +51,7 @@ REDIS_URL=localhost:6379 ADMIN_SECRET=your-secret make run
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check with version |
+| GET | `/version` | Build version, git commit, branch, Go version |
 | GET | `/metrics` | Prometheus metrics endpoint |
 | GET | `/swagger/*` | Swagger UI |
 | GET | `/openapi.json` | OpenAPI spec |

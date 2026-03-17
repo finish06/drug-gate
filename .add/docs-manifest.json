@@ -1,7 +1,7 @@
 {
   "$schema": "https://github.com/MountainUnicorn/add/docs-manifest.schema.json",
   "version": "1.0.0",
-  "generated": "2026-03-16T17:55:00Z",
+  "generated": "2026-03-16T22:25:00Z",
   "stack": {
     "language": "go",
     "framework": "chi",
@@ -31,6 +31,15 @@
       "path": "/health",
       "handler_file": "internal/handler/health.go",
       "handler_function": "HealthCheck",
+      "middleware": ["RequestLogger", "MetricsMiddleware"],
+      "tags": ["public"],
+      "response_model": null
+    },
+    {
+      "method": "GET",
+      "path": "/version",
+      "handler_file": "internal/handler/version.go",
+      "handler_function": "VersionInfo",
       "middleware": ["RequestLogger", "MetricsMiddleware"],
       "tags": ["public"],
       "response_model": null
@@ -405,6 +414,7 @@
   "flows": {
     "documented": [
       "GET /health",
+      "GET /version",
       "GET /metrics",
       "GET /swagger/*",
       "GET /openapi.json",
@@ -429,7 +439,7 @@
     "stale": []
   },
   "fingerprints": {
-    "cmd/server/main.go": "7f3f50269dcfaed51c40b38b0b9cbf74ea43fbf7bb61f1beb53653b45fef72f2",
+    "cmd/server/main.go": "511dc5476a94149932c783d9874539532b3f4f5ce2a6967bbd59ae743f5c8e0f",
     "internal/handler/drug.go": "4d948741527f8b8dcadc06b9e8b4e1131dc7f644de8b6e3349a3906d834586f6",
     "internal/handler/drugclass.go": "98af2eaa2d76680cf1e15549a039ec93485821d0a772c9a143fd9be3532c8ca5",
     "internal/handler/drugclasses.go": "611ad8e62068ac354784a1fc7e12e4bbd98c1d10fc97ec6b63591b3b242346b2",
@@ -452,6 +462,7 @@
     "internal/handler/rxnorm.go": "91d1f8051221439801e5985164818fe53fef1449f792092b91cbb65df7c14b28",
     "internal/model/rxnorm.go": "3affefc40dfe7009ce897d33cfd61b2688794992bbc53619471625108a69cbe9",
     "internal/service/rxnorm.go": "f3b608aa485c1634007426b5413f7af3fd36a76ab276a7da587394678f25c38f",
-    "internal/handler/cache.go": "f9a736eef0fdca8f73e9627b07c18c6afb7ed513461aa6439e92061c519d3efa"
+    "internal/handler/cache.go": "f9a736eef0fdca8f73e9627b07c18c6afb7ed513461aa6439e92061c519d3efa",
+    "internal/handler/version.go": "8d0161d79ba538a6b5e9c495bb0ca453c42825a4c62aa0dc54a986edf2795c5e"
   }
 }

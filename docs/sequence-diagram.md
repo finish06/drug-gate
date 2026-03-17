@@ -732,6 +732,7 @@ sequenceDiagram
 | Method | Path | Auth | Handler | Description |
 |--------|------|------|---------|-------------|
 | GET | `/health` | None | `HealthCheck` | Service health + version |
+| GET | `/version` | None | `VersionInfo` | Build version, git commit, branch, Go version |
 | GET | `/metrics` | None | `promhttp.Handler` | Prometheus metrics endpoint |
 | GET | `/swagger/*` | None | `httpSwagger.WrapHandler` | Swagger UI |
 | GET | `/openapi.json` | None | `OpenAPIJSON` | OpenAPI spec JSON |

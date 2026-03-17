@@ -769,6 +769,29 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/version": {
+            "get": {
+                "description": "Returns build version, git commit, git branch, and Go runtime version.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Build version info",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {

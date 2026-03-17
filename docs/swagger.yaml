@@ -727,4 +727,19 @@ paths:
       summary: Search drugs by name (RxNorm)
       tags:
       - rxnorm
+  /version:
+    get:
+      description: Returns build version, git commit, git branch, and Go runtime version.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Build version info
+      tags:
+      - public
 swagger: "2.0"
