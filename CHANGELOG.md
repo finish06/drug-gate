@@ -7,10 +7,19 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added
+- `GET /version` endpoint — returns build version, git commit, git branch, Go version (public, no auth)
+- Build-time injection of `GIT_COMMIT` and `GIT_BRANCH` via Dockerfile and CI ldflags
+- RxNorm E2E tests (search, profile, NDCs, related, validation, not-found)
+- Admin cache clear E2E test
+- Version endpoint E2E test
+
 ### Fixed
 - RxNorm client JSON parsing aligned with cash-drugs response shapes (cash-drugs flattens nested RxNorm structures into `data[]`)
+- RxNorm scores parsed as floats (upstream sends `"14.335"`, not integers) — fixes broken candidate ranking
+- Nameless RxNorm candidates (MMSL source) filtered out of search results
 
-### Added
+### Previously Added
 - RxNorm integration: 5 new endpoints under `/v1/drugs/rxnorm/`
   - `GET /search?name=` — approximate match drug search (top 5 candidates + spelling suggestions)
   - `GET /profile?name=` — unified drug profile (RxCUI, generics, NDCs, brand names, related concepts)
