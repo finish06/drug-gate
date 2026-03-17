@@ -95,7 +95,9 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M2: Security & Rate Limiting | Auth + rate control | alpha | DONE | API key auth, per-key rate limits via Redis |
 | M3: Extended Lookups | Filterable drug name, class, and drugs-by-class listings with lazy Redis caching | beta | DONE | Paginated data APIs serving frontend tools from cached cash-drugs data |
 | M3.5: Observability | Prometheus metrics, Redis health collector, container system metrics | alpha | DONE | /metrics endpoint, HTTP/cache/auth/rate-limit counters, Redis + system background collectors |
-| M4: Interactions & RxNorm | SPL interactions, RxNorm integration | beta | LATER | Clinical data accessible via API |
+| M4: RxNorm Integration | RxNorm drug search, profiles, NDCs, generics, related concepts | beta | DONE | 5 RxNorm endpoints, Redis caching, 42 tests |
+| M4.5: SPL Interactions | Drug interactions via SPL data | beta | LATER | Clinical interaction data accessible via API |
+| M5: Polish & Quality | Version endpoint, RxNorm E2E tests, admin cache clear | beta | NOW | /version endpoint, E2E coverage for RxNorm, staging validation |
 
 ### Milestone Detail
 
