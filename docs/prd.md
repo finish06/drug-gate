@@ -1,6 +1,6 @@
 # drug-gate — Product Requirements Document
 
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Created:** 2026-03-07
 **Author:** calebdunn
 **Status:** Draft
@@ -43,8 +43,8 @@ Frontend applications need access to drug information (names, therapeutic classe
 ### Out of Scope
 
 - Therapy options by drug class (future)
-- Drug interactions via SPL data (future)
-- RxNorm data integration (future)
+- ~~Drug interactions via SPL data~~ → **Now in scope (M6)**
+- ~~RxNorm data integration~~ → **Now in scope (M4, DONE)**
 - Direct querying of DailyMed or FDA APIs (cash-drugs handles this)
 - User management / registration (API keys provisioned externally for now)
 - Frontend UI
@@ -85,7 +85,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 
 ## 6. Milestones & Roadmap
 
-### Current Maturity: Alpha
+### Current Maturity: Beta (promoted 2026-03-17)
 
 ### Roadmap
 
@@ -96,7 +96,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M3: Extended Lookups | Filterable drug name, class, and drugs-by-class listings with lazy Redis caching | beta | DONE | Paginated data APIs serving frontend tools from cached cash-drugs data |
 | M3.5: Observability | Prometheus metrics, Redis health collector, container system metrics | alpha | DONE | /metrics endpoint, HTTP/cache/auth/rate-limit counters, Redis + system background collectors |
 | M4: RxNorm Integration | RxNorm drug search, profiles, NDCs, generics, related concepts | beta | DONE | 5 RxNorm endpoints, Redis caching, 42 tests |
-| M4.5: SPL Interactions | Drug interactions via SPL data | beta | LATER | Clinical interaction data accessible via API |
+| M6: SPL Interactions | SPL browser, drug info cards, multi-drug interaction checker with XML parsing | beta | IN_PROGRESS | 4 SPL endpoints, background indexer, E2E tests, 80%+ coverage |
 | M5: Polish & Quality | Version endpoint, RxNorm E2E tests, admin cache clear | beta | DONE | /version endpoint, 33 E2E tests passing, staging auto-deploy, 87.4% coverage |
 
 ### Milestone Detail
@@ -222,11 +222,38 @@ Frontend apps need to understand how drug data connects. There are three indepen
 - [x] Cache expires after 60 minutes of inactivity
 - [x] Upstream errors return 502 with clear message
 
+#### M6: SPL Interactions [IN_PROGRESS]
+**Goal:** Expose drug interaction data from FDA Structured Product Labels (SPL) via three complementary APIs
+**Appetite:** 1 week
+**Target maturity:** beta
+
+**SPL data model:**
+```
+Drug Name → spls-by-name → SPL metadata (title, setid, version)
+                               ↓
+SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
+```
+
+**Features:**
+- SPL document browser (`GET /v1/drugs/spls`, `GET /v1/drugs/spls/{setid}`)
+- Drug info card with interactions (`GET /v1/drugs/info`)
+- Multi-drug interaction checker (`POST /v1/drugs/interactions`)
+- Background indexer for pre-caching popular drug interactions
+
+**Success criteria:**
+- [x] SPL document search by drug name returns metadata
+- [x] SPL detail endpoint returns parsed Section 7 from XML
+- [x] Drug info card returns SPL metadata + interaction sections
+- [x] Multi-drug interaction checker cross-references 2-10 drugs
+- [ ] Background indexer pre-fetches popular drug interactions
+- [x] All endpoints authenticated, rate-limited, and cached
+- [x] 80%+ test coverage on new code
+
 ### Maturity Promotion Path
 
 | From | To | Requirements |
 |------|-----|-------------|
-| alpha → beta | Feature specs for all endpoints, 50%+ coverage, PR workflow active, TDD evidence |
+| alpha → beta | Feature specs for all endpoints, 50%+ coverage, PR workflow active, TDD evidence | **PROMOTED 2026-03-17** (10/10 evidence) |
 | beta → ga | 30+ days production stability, SLAs defined, 80%+ coverage, full CI/CD pipeline |
 
 ## 7. Key Features
@@ -296,3 +323,4 @@ Single tier for MVP or multiple from the start? Consider:
 |------|---------|--------|---------|
 | 2026-03-07 | 0.1.0 | calebdunn | Initial draft from /add:init interview |
 | 2026-03-07 | 0.2.0 | calebdunn | Auth decision: publishable API keys (frontend-safe). Added Future Discovery section. |
+| 2026-03-18 | 0.3.0 | calebdunn | Beta promotion. M6 SPL Interactions added. RxNorm and SPL moved from out-of-scope to done/in-progress. |

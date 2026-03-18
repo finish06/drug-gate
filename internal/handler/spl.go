@@ -32,6 +32,18 @@ func NewSPLHandler(svc SPLDataService) *SPLHandler {
 }
 
 // HandleSearchSPLs handles GET /v1/drugs/spls?name={name}.
+//
+// @Summary      Search SPL documents
+// @Description  Search Structured Product Labels by drug name. Returns paginated SPL metadata from DailyMed.
+// @Tags         spl
+// @Produce      json
+// @Param        name   query  string  true   "Drug name to search"
+// @Param        page   query  int     false  "Page number (default: 1)"
+// @Param        limit  query  int     false  "Results per page (default: 20, max: 100)"
+// @Success      200  {object}  model.PaginatedResponse
+// @Failure      400  {object}  model.ErrorResponse  "Missing name parameter"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Router       /v1/drugs/spls [get]
 func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if name == "" {
@@ -66,6 +78,16 @@ func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleSPLDetail handles GET /v1/drugs/spls/{setid}.
+//
+// @Summary      Get SPL detail with interactions
+// @Description  Retrieve SPL metadata and parsed Drug Interactions (Section 7) from the SPL XML document.
+// @Tags         spl
+// @Produce      json
+// @Param        setid  path  string  true  "SPL set ID (UUID format)"
+// @Success      200  {object}  model.SPLDetail
+// @Failure      404  {object}  model.ErrorResponse  "SPL not found"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Router       /v1/drugs/spls/{setid} [get]
 func (h *SPLHandler) HandleSPLDetail(w http.ResponseWriter, r *http.Request) {
 	setID := chi.URLParam(r, "setid")
 	if setID == "" {
@@ -93,6 +115,18 @@ func (h *SPLHandler) HandleSPLDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleDrugInfo handles GET /v1/drugs/info?name={name} or ?ndc={ndc}.
+//
+// @Summary      Drug info card with interactions
+// @Description  Look up a single drug by name or NDC and return SPL metadata plus parsed interaction sections. NDC is normalized and resolved to drug name internally.
+// @Tags         spl
+// @Produce      json
+// @Param        name  query  string  false  "Drug name"
+// @Param        ndc   query  string  false  "NDC code (any format)"
+// @Success      200  {object}  model.DrugInfoResponse
+// @Failure      400  {object}  model.ErrorResponse  "Missing name or ndc"
+// @Failure      404  {object}  model.ErrorResponse  "NDC not found"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Router       /v1/drugs/info [get]
 func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	ndcParam := r.URL.Query().Get("ndc")
@@ -161,6 +195,17 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleCheckInteractions handles POST /v1/drugs/interactions.
+//
+// @Summary      Check drug interactions
+// @Description  Submit 2-10 drug identifiers (name or NDC) and get cross-referenced interaction warnings from FDA SPL labels. Each drug's Section 7 is searched for mentions of the other drugs.
+// @Tags         spl
+// @Accept       json
+// @Produce      json
+// @Param        body  body  model.InteractionCheckRequest  true  "Drug identifiers to check"
+// @Success      200  {object}  model.InteractionCheckResponse
+// @Failure      400  {object}  model.ErrorResponse  "Too few/many drugs or invalid input"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Router       /v1/drugs/interactions [post]
 func (h *SPLHandler) HandleCheckInteractions(w http.ResponseWriter, r *http.Request) {
 	var req model.InteractionCheckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
