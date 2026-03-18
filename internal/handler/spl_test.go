@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/finish06/drug-gate/internal/client"
@@ -24,6 +25,8 @@ type mockSPLService struct {
 	interErr      error
 	resolvedName  string
 	resolveErr    error
+	checkResp     *model.InteractionCheckResponse
+	checkErr      error
 }
 
 func (m *mockSPLService) SearchSPLs(_ context.Context, _ string, _, _ int) ([]model.SPLEntry, int, error) {
@@ -40,6 +43,10 @@ func (m *mockSPLService) GetInteractionsForDrug(_ context.Context, _ string) (*m
 
 func (m *mockSPLService) ResolveDrugNameFromNDC(_ context.Context, _ string) (string, error) {
 	return m.resolvedName, m.resolveErr
+}
+
+func (m *mockSPLService) CheckInteractions(_ context.Context, _ []model.DrugIdentifier) (*model.InteractionCheckResponse, error) {
+	return m.checkResp, m.checkErr
 }
 
 func TestSPLHandler_SearchSPLs_Success(t *testing.T) {
@@ -273,5 +280,98 @@ func TestSPLHandler_DrugInfo_NoSPL(t *testing.T) {
 	}
 	if len(resp.Interactions) != 0 {
 		t.Errorf("interactions should be empty, got %d", len(resp.Interactions))
+	}
+}
+
+// --- Interaction Checker Tests ---
+
+func TestSPLHandler_CheckInteractions_Success(t *testing.T) {
+	svc := &mockSPLService{
+		checkResp: &model.InteractionCheckResponse{
+			Drugs: []model.DrugCheckResult{
+				{InputName: "warfarin", InputType: "name", ResolvedName: "warfarin", HasInteractions: true},
+				{InputName: "aspirin", InputType: "name", ResolvedName: "aspirin", HasInteractions: true},
+			},
+			Interactions: []model.InteractionMatch{
+				{DrugA: "warfarin", DrugB: "aspirin", Source: "warfarin", SectionTitle: "7.3 Bleeding Risk"},
+			},
+			CheckedPairs:      1,
+			FoundInteractions: 1,
+		},
+	}
+	h := NewSPLHandler(svc)
+
+	body := `{"drugs":[{"name":"warfarin"},{"name":"aspirin"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/drugs/interactions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	h.HandleCheckInteractions(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var resp model.InteractionCheckResponse
+	_ = json.NewDecoder(w.Body).Decode(&resp)
+	if resp.FoundInteractions != 1 {
+		t.Errorf("found_interactions = %d, want 1", resp.FoundInteractions)
+	}
+	if resp.CheckedPairs != 1 {
+		t.Errorf("checked_pairs = %d, want 1", resp.CheckedPairs)
+	}
+}
+
+func TestSPLHandler_CheckInteractions_TooFewDrugs(t *testing.T) {
+	h := NewSPLHandler(&mockSPLService{})
+
+	body := `{"drugs":[{"name":"warfarin"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/drugs/interactions", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	h.HandleCheckInteractions(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestSPLHandler_CheckInteractions_TooManyDrugs(t *testing.T) {
+	h := NewSPLHandler(&mockSPLService{})
+
+	drugs := make([]string, 11)
+	for i := range drugs {
+		drugs[i] = `{"name":"drug` + string(rune('a'+i)) + `"}`
+	}
+	body := `{"drugs":[` + strings.Join(drugs, ",") + `]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/drugs/interactions", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	h.HandleCheckInteractions(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestSPLHandler_CheckInteractions_InvalidBody(t *testing.T) {
+	h := NewSPLHandler(&mockSPLService{})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/drugs/interactions", strings.NewReader("not json"))
+	w := httptest.NewRecorder()
+	h.HandleCheckInteractions(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestSPLHandler_CheckInteractions_MissingDrugIdentifier(t *testing.T) {
+	h := NewSPLHandler(&mockSPLService{})
+
+	body := `{"drugs":[{"name":"warfarin"},{}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/drugs/interactions", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	h.HandleCheckInteractions(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
 	}
 }

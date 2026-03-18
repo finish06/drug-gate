@@ -139,6 +139,7 @@ func main() {
 		r.Get("/drugs/spls", splHandler.HandleSearchSPLs)
 		r.Get("/drugs/spls/{setid}", splHandler.HandleSPLDetail)
 		r.Get("/drugs/info", splHandler.HandleDrugInfo)
+		r.Post("/drugs/interactions", splHandler.HandleCheckInteractions)
 		r.Get("/drugs/rxnorm/search", rxnormHandler.HandleSearch)
 		r.Get("/drugs/rxnorm/profile", rxnormHandler.HandleProfile)
 		r.Get("/drugs/rxnorm/{rxcui}/ndcs", rxnormHandler.HandleNDCs)

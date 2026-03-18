@@ -11,7 +11,7 @@ import (
 	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/metrics"
 	"github.com/finish06/drug-gate/internal/model"
-	"github.com/finish06/drug-gate/internal/spl"
+	splpkg "github.com/finish06/drug-gate/internal/spl"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -203,6 +203,130 @@ func (s *SPLService) ResolveDrugNameFromNDC(ctx context.Context, ndc string) (st
 	return result.GenericName, nil
 }
 
+// CheckInteractions resolves multiple drugs and cross-references their interaction sections.
+func (s *SPLService) CheckInteractions(ctx context.Context, drugs []model.DrugIdentifier) (*model.InteractionCheckResponse, error) {
+	type resolvedDrug struct {
+		result  model.DrugCheckResult
+		detail  *model.SPLDetail
+	}
+
+	resolved := make([]resolvedDrug, len(drugs))
+
+	// Phase 1: Resolve all drugs and fetch their interaction data
+	for i, d := range drugs {
+		var drugName, inputName, inputType string
+
+		if d.NDC != "" {
+			inputType = "ndc"
+			inputName = d.NDC
+			name, err := s.ResolveDrugNameFromNDC(ctx, d.NDC)
+			if err != nil {
+				resolved[i] = resolvedDrug{
+					result: model.DrugCheckResult{
+						InputName: inputName, InputType: inputType,
+						Error: err.Error(),
+					},
+				}
+				continue
+			}
+			drugName = name
+		} else {
+			inputType = "name"
+			inputName = d.Name
+			drugName = d.Name
+		}
+
+		detail, err := s.GetInteractionsForDrug(ctx, drugName)
+		if err != nil {
+			resolved[i] = resolvedDrug{
+				result: model.DrugCheckResult{
+					InputName: inputName, InputType: inputType, ResolvedName: drugName,
+					Error: err.Error(),
+				},
+			}
+			continue
+		}
+
+		hasInteractions := detail != nil && len(detail.Interactions) > 0
+		setID := ""
+		if detail != nil {
+			setID = detail.SetID
+		}
+
+		resolved[i] = resolvedDrug{
+			result: model.DrugCheckResult{
+				InputName:       inputName,
+				InputType:       inputType,
+				ResolvedName:    drugName,
+				HasInteractions: hasInteractions,
+				SPLSetID:        setID,
+			},
+			detail: detail,
+		}
+	}
+
+	// Phase 2: Cross-reference all pairs
+	var matches []model.InteractionMatch
+	checkedPairs := 0
+
+	for i := 0; i < len(resolved); i++ {
+		for j := i + 1; j < len(resolved); j++ {
+			a := resolved[i]
+			b := resolved[j]
+
+			// Skip if either drug failed to resolve
+			if a.result.Error != "" || b.result.Error != "" {
+				continue
+			}
+			// Skip self-pair (same resolved name)
+			if strings.EqualFold(a.result.ResolvedName, b.result.ResolvedName) {
+				continue
+			}
+
+			checkedPairs++
+
+			// Check A's sections for mentions of B
+			xrefs := splpkg.CrossReference(a.result.ResolvedName, a.detail, b.result.ResolvedName)
+			for _, xr := range xrefs {
+				matches = append(matches, model.InteractionMatch{
+					DrugA:        xr.DrugA,
+					DrugB:        xr.DrugB,
+					Source:       xr.Source,
+					SectionTitle: xr.SectionTitle,
+					Text:         xr.Text,
+					SPLSetID:     xr.SPLSetID,
+				})
+			}
+
+			// Check B's sections for mentions of A
+			xrefs = splpkg.CrossReference(b.result.ResolvedName, b.detail, a.result.ResolvedName)
+			for _, xr := range xrefs {
+				matches = append(matches, model.InteractionMatch{
+					DrugA:        xr.DrugA,
+					DrugB:        xr.DrugB,
+					Source:       xr.Source,
+					SectionTitle: xr.SectionTitle,
+					Text:         xr.Text,
+					SPLSetID:     xr.SPLSetID,
+				})
+			}
+		}
+	}
+
+	// Build response
+	drugResults := make([]model.DrugCheckResult, len(resolved))
+	for i, r := range resolved {
+		drugResults[i] = r.result
+	}
+
+	return &model.InteractionCheckResponse{
+		Drugs:             drugResults,
+		Interactions:      matches,
+		CheckedPairs:      checkedPairs,
+		FoundInteractions: len(matches),
+	}, nil
+}
+
 // fetchAndParseInteractions fetches SPL XML and parses Section 7.
 func (s *SPLService) fetchAndParseInteractions(ctx context.Context, setID string) ([]model.InteractionSection, error) {
 	xmlData, err := s.splClient.FetchSPLXML(ctx, setID)
@@ -212,7 +336,7 @@ func (s *SPLService) fetchAndParseInteractions(ctx context.Context, setID string
 	if xmlData == nil {
 		return []model.InteractionSection{}, nil
 	}
-	return spl.ParseInteractions(xmlData), nil
+	return splpkg.ParseInteractions(xmlData), nil
 }
 
 // paginate returns a slice of SPLEntry for the given limit/offset.

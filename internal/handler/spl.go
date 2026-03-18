@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/finish06/drug-gate/internal/client"
@@ -17,6 +18,7 @@ type SPLDataService interface {
 	GetSPLDetail(ctx context.Context, setID string) (*model.SPLDetail, error)
 	GetInteractionsForDrug(ctx context.Context, drugName string) (*model.SPLDetail, error)
 	ResolveDrugNameFromNDC(ctx context.Context, ndc string) (string, error)
+	CheckInteractions(ctx context.Context, drugs []model.DrugIdentifier) (*model.InteractionCheckResponse, error)
 }
 
 // SPLHandler handles SPL-related requests.
@@ -152,6 +154,45 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 		resp.Interactions = detail.Interactions
 	} else {
 		resp.Interactions = []model.InteractionSection{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// HandleCheckInteractions handles POST /v1/drugs/interactions.
+func (h *SPLHandler) HandleCheckInteractions(w http.ResponseWriter, r *http.Request) {
+	var req model.InteractionCheckRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", "Request body must be valid JSON with a 'drugs' array")
+		return
+	}
+
+	if len(req.Drugs) < 2 {
+		writeError(w, http.StatusBadRequest, "too_few_drugs", "At least 2 drugs are required")
+		return
+	}
+	if len(req.Drugs) > 10 {
+		writeError(w, http.StatusBadRequest, "too_many_drugs", "Maximum 10 drugs per request")
+		return
+	}
+
+	// Validate each drug has at least name or ndc
+	for i, d := range req.Drugs {
+		if d.Name == "" && d.NDC == "" {
+			writeError(w, http.StatusBadRequest, "invalid_drug", fmt.Sprintf("Drug at index %d must have 'name' or 'ndc'", i))
+			return
+		}
+	}
+
+	resp, err := h.svc.CheckInteractions(r.Context(), req.Drugs)
+	if err != nil {
+		if errors.Is(err, client.ErrUpstream) {
+			writeError(w, http.StatusBadGateway, "upstream_error", "Unable to reach drug data service")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "Unexpected error")
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
