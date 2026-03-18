@@ -280,6 +280,169 @@ func TestSPLService_ResolveDrugNameFromNDC_NotFound(t *testing.T) {
 	}
 }
 
+func TestSPLService_CheckInteractions_FoundMatch(t *testing.T) {
+	_, rdb := setupSPLRedis(t)
+	sc := &mockSPLClient{
+		splsByNameFn: func(name string) ([]client.SPLEntryRaw, error) {
+			return []client.SPLEntryRaw{
+				{Title: name + " LABEL", SetID: "id-" + name, SPLVersion: 1},
+			}, nil
+		},
+		splXML: []byte(`<document>
+			<section><title>7 DRUG INTERACTIONS</title><text>Aspirin increases bleeding risk with warfarin.</text></section>
+		</document>`),
+	}
+	svc := NewSPLService(sc, nil, rdb)
+
+	resp, err := svc.CheckInteractions(context.Background(), []model.DrugIdentifier{
+		{Name: "warfarin"},
+		{Name: "aspirin"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.CheckedPairs != 1 {
+		t.Errorf("checked_pairs = %d, want 1", resp.CheckedPairs)
+	}
+	if len(resp.Drugs) != 2 {
+		t.Errorf("drugs = %d, want 2", len(resp.Drugs))
+	}
+	// Both drugs have the same XML which mentions "aspirin" and "warfarin"
+	if resp.FoundInteractions == 0 {
+		t.Error("expected at least 1 interaction match")
+	}
+}
+
+func TestSPLService_CheckInteractions_NoMatch(t *testing.T) {
+	_, rdb := setupSPLRedis(t)
+	sc := &mockSPLClient{
+		splsByNameFn: func(name string) ([]client.SPLEntryRaw, error) {
+			return []client.SPLEntryRaw{
+				{Title: name + " LABEL", SetID: "id-" + name, SPLVersion: 1},
+			}, nil
+		},
+		splXML: []byte(`<document>
+			<section><title>7 DRUG INTERACTIONS</title><text>No known drug interactions.</text></section>
+		</document>`),
+	}
+	svc := NewSPLService(sc, nil, rdb)
+
+	resp, err := svc.CheckInteractions(context.Background(), []model.DrugIdentifier{
+		{Name: "metformin"},
+		{Name: "lisinopril"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.FoundInteractions != 0 {
+		t.Errorf("expected 0 interactions, got %d", resp.FoundInteractions)
+	}
+	if resp.CheckedPairs != 1 {
+		t.Errorf("checked_pairs = %d, want 1", resp.CheckedPairs)
+	}
+}
+
+func TestSPLService_CheckInteractions_DrugWithNoSPL(t *testing.T) {
+	_, rdb := setupSPLRedis(t)
+	callCount := 0
+	sc := &mockSPLClient{
+		splsByNameFn: func(name string) ([]client.SPLEntryRaw, error) {
+			callCount++
+			if name == "warfarin" {
+				return []client.SPLEntryRaw{
+					{Title: "WARFARIN LABEL", SetID: "war-id", SPLVersion: 1},
+				}, nil
+			}
+			return nil, nil // no SPL for other drug
+		},
+		splXML: []byte(`<document>
+			<section><title>7 DRUG INTERACTIONS</title><text>aspirin increases risk.</text></section>
+		</document>`),
+	}
+	svc := NewSPLService(sc, nil, rdb)
+
+	resp, err := svc.CheckInteractions(context.Background(), []model.DrugIdentifier{
+		{Name: "warfarin"},
+		{Name: "obscuredrug"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// obscuredrug should have HasInteractions: false
+	found := false
+	for _, d := range resp.Drugs {
+		if d.ResolvedName == "obscuredrug" && !d.HasInteractions {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected obscuredrug to have HasInteractions=false")
+	}
+}
+
+func TestSPLService_CheckInteractions_WithNDC(t *testing.T) {
+	_, rdb := setupSPLRedis(t)
+	dc := &mockClient{
+		ndcResult: &client.DrugResult{GenericName: "atorvastatin"},
+	}
+	sc := &mockSPLClient{
+		splsByNameFn: func(name string) ([]client.SPLEntryRaw, error) {
+			return []client.SPLEntryRaw{
+				{Title: name + " LABEL", SetID: "id-" + name, SPLVersion: 1},
+			}, nil
+		},
+		splXML: []byte(`<document>
+			<section><title>7 DRUG INTERACTIONS</title><text>No major interactions.</text></section>
+		</document>`),
+	}
+	svc := NewSPLService(sc, dc, rdb)
+
+	resp, err := svc.CheckInteractions(context.Background(), []model.DrugIdentifier{
+		{Name: "warfarin"},
+		{NDC: "0071-0155-23"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// NDC should resolve to atorvastatin
+	found := false
+	for _, d := range resp.Drugs {
+		if d.InputType == "ndc" && d.ResolvedName == "atorvastatin" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected NDC to resolve to atorvastatin")
+	}
+}
+
+func TestSPLService_CheckInteractions_SameDrugSkipped(t *testing.T) {
+	_, rdb := setupSPLRedis(t)
+	sc := &mockSPLClient{
+		splsByNameFn: func(name string) ([]client.SPLEntryRaw, error) {
+			return []client.SPLEntryRaw{
+				{Title: name + " LABEL", SetID: "id-" + name, SPLVersion: 1},
+			}, nil
+		},
+		splXML: []byte(`<document>
+			<section><title>7 DRUG INTERACTIONS</title><text>warfarin interactions.</text></section>
+		</document>`),
+	}
+	svc := NewSPLService(sc, nil, rdb)
+
+	resp, err := svc.CheckInteractions(context.Background(), []model.DrugIdentifier{
+		{Name: "warfarin"},
+		{Name: "warfarin"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Same drug pair should be skipped
+	if resp.CheckedPairs != 0 {
+		t.Errorf("checked_pairs = %d, want 0 (same drug)", resp.CheckedPairs)
+	}
+}
+
 func TestPaginate_OffsetBeyondLength(t *testing.T) {
 	entries := []model.SPLEntry{{Title: "A"}, {Title: "B"}}
 	result := paginate(entries, 10, 100)
