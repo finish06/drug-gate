@@ -1,32 +1,26 @@
 # Away Mode Log
 
-**Started:** 2026-03-16 22:30
-**Expected Return:** 2026-03-17 10:30
-**Duration:** 12 hours
+**Started:** 2026-03-17
+**Expected Return:** 2026-03-18
+**Duration:** 24 hours
 
 ## Work Plan
-1. Update PRD — mark M5 as DONE
-2. Update handoff with full session summary
-3. Update docs manifest fingerprints
-4. Alpha → beta promotion evidence scan
-5. Commit housekeeping files
+1. Create feature branch `feature/m6-spl-interactions`
+2. Write SPL Browser plan + TDD cycle (specs/spl-browser.md, AC-001–AC-014)
+3. Write Drug Info Card plan + TDD cycle (specs/spl-drug-info.md, AC-001–AC-010)
+4. Write Interaction Checker plan + TDD cycle (specs/spl-interaction-checker.md, AC-001–AC-015)
+5. Background indexer skeleton (stretch)
+6. Run /add:verify, fix issues
+7. Create PR
 
 ## Progress Log
 | Time | Task | Status | Notes |
 |------|------|--------|-------|
-| 22:32 | PRD M5 status | Done | M5 → DONE with success criteria |
-| 22:33 | Docs manifest | Done | Fingerprints verified current (no changes needed) |
-| 22:35 | Promotion assessment | Done | 9/10 evidence score, gap: branch protection only |
-| 22:37 | Handoff | Done | Full session summary written |
-| 22:38 | Away log + commit | Done | All housekeeping committed |
-
-## Completed
-All planned work complete. PR open for review.
-Promotion assessment ready at `.add/promotion-assessment.md`.
-
-## Queued for Return
-1. Review promotion assessment → approve beta promotion
-2. Enable branch protection on main
-3. M4.5 SPL Interactions spec interview
-4. Production deployment (v0.5.1 tagged)
-5. Verify RxNorm scores on staging
+| 22:30 | Feature branch created | Done | feature/m6-spl-interactions |
+| 22:35 | SPL models | Done | internal/model/spl.go — all types for 3 specs |
+| 22:38 | SPL client | Done | internal/client/spl.go — 3 methods, 8 tests |
+| 22:40 | XML parser | Done | internal/spl/parser.go — Section 7 extraction, 5 tests |
+| 22:42 | SPL service | Done | internal/service/spl.go — Redis caching, 13 tests |
+| 22:44 | SPL handler | Done | internal/handler/spl.go — 3 endpoints, 11 tests |
+| 22:46 | Route wiring | Done | cmd/server/main.go — 3 new routes under /v1 |
+| 22:47 | Push | Done | 37 new tests, 0 lint issues, build succeeds |
