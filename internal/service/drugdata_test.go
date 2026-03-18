@@ -22,6 +22,8 @@ type mockClient struct {
 	drugClassesErr error
 	pharmResults   []client.DrugResult
 	pharmErr       error
+	ndcResult      *client.DrugResult
+	ndcErr         error
 
 	// call counters
 	fetchNamesCount   int
@@ -30,7 +32,7 @@ type mockClient struct {
 }
 
 func (m *mockClient) LookupByNDC(_ context.Context, _ string) (*client.DrugResult, error) {
-	return nil, nil
+	return m.ndcResult, m.ndcErr
 }
 func (m *mockClient) LookupByGenericName(_ context.Context, _ string) ([]client.DrugResult, error) {
 	return nil, nil
