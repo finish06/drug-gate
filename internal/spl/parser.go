@@ -8,8 +8,10 @@ import (
 )
 
 var (
-	// titleRe matches Section 7 titles: "7 DRUG INTERACTIONS", "7.1 General Information", etc.
-	titleRe = regexp.MustCompile(`<title>(7(?:\.\d+)?[^<]*)</title>`)
+	// titleRe matches Section 7 titles in both formats:
+	// - Numbered: "7 DRUG INTERACTIONS", "7.1 General Information", etc.
+	// - Unnumbered (older SPLs): "Drug Interactions" under PRECAUTIONS
+	titleRe = regexp.MustCompile(`<title>((?:7(?:\.\d+)?[^<]*)|(?:Drug Interactions[^<]*))</title>`)
 
 	// xmlTagRe strips all XML tags.
 	xmlTagRe = regexp.MustCompile(`<[^>]+>`)

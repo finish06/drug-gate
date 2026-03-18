@@ -154,6 +154,92 @@ func TestParseInteractions_OnlyMainSection(t *testing.T) {
 	}
 }
 
+func TestParseInteractions_OldFormatBareTitle(t *testing.T) {
+	// Older SPLs use "Drug Interactions" without section number (under PRECAUTIONS)
+	xml := `<document>
+  <section>
+    <title>PRECAUTIONS</title>
+    <text>General precautions text.</text>
+  </section>
+  <section>
+    <title>Drug Interactions</title>
+    <text>
+      Lisinopril may interact with potassium-sparing diuretics,
+      lithium, and non-steroidal anti-inflammatory agents.
+    </text>
+  </section>
+</document>`
+
+	sections := ParseInteractions([]byte(xml))
+	if len(sections) != 1 {
+		t.Fatalf("expected 1 section for old-format SPL, got %d", len(sections))
+	}
+	if sections[0].Title != "Drug Interactions" {
+		t.Errorf("title = %q, want %q", sections[0].Title, "Drug Interactions")
+	}
+	if !strings.Contains(sections[0].Text, "lithium") {
+		t.Error("expected text to contain 'lithium'")
+	}
+}
+
+func TestParseInteractions_OTCNoInteractions(t *testing.T) {
+	// OTC products like Tylenol typically have no drug interactions section
+	xml := `<document>
+  <section>
+    <title>ACTIVE INGREDIENT</title>
+    <text>Acetaminophen 500 mg</text>
+  </section>
+  <section>
+    <title>WARNINGS</title>
+    <text>Liver warning: This product contains acetaminophen.</text>
+  </section>
+  <section>
+    <title>DIRECTIONS</title>
+    <text>Adults: take 2 caplets every 6 hours.</text>
+  </section>
+</document>`
+
+	sections := ParseInteractions([]byte(xml))
+	if len(sections) != 0 {
+		t.Errorf("expected 0 sections for OTC product, got %d", len(sections))
+	}
+}
+
+func TestParseInteractions_TextBlockWithoutClosingTag(t *testing.T) {
+	// Malformed XML — <text> without </text>
+	xml := `<document>
+  <section>
+    <title>7 DRUG INTERACTIONS</title>
+    <text>This text block never closes
+  </section>
+</document>`
+
+	sections := ParseInteractions([]byte(xml))
+	// Should handle gracefully — skip the section
+	if len(sections) != 0 {
+		t.Errorf("expected 0 sections for malformed text block, got %d", len(sections))
+	}
+}
+
+func TestParseInteractions_MixedNumberedAndBare(t *testing.T) {
+	// Edge case: both formats in same document (shouldn't happen but be safe)
+	xml := `<document>
+  <section>
+    <title>7 DRUG INTERACTIONS</title>
+    <text>Numbered section summary.</text>
+  </section>
+  <section>
+    <title>Drug Interactions</title>
+    <text>Bare section content.</text>
+  </section>
+</document>`
+
+	sections := ParseInteractions([]byte(xml))
+	if len(sections) != 2 {
+		t.Fatalf("expected 2 sections, got %d", len(sections))
+	}
+}
+
 func TestCleanXMLText(t *testing.T) {
 	tests := []struct {
 		name string
