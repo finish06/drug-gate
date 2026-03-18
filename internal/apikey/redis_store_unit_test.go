@@ -17,8 +17,19 @@ func newTestStore(t *testing.T) *RedisStore {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	t.Cleanup(func() { client.Close() })
+	t.Cleanup(func() { _ = client.Close() })
 	return NewRedisStore(client)
+}
+
+// newTestStoreWithMini returns both store and miniredis for direct data manipulation.
+func newTestStoreWithMini(t *testing.T) (*RedisStore, *miniredis.Miniredis) {
+	t.Helper()
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{
+		Addr: mr.Addr(),
+	})
+	t.Cleanup(func() { _ = client.Close() })
+	return NewRedisStore(client), mr
 }
 
 func TestRedisStore_Create_StoresKeyWithPrefix(t *testing.T) {
@@ -341,6 +352,63 @@ func TestRedisStore_DeactivatedKey_StillRetrievable(t *testing.T) {
 	}
 	if fetched.AppName != "still-here" {
 		t.Errorf("expected AppName 'still-here', got %q", fetched.AppName)
+	}
+}
+
+func TestRedisStore_Get_CorruptData_ReturnsError(t *testing.T) {
+	store, mr := newTestStoreWithMini(t)
+	ctx := context.Background()
+
+	// Plant corrupt JSON directly in Redis
+	_ = mr.Set("apikey:pk_corrupt", "not-valid-json{{{")
+
+	_, err := store.Get(ctx, "pk_corrupt")
+	if err == nil {
+		t.Fatal("expected error for corrupt data, got nil")
+	}
+	if !strings.Contains(err.Error(), "unmarshal") {
+		t.Errorf("expected unmarshal error, got: %v", err)
+	}
+}
+
+func TestRedisStore_List_SkipsCorruptEntries(t *testing.T) {
+	store, mr := newTestStoreWithMini(t)
+	ctx := context.Background()
+
+	// Create one valid key
+	_, err := store.Create(ctx, "valid-app", nil, 10)
+	if err != nil {
+		t.Fatalf("Create() returned error: %v", err)
+	}
+
+	// Plant corrupt JSON directly
+	_ = mr.Set("apikey:pk_corrupt1", "bad-json")
+	_ = mr.Set("apikey:pk_corrupt2", "{invalid")
+
+	keys, err := store.List(ctx)
+	if err != nil {
+		t.Fatalf("List() returned error: %v", err)
+	}
+	// Should return only the valid key, skipping corrupt ones
+	if len(keys) != 1 {
+		t.Errorf("expected 1 valid key (corrupt skipped), got %d", len(keys))
+	}
+	if keys[0].AppName != "valid-app" {
+		t.Errorf("expected AppName 'valid-app', got %q", keys[0].AppName)
+	}
+}
+
+func TestRedisStore_GenerateKey_Uniqueness(t *testing.T) {
+	seen := make(map[string]bool)
+	for i := 0; i < 50; i++ {
+		key, err := GenerateKey()
+		if err != nil {
+			t.Fatalf("GenerateKey() #%d returned error: %v", i, err)
+		}
+		if seen[key] {
+			t.Fatalf("duplicate key generated: %q", key)
+		}
+		seen[key] = true
 	}
 }
 

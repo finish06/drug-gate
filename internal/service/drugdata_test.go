@@ -215,7 +215,7 @@ func TestGetDrugNames_CorruptCache_FetchesFresh(t *testing.T) {
 	defer mr.Close()
 
 	// Plant corrupt JSON in cache
-	mr.Set("cache:drugnames", "not valid json")
+	_ = mr.Set("cache:drugnames", "not valid json")
 
 	mc := &mockClient{
 		drugNames: []client.DrugNameRaw{
@@ -370,7 +370,7 @@ func TestGetDrugClasses_CorruptCache_FetchesFresh(t *testing.T) {
 	mr, rdb := setupRedis(t)
 	defer mr.Close()
 
-	mr.Set("cache:drugclasses", "{bad")
+	_ = mr.Set("cache:drugclasses", "{bad")
 
 	mc := &mockClient{
 		drugClasses: []client.DrugClassRaw{
@@ -467,12 +467,10 @@ func TestGetDrugsByClass_CacheKeyLowercased(t *testing.T) {
 
 	// Same class, different case — should hit cache
 	_, _ = svc.GetDrugsByClass(context.Background(), "BETA BLOCKER")
-	if mc.pharmClassCount != 2 {
-		// Note: the service lowercases the key but passes the original className
-		// to the upstream client. Different casing = different upstream call but
-		// same cache key. This is the current behavior.
-		// If both cases should share cache, the lookup needs to lowercase too.
-	}
+	// Note: the service lowercases the key but passes the original className
+	// to the upstream client. Different casing = different upstream call but
+	// same cache key. This is the current behavior.
+	_ = mc.pharmClassCount
 }
 
 func TestGetDrugsByClass_UpstreamError_Propagated(t *testing.T) {
@@ -508,7 +506,7 @@ func TestGetDrugsByClass_EmptyResult_CachedAsEmpty(t *testing.T) {
 	}
 
 	// Second call — should come from cache, not upstream
-	entries, err = svc.GetDrugsByClass(context.Background(), "Unknown Class")
+	_, err = svc.GetDrugsByClass(context.Background(), "Unknown Class")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -521,7 +519,7 @@ func TestGetDrugsByClass_CorruptCache_FetchesFresh(t *testing.T) {
 	mr, rdb := setupRedis(t)
 	defer mr.Close()
 
-	mr.Set("cache:drugsbyclass:statin", "corrupt!")
+	_ = mr.Set("cache:drugsbyclass:statin", "corrupt!")
 
 	mc := &mockClient{
 		pharmResults: []client.DrugResult{

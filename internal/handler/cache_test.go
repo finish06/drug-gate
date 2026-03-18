@@ -36,12 +36,12 @@ func TestCacheHandler_ClearAll(t *testing.T) {
 	r := cacheRouter(h)
 
 	// Populate cache keys
-	mr.Set("cache:drugnames", "data")
-	mr.Set("cache:drugclasses", "data")
-	mr.Set("cache:rxnorm:search:lipitor", "data")
+	_ = mr.Set("cache:drugnames", "data")
+	_ = mr.Set("cache:drugclasses", "data")
+	_ = mr.Set("cache:rxnorm:search:lipitor", "data")
 	// Non-cache keys — should survive
-	mr.Set("apikey:pk_abc123", "keydata")
-	mr.Set("ratelimit:pk_abc123", "limitdata")
+	_ = mr.Set("apikey:pk_abc123", "keydata")
+	_ = mr.Set("ratelimit:pk_abc123", "limitdata")
 
 	req := httptest.NewRequest(http.MethodDelete, "/admin/cache", nil)
 	w := httptest.NewRecorder()
@@ -52,7 +52,7 @@ func TestCacheHandler_ClearAll(t *testing.T) {
 	}
 
 	var resp cacheClearResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	_ = json.NewDecoder(w.Body).Decode(&resp)
 
 	if resp.Status != "ok" {
 		t.Errorf("status = %q, want %q", resp.Status, "ok")
@@ -79,10 +79,10 @@ func TestCacheHandler_ClearByPrefix(t *testing.T) {
 	mr, h := setupCacheTest(t)
 	r := cacheRouter(h)
 
-	mr.Set("cache:rxnorm:search:lipitor", "data")
-	mr.Set("cache:rxnorm:ndcs:153165", "data")
-	mr.Set("cache:drugnames", "data")
-	mr.Set("cache:drugclasses", "data")
+	_ = mr.Set("cache:rxnorm:search:lipitor", "data")
+	_ = mr.Set("cache:rxnorm:ndcs:153165", "data")
+	_ = mr.Set("cache:drugnames", "data")
+	_ = mr.Set("cache:drugclasses", "data")
 
 	req := httptest.NewRequest(http.MethodDelete, "/admin/cache?prefix=rxnorm", nil)
 	w := httptest.NewRecorder()
@@ -93,7 +93,7 @@ func TestCacheHandler_ClearByPrefix(t *testing.T) {
 	}
 
 	var resp cacheClearResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	_ = json.NewDecoder(w.Body).Decode(&resp)
 
 	if resp.KeysDeleted != 2 {
 		t.Errorf("keys_deleted = %d, want 2", resp.KeysDeleted)
@@ -126,7 +126,7 @@ func TestCacheHandler_ClearNoMatches(t *testing.T) {
 	}
 
 	var resp cacheClearResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	_ = json.NewDecoder(w.Body).Decode(&resp)
 
 	if resp.KeysDeleted != 0 {
 		t.Errorf("keys_deleted = %d, want 0", resp.KeysDeleted)
@@ -138,8 +138,8 @@ func TestCacheHandler_ClearEmptyPrefix(t *testing.T) {
 	mr, h := setupCacheTest(t)
 	r := cacheRouter(h)
 
-	mr.Set("cache:drugnames", "data")
-	mr.Set("cache:rxnorm:search:test", "data")
+	_ = mr.Set("cache:drugnames", "data")
+	_ = mr.Set("cache:rxnorm:search:test", "data")
 
 	req := httptest.NewRequest(http.MethodDelete, "/admin/cache?prefix=", nil)
 	w := httptest.NewRecorder()
@@ -150,7 +150,7 @@ func TestCacheHandler_ClearEmptyPrefix(t *testing.T) {
 	}
 
 	var resp cacheClearResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	_ = json.NewDecoder(w.Body).Decode(&resp)
 
 	if resp.KeysDeleted != 2 {
 		t.Errorf("keys_deleted = %d, want 2", resp.KeysDeleted)

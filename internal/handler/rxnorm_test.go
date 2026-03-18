@@ -71,7 +71,7 @@ func TestRxNormHandler_Search_HappyPath(t *testing.T) {
 	}
 
 	var result model.RxNormSearchResult
-	json.NewDecoder(w.Body).Decode(&result)
+	_ = json.NewDecoder(w.Body).Decode(&result)
 	if result.Query != "lipitor" {
 		t.Errorf("Query = %q, want %q", result.Query, "lipitor")
 	}
@@ -164,7 +164,7 @@ func TestRxNormHandler_NDCs_HappyPath(t *testing.T) {
 	}
 
 	var result model.RxNormNDCResponse
-	json.NewDecoder(w.Body).Decode(&result)
+	_ = json.NewDecoder(w.Body).Decode(&result)
 	if len(result.NDCs) != 1 {
 		t.Errorf("got %d NDCs, want 1", len(result.NDCs))
 	}
@@ -232,7 +232,7 @@ func TestRxNormHandler_Profile_HappyPath(t *testing.T) {
 	}
 
 	var result model.RxNormProfile
-	json.NewDecoder(w.Body).Decode(&result)
+	_ = json.NewDecoder(w.Body).Decode(&result)
 	if result.RxCUI != "153165" {
 		t.Errorf("RxCUI = %q, want %q", result.RxCUI, "153165")
 	}
