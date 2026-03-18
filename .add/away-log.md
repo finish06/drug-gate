@@ -24,3 +24,9 @@
 | 22:44 | SPL handler | Done | internal/handler/spl.go — 3 endpoints, 11 tests |
 | 22:46 | Route wiring | Done | cmd/server/main.go — 3 new routes under /v1 |
 | 22:47 | Push | Done | 37 new tests, 0 lint issues, build succeeds |
+| 22:50 | Cross-ref algorithm | Done | internal/spl/crossref.go — 7 tests |
+| 22:52 | Interaction checker service | Done | CheckInteractions method + 5 tests |
+| 22:54 | Interaction checker handler | Done | POST endpoint + 5 handler tests |
+| 22:55 | Route wiring | Done | POST /v1/drugs/interactions |
+| 22:56 | Coverage restoration | Done | 5 more service tests → 80.4% total |
+| 22:58 | PR created | Done | PR #12 — all 3 M6 features |

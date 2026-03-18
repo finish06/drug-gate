@@ -1,41 +1,35 @@
 # Session Handoff
-**Written:** 2026-03-16
+**Written:** 2026-03-17
 
 ## In Progress
-- None — all PRs merged, no open branches with uncommitted work
+- PR #12 open for review: `feat: M6 SPL Interactions — browser, drug info, interaction checker`
+- Branch: `feature/m6-spl-interactions`
 
 ## Completed This Session
-- Fixed `DrugClassRaw` JSON tags — root cause of empty `/v1/drugs/classes` (v0.4.1)
-- Added 15 E2E tests for M3 endpoints + fixed E2E config
-- RxNorm integration: 5 endpoints, client, service, handler, 42 tests (v0.5.0)
-- Fixed RxNorm client JSON parsing (cash-drugs flattens nested structures)
-- Fixed RxNorm score parsing (floats, not integers) + nameless candidate filtering
-- Code review findings addressed: 404 for unknown RxCUI, score logging, rxcui validation
-- `GET /version` endpoint with build-time ldflags (v0.5.1)
-- `DELETE /admin/cache` endpoint with SCAN-based prefix deletion
-- RxNorm E2E tests (6 tests, graceful upstream timeout handling)
-- Admin cache clear E2E test
-- Grafana dashboard JSON for all drug-gate metrics
-- Staging environment deployed (192.168.1.145:8082) with cron auto-deploy
-- Staging docs, environment docs consolidated
-- 33 E2E tests all passing
-- Coverage: 87.4%
-- Alpha → beta promotion assessment prepared (9/10 evidence score)
+- Beta maturity promotion (alpha → beta, 10/10 evidence score)
+- Branch protection enabled on main
+- M6 milestone created with 3 specs
+- SPL Document Browser — client, XML parser, service, handler, 22 tests
+- Drug Info Card — NDC resolution, info endpoint, 11 handler tests
+- Drug Interaction Checker — cross-reference algorithm, POST endpoint, 17 tests
+- All routes wired in main.go (4 new endpoints under /v1)
+- Lint fixes (20 errcheck) + apikey coverage tests from pre-cycle work
+- Coverage: 80.4%, 0 lint issues, all tests passing
+- PR #12 created
 
 ## Decisions Made
-- RxNorm is a separate client interface (not bolted onto DrugClient)
-- CacheHandler is separate from AdminHandler (different dependency: Redis vs apikey.Store)
-- Staging uses shared cron auto-pull (not Watchtower)
-- E2E tests accept 502/404 for upstream timeouts (FDA + RxNorm)
-- RxNorm scores truncated from float to int for ranking
-- M4 split into M4 (RxNorm, DONE) and M4.5 (SPL Interactions, LATER)
+- SPL client is separate interface (SPLClient, not bolted onto DrugClient) — follows RxNorm pattern
+- XML parsing uses regex, not full XML parser — SPL XML has namespace issues, regex is simpler and sufficient
+- `spls-by-class` endpoint deferred (unreliable, timeouts) — only spls-by-name used
+- Cross-reference uses word-boundary regex matching (case-insensitive)
+- Background indexer deferred to cycle-2 (all 3 features delivered instead)
 
 ## Blockers
 - None
 
 ## Next Steps
-1. Review alpha → beta promotion assessment (`.add/promotion-assessment.md`)
-2. Enable branch protection on main (30-second fix)
-3. M4.5 spec interview — SPL Interactions (needs human input)
-4. Production deployment planning (running :beta, tagged v0.5.1 available)
-5. Verify RxNorm search scores on staging (cron should have pulled fix)
+1. Review and merge PR #12
+2. Cycle-2: Background indexer for pre-fetching popular drug interactions
+3. E2E tests for SPL endpoints (against live cash-drugs)
+4. Update PRD roadmap (M4.5 → IN_PROGRESS, rename to M6)
+5. Consider Swagger/OpenAPI docs update for new endpoints
