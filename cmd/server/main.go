@@ -22,6 +22,7 @@ import (
 	"github.com/finish06/drug-gate/internal/middleware"
 	"github.com/finish06/drug-gate/internal/ratelimit"
 	"github.com/finish06/drug-gate/internal/service"
+	"github.com/finish06/drug-gate/internal/spl"
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -115,6 +116,10 @@ func main() {
 	splSvc := service.NewSPLService(splClient, drugClient, rdb, m)
 	splHandler := handler.NewSPLHandler(splSvc)
 
+	// Start background SPL interaction indexer
+	splIndexer := spl.NewIndexer(splClient, rdb, 24*time.Hour, 200)
+	splIndexer.Start()
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger)
 	r.Use(middleware.MetricsMiddleware(m))
@@ -179,6 +184,7 @@ func main() {
 	<-quit
 
 	slog.Info("shutting down")
+	splIndexer.Stop()
 	redisCollector.Stop()
 	if sysCollector != nil {
 		sysCollector.Stop()
