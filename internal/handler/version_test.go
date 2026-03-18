@@ -34,7 +34,7 @@ func TestVersionHandler_ReturnsAllFields(t *testing.T) {
 	}
 
 	var resp map[string]string
-	json.NewDecoder(w.Body).Decode(&resp)
+	_ = json.NewDecoder(w.Body).Decode(&resp)
 
 	if resp["version"] != "v0.5.0" {
 		t.Errorf("version = %q, want %q", resp["version"], "v0.5.0")
@@ -73,7 +73,7 @@ func TestVersionHandler_DefaultValues(t *testing.T) {
 	}
 
 	var resp map[string]string
-	json.NewDecoder(w.Body).Decode(&resp)
+	_ = json.NewDecoder(w.Body).Decode(&resp)
 
 	if resp["version"] != "dev" {
 		t.Errorf("version = %q, want %q", resp["version"], "dev")

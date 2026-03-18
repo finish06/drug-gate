@@ -44,7 +44,7 @@ func TestMetricsMiddleware_CounterIncrements(t *testing.T) {
 	r.Use(MetricsMiddleware(m))
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)

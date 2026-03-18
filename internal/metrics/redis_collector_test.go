@@ -22,7 +22,7 @@ func TestRedisCollector_HealthyRedis(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	m := NewMetrics(reg)
 	rdb := newTestRedisClient(mr.Addr())
-	defer rdb.Close()
+	defer rdb.Close() //nolint:errcheck
 
 	c := NewRedisCollector(rdb, m, 1*time.Second)
 	c.Start()
@@ -50,7 +50,7 @@ func TestRedisCollector_UnhealthyRedis(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	m := NewMetrics(reg)
 	rdb := newTestRedisClient(addr)
-	defer rdb.Close()
+	defer rdb.Close() //nolint:errcheck
 
 	// Close miniredis before creating collector to simulate unhealthy Redis
 	mr.Close()
@@ -75,7 +75,7 @@ func TestRedisCollector_Lifecycle(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	m := NewMetrics(reg)
 	rdb := newTestRedisClient(mr.Addr())
-	defer rdb.Close()
+	defer rdb.Close() //nolint:errcheck
 
 	c := NewRedisCollector(rdb, m, 50*time.Millisecond)
 	c.Start()
@@ -107,7 +107,7 @@ func TestRedisCollector_CollectsOnStart(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	m := NewMetrics(reg)
 	rdb := newTestRedisClient(mr.Addr())
-	defer rdb.Close()
+	defer rdb.Close() //nolint:errcheck
 
 	// Use a very long interval so only the immediate collect fires
 	c := NewRedisCollector(rdb, m, 1*time.Hour)
