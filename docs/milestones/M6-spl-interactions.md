@@ -9,35 +9,41 @@
 
 ## Success Criteria
 
-- [ ] SPL document search by drug name returns metadata (title, setid, published_date, spl_version)
-- [ ] SPL detail endpoint returns parsed Section 7 (Drug Interactions) text from XML
-- [ ] Drug info card endpoint returns SPL metadata + structured interaction sections
-- [ ] Multi-drug interaction checker accepts 2+ drug names/NDCs and returns cross-referenced warnings
+- [x] SPL document search by drug name returns metadata (title, setid, published_date, spl_version)
+- [x] SPL detail endpoint returns parsed Section 7 (Drug Interactions) text from XML
+- [x] Drug info card endpoint returns SPL metadata + structured interaction sections
+- [x] Multi-drug interaction checker accepts 2+ drug names/NDCs and returns cross-referenced warnings
 - [ ] Background indexer pre-fetches and caches parsed interaction data from popular drugs
-- [ ] All endpoints authenticated, rate-limited, and cached in Redis
-- [ ] 80%+ test coverage on new code
+- [x] All endpoints authenticated, rate-limited, and cached in Redis
+- [x] 80%+ test coverage on new code
 
 ## Hill Chart
 
 | Feature | Position | Notes |
 |---------|----------|-------|
-| SPL Document Browser | SHAPED | Spec needed, upstream endpoints discovered |
-| Drug Info Card | SHAPED | Spec needed, depends on XML parsing |
-| Drug Interaction Checker | SHAPED | Spec needed, depends on browser + card |
+| SPL Document Browser | VERIFIED | Merged in PR #12 — 22 tests |
+| Drug Info Card | VERIFIED | Merged in PR #12 — 11 tests |
+| Drug Interaction Checker | VERIFIED | Merged in PR #12 — 17 tests |
+| Background Indexer | SHAPED | Deferred to cycle-2 |
+| E2E Tests | SHAPED | Needed for cycle-2 |
 
 ## Features
 
 | Feature | Spec | Current Position | Target |
 |---------|------|-----------------|--------|
-| SPL Document Browser | specs/spl-browser.md | SHAPED | VERIFIED |
-| Drug Info Card with Interactions | specs/spl-drug-info.md | SHAPED | VERIFIED |
-| Drug Interaction Checker | specs/spl-interaction-checker.md | SHAPED | VERIFIED |
+| SPL Document Browser | specs/spl-browser.md | VERIFIED | VERIFIED |
+| Drug Info Card with Interactions | specs/spl-drug-info.md | VERIFIED | VERIFIED |
+| Drug Interaction Checker | specs/spl-interaction-checker.md | VERIFIED | VERIFIED |
+| Background Indexer | specs/spl-interaction-checker.md (section) | SHAPED | VERIFIED |
+| E2E Tests | — | SHAPED | VERIFIED |
 
 ## Dependencies
 
 - SPL Browser is foundational (client methods, models, caching)
 - Drug Info Card depends on Browser (XML parsing, Section 7 extraction)
 - Interaction Checker depends on both (cross-referencing logic)
+- Background Indexer depends on all 3 (uses existing service methods)
+- E2E tests depend on all endpoints being wired
 
 ## Risks
 
@@ -52,4 +58,5 @@
 
 | Cycle | Features | Status | Notes |
 |-------|----------|--------|-------|
-| cycle-1 | SPL Browser + Drug Info Card (specs, plans, TDD) | PLANNED | Overnight away session |
+| cycle-1 | SPL Browser + Drug Info Card + Interaction Checker | COMPLETE | All 3 features delivered in overnight away session. PR #12 merged. |
+| cycle-2 | Background Indexer + E2E Tests + Docs | PLANNED | TBD |
