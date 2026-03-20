@@ -1,52 +1,51 @@
 # Project Learnings — drug-gate
 
 > **Tier 3: Project-Specific Knowledge**
->
-> This file is maintained automatically by ADD agents. Entries are added at checkpoints
-> (after verify, TDD cycles, deployments, away sessions) and reviewed during retrospectives.
->
-> This is one of three knowledge tiers agents read before starting work:
-> 1. **Tier 1: Plugin-Global** (`knowledge/global.md`) — universal ADD best practices
-> 2. **Tier 2: User-Local** (`~/.claude/add/library.md`) — your cross-project wisdom
-> 3. **Tier 3: Project-Specific** (this file) — discoveries specific to this project
->
-> **Agents:** Read ALL three tiers before starting any task.
-> **Humans:** Review with `/add:retro --agent-summary` or during full `/add:retro`.
+> Generated from `.add/learnings.json` — do not edit directly.
+> Agents read JSON for filtering; this file is for human review.
 
-## Technical Discoveries
-<!-- Things learned about the tech stack, libraries, APIs, infrastructure -->
-<!-- Format: - {date}: {discovery}. Source: {how we learned this}. -->
+## Anti-Patterns
+- **[critical] Retro finding: learning checkpoints missed for 6 milestones** (L-012, 2026-03-20)
+  M3 through M7 had no learning checkpoints recorded. Root cause: agent did not self-checkpoint after verify/cycle/deploy triggers. Documentation discipline must be enforced alongside code quality.
 
-- 2026-03-07: cash-drugs upstream API uses slug-based routing at /api/cache/{slug} with query params for filtering. Key slugs for drug-gate: fda-ndc-by-name (BRAND_NAME), drugnames, drugclasses, spls-by-name (DRUGNAME), spls-by-class (DRUG_CLASS). Source: cash-drugs OpenAPI spec and config.yaml.
+- **[high] M4 RxNorm: upstream response shape alignment required live testing** (L-007, 2026-03-14)
+  RxNorm client needed 2 fix commits to align with actual cash-drugs response shapes. Mock-based unit tests passed but E2E revealed field name mismatches. Always validate against live upstream.
 
-## Architecture Decisions
-<!-- Decisions made and their rationale -->
-<!-- Format: - {date}: Chose {X} over {Y} because {reason}. -->
+## Technical
+- **[medium] cash-drugs uses slug-based routing with query params** (L-001, 2026-03-07)
+  Upstream API at /api/cache/{slug}. Key slugs: fda-ndc-by-name (BRAND_NAME), drugnames, drugclasses, spls-by-name (DRUGNAME), spls-by-class (DRUG_CLASS). Flat array response shape (data: [...] not data.results).
 
-- 2026-03-07: Chose Chi over net/http stdlib because drug-gate is middleware-heavy (auth, rate limiting, NDC validation, logging, CORS) and Chi's middleware chaining is purpose-built for this while using stdlib interfaces.
-- 2026-03-07: Chose Redis over in-memory state because rate limit counters and API key storage need to survive restarts and scale across instances.
+- **[medium] Interface-based mocking enables comprehensive handler testing** (L-003, 2026-03-07)
+  DrugClient, SPLClient, RxNormClient interfaces with mock implementations allow testing all handler paths without Redis or upstream. Pattern reused across all milestones.
 
-## What Worked
-<!-- Patterns, approaches, tools that proved effective -->
+- **[medium] M1 NDC Lookup complete: 42 tests, 97.1% coverage** (L-004, 2026-03-08)
+  ACs covered: 17. RED: 32 tests. GREEN: all passing. Blockers: gitignore and Go version mismatch caused 3 fix commits. Spec quality: good.
 
-- 2026-03-07: Interface-based mocking (DrugClient interface) enabled comprehensive handler testing with both simple mockDrugClient and callCountMockClient for fallback error paths. Source: TDD cycle for ndc-lookup.
-- 2026-03-07: cash-drugs flat array response shape (`data: [...]` not `data.results`) — discovered during integration testing. Always verify upstream response shapes against live service. Source: Integration test failure and fix.
+- **[medium] M2 Security & Rate Limiting: 20 ACs, Redis integration tests behind build tag** (L-005, 2026-03-08)
+  All gates pass. Coverage 65.3% total but non-Redis code >80%. Redis implementations at 0% because integration tests use //go:build integration tag. Fixed auth_test.go grace period bug.
 
-## What Didn't Work
-<!-- Patterns, approaches, tools that caused problems -->
+- **[medium] M3 Extended Lookups: lazy Redis caching with sliding TTL** (L-006, 2026-03-09)
+  4 endpoints (names, classes, class lookup, drugs-by-class). Lazy cache with 60-min sliding TTL using GetEx. ~104K drug names, ~1.2K classes cached. Pagination helper reused across all list endpoints.
 
-- 2026-03-08: `.gitignore` pattern `server` matched `cmd/server/` directory, hiding source from git. Always use anchored patterns (`/server`) for build artifacts. Source: CI failure after first push.
-- 2026-03-08: Go version mismatch between go.mod (1.25.5), Dockerfile (1.24), and CI (1.24) caused cascading failures including a `covdata` tool error. Keep all three in sync. Source: 3 fix commits to stabilize CI.
-- 2026-03-08: swaggo/swag generates Swagger 2.0, not OpenAPI 3.0. Definition names use full module path prefix (e.g., `github_com_finish06_drug-gate_internal_model.DrugDetailResponse`). Use `strings.HasSuffix` in tests. Source: swagger_test.go AC-006.
+- **[medium] M7 Operational Hardening: 4 features, 29 tests, TDD clean** (L-010, 2026-03-20)
+  Request ID middleware (8 tests), autocomplete (13 tests), Redis persistence (ops docs), Prometheus alerts (8 tests). All TDD RED→GREEN confirmed. Coverage maintained at 80.7%.
 
-## Agent Checkpoints
-<!-- Automatic entries from verification, TDD cycles, deploys, away sessions -->
-<!-- These are processed and archived during /add:retro -->
+## Architecture
+- **[medium] Chi chosen for middleware-heavy gateway architecture** (L-002, 2026-03-07)
+  Chi v5 over net/http stdlib — middleware chaining purpose-built for auth, rate limiting, NDC validation, logging, CORS, metrics, request ID. Uses stdlib interfaces.
 
-- 2026-03-07 [verify]: M1 NDC Lookup — 32 tests passing, coverage: ndc 100%, client 90.9%, handler 100%, middleware 100%. All 17 ACs mapped to tests. Security fix: added url.QueryEscape to client.go:48. Missing: LICENSE file, golangci-lint not installed.
-- 2026-03-08 [retro]: M1 complete — 42 tests, 97.1% coverage, 7 commits, 3 specs delivered. Key wins: interface-based mocking, TDD caught security issue. Key issues: gitignore/Go version mismatches caused 3 fix commits. Promoted 3 learnings to user library.
-- 2026-03-08 [verify]: Security & rate limiting — all gates pass, 20/20 ACs covered across 6 test files (42+ tests). Coverage 65.3% total; Redis implementations (RedisStore, RedisLimiter) at 0% because integration tests are behind `//go:build integration` tag. Non-Redis code >80%. Fixed pre-existing bug: auth_test.go grace period test used past time instead of future for "within grace period" scenario.
+- **[medium] M6 SPL Interactions: regex XML parsing sufficient for Section 7** (L-008, 2026-03-17)
+  SPL XML has namespace issues making full XML parser complex. Regex extraction of Section 7 (Drug Interactions) works reliably. spls-by-class deferred (unreliable/timeouts). Cross-reference uses word-boundary regex matching.
 
-## Profile Update Candidates
-<!-- Cross-project patterns flagged for promotion to ~/.claude/add/profile.md -->
-<!-- Only promoted during /add:retro with human confirmation -->
+## Process
+- **[critical] Human directive: documentation is as important as code** (L-013, 2026-03-20)
+  Specs must be updated to Complete when done. All learning checkpoints must be written. Documentation is a first-class deliverable, not an afterthought. This is the #1 improvement priority.
+
+- **[medium] Beta promotion: 10/10 evidence score at alpha→beta** (L-009, 2026-03-17)
+  All evidence items present: specs, 80%+ coverage, CI/CD, PR workflow, 2+ environments, conventional commits, TDD evidence, branch protection, release tags, quality gates.
+
+- **[medium] k6 baseline comparison enables performance regression gates** (L-011, 2026-03-20)
+  k6 harness covers all 21 endpoints across 4 scenarios (smoke/load/spike/soak). Baselines stored as JSON, comparison tool exits non-zero on >15% regression. Integrated into Makefile.
+
+---
+*13 entries. Last updated: 2026-03-20. Source: .add/learnings.json*
