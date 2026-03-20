@@ -1,18 +1,18 @@
 # Away Mode Log
 
-**Started:** 2026-03-18
-**Expected Return:** 2026-03-19
-**Duration:** 24 hours
+**Started:** 2026-03-20
+**Expected Return:** 2026-03-23
+**Duration:** 3 days
 
 ## Work Plan
-1. XML parser edge cases (probe live drugs, add tests)
-2. Background indexer (internal/spl/indexer.go + tests + main.go wiring)
-3. E2E tests (SPL search, detail, drug info, interaction checker)
-4. Cross-reference accuracy E2E (warfarin+aspirin, warfarin+fluconazole)
-5. Swagger annotations on 4 new endpoints
-6. PRD roadmap update (M4.5 → M6)
-7. Create PR
+1. Write specs for all 4 M7 features
+2. Request ID middleware + slog correlation (TDD)
+3. Drug autocomplete endpoint (TDD)
+4. Redis persistence — docker-compose + staging config + prod docs
+5. Prometheus alert rules file + ops guide
+6. Swagger update, full test suite, PR creation
 
 ## Progress Log
 | Time | Task | Status | Notes |
 |------|------|--------|-------|
+| 2026-03-20 | Away session started | started | Cycle-3, M7 Operational Hardening |
