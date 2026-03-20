@@ -49,7 +49,7 @@ func (h *DrugClassesHandler) HandleDrugClasses(w http.ResponseWriter, r *http.Re
 		typeFilter = "epc"
 	}
 	if typeFilter != "all" {
-		filtered := make([]model.DrugClassEntry, 0)
+		filtered := make([]model.DrugClassEntry, 0, len(classes)/4)
 		for _, c := range classes {
 			if strings.ToLower(c.Type) == typeFilter {
 				filtered = append(filtered, c)

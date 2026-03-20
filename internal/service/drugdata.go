@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -44,10 +43,8 @@ func (s *DrugDataService) GetDrugNames(ctx context.Context) ([]model.DrugNameEnt
 	const key = "cache:drugnames"
 
 	// Try cache
-	data, err := s.rdb.Get(ctx, key).Bytes()
+	data, err := s.rdb.GetEx(ctx, key, cacheTTL).Bytes()
 	if err == nil {
-		// Cache hit — reset sliding TTL
-		s.rdb.Expire(ctx, key, cacheTTL)
 		var entries []model.DrugNameEntry
 		if err := json.Unmarshal(data, &entries); err == nil {
 			s.recordCache("drugnames", "hit")
@@ -91,9 +88,8 @@ func (s *DrugDataService) GetDrugClasses(ctx context.Context) ([]model.DrugClass
 	const key = "cache:drugclasses"
 
 	// Try cache
-	data, err := s.rdb.Get(ctx, key).Bytes()
+	data, err := s.rdb.GetEx(ctx, key, cacheTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, key, cacheTTL)
 		var entries []model.DrugClassEntry
 		if err := json.Unmarshal(data, &entries); err == nil {
 			s.recordCache("drugclasses", "hit")
@@ -129,12 +125,11 @@ func (s *DrugDataService) GetDrugClasses(ctx context.Context) ([]model.DrugClass
 
 // GetDrugsByClass returns drugs in a given pharmacological class, with caching.
 func (s *DrugDataService) GetDrugsByClass(ctx context.Context, className string) ([]model.DrugInClassEntry, error) {
-	key := fmt.Sprintf("cache:drugsbyclass:%s", strings.ToLower(className))
+	key := "cache:drugsbyclass:" + strings.ToLower(className)
 
 	// Try cache
-	data, err := s.rdb.Get(ctx, key).Bytes()
+	data, err := s.rdb.GetEx(ctx, key, cacheTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, key, cacheTTL)
 		var entries []model.DrugInClassEntry
 		if err := json.Unmarshal(data, &entries); err == nil {
 			s.recordCache("drugsbyclass", "hit")

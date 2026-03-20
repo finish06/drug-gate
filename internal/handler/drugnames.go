@@ -55,7 +55,7 @@ func (h *DrugNamesHandler) HandleDrugNames(w http.ResponseWriter, r *http.Reques
 	// Apply type filter
 	typeFilter := strings.ToLower(r.URL.Query().Get("type"))
 	if typeFilter != "" && typeFilter != "all" {
-		filtered := make([]model.DrugNameEntry, 0)
+		filtered := make([]model.DrugNameEntry, 0, len(names)/4)
 		for _, n := range names {
 			if n.Type == typeFilter {
 				filtered = append(filtered, n)
@@ -67,7 +67,7 @@ func (h *DrugNamesHandler) HandleDrugNames(w http.ResponseWriter, r *http.Reques
 	// Apply search filter
 	q := strings.ToLower(r.URL.Query().Get("q"))
 	if q != "" {
-		filtered := make([]model.DrugNameEntry, 0)
+		filtered := make([]model.DrugNameEntry, 0, len(names)/4)
 		for _, n := range names {
 			if strings.Contains(strings.ToLower(n.Name), q) {
 				filtered = append(filtered, n)

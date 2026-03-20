@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"sort"
 	"strconv"
@@ -47,11 +46,10 @@ func (s *RxNormService) recordCache(keyType, outcome string) {
 // Search performs an approximate match search, returning up to 5 candidates.
 // Falls back to spelling suggestions when no candidates are found.
 func (s *RxNormService) Search(ctx context.Context, name string) (*model.RxNormSearchResult, error) {
-	key := fmt.Sprintf("cache:rxnorm:search:%s", strings.ToLower(name))
+	key := "cache:rxnorm:search:" + strings.ToLower(name)
 
-	data, err := s.rdb.Get(ctx, key).Bytes()
+	data, err := s.rdb.GetEx(ctx, key, rxnormSearchTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, key, rxnormSearchTTL)
 		var result model.RxNormSearchResult
 		if err := json.Unmarshal(data, &result); err == nil {
 			s.recordCache("rxnorm-search", "hit")
@@ -123,11 +121,10 @@ func (s *RxNormService) Search(ctx context.Context, name string) (*model.RxNormS
 
 // GetNDCs returns NDC codes for the given RxCUI.
 func (s *RxNormService) GetNDCs(ctx context.Context, rxcui string) (*model.RxNormNDCResponse, error) {
-	key := fmt.Sprintf("cache:rxnorm:ndcs:%s", rxcui)
+	key := "cache:rxnorm:ndcs:" + rxcui
 
-	data, err := s.rdb.Get(ctx, key).Bytes()
+	data, err := s.rdb.GetEx(ctx, key, rxnormLookupTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, key, rxnormLookupTTL)
 		var result model.RxNormNDCResponse
 		if err := json.Unmarshal(data, &result); err == nil {
 			s.recordCache("rxnorm-ndcs", "hit")
@@ -158,11 +155,10 @@ func (s *RxNormService) GetNDCs(ctx context.Context, rxcui string) (*model.RxNor
 
 // GetGenerics returns generic product info for the given RxCUI.
 func (s *RxNormService) GetGenerics(ctx context.Context, rxcui string) (*model.RxNormGenericResponse, error) {
-	key := fmt.Sprintf("cache:rxnorm:generic:%s", rxcui)
+	key := "cache:rxnorm:generic:" + rxcui
 
-	data, err := s.rdb.Get(ctx, key).Bytes()
+	data, err := s.rdb.GetEx(ctx, key, rxnormLookupTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, key, rxnormLookupTTL)
 		var result model.RxNormGenericResponse
 		if err := json.Unmarshal(data, &result); err == nil {
 			s.recordCache("rxnorm-generic", "hit")
@@ -195,11 +191,10 @@ func (s *RxNormService) GetGenerics(ctx context.Context, rxcui string) (*model.R
 
 // GetRelated returns related concepts grouped by type for the given RxCUI.
 func (s *RxNormService) GetRelated(ctx context.Context, rxcui string) (*model.RxNormRelatedResponse, error) {
-	key := fmt.Sprintf("cache:rxnorm:related:%s", rxcui)
+	key := "cache:rxnorm:related:" + rxcui
 
-	data, err := s.rdb.Get(ctx, key).Bytes()
+	data, err := s.rdb.GetEx(ctx, key, rxnormLookupTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, key, rxnormLookupTTL)
 		var result model.RxNormRelatedResponse
 		if err := json.Unmarshal(data, &result); err == nil {
 			s.recordCache("rxnorm-related", "hit")
@@ -253,11 +248,10 @@ func (s *RxNormService) GetRelated(ctx context.Context, rxcui string) (*model.Rx
 
 // GetProfile assembles a unified drug profile by orchestrating search, NDCs, generics, and related.
 func (s *RxNormService) GetProfile(ctx context.Context, name string) (*model.RxNormProfile, error) {
-	key := fmt.Sprintf("cache:rxnorm:profile:%s", strings.ToLower(name))
+	key := "cache:rxnorm:profile:" + strings.ToLower(name)
 
-	data, err := s.rdb.Get(ctx, key).Bytes()
+	data, err := s.rdb.GetEx(ctx, key, rxnormSearchTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, key, rxnormSearchTTL)
 		var result model.RxNormProfile
 		if err := json.Unmarshal(data, &result); err == nil {
 			s.recordCache("rxnorm-profile", "hit")
