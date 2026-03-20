@@ -3,11 +3,11 @@
 **Version:** 0.1.0
 **Created:** 2026-03-16
 **PRD Reference:** docs/prd.md (M4: Interactions & RxNorm)
-**Status:** Draft
+**Status:** Complete
 
 ## 1. Overview
 
-Expose RxNorm drug data through drug-gate, enabling frontend applications to resolve drug names to canonical identifiers (RxCUI), look up NDC codes, find generic equivalents, and retrieve full drug profiles with related concepts. Data is sourced from cash-drugs' RxNorm proxy endpoints (`rxnorm-find-drug`, `rxnorm-approximate-match`, `rxnorm-spelling-suggestions`, `rxnorm-ndcs`, `rxnorm-generic-product`, `rxnorm-all-related`) and cached in Redis with appropriate TTLs.
+Expose RxNorm drug data through drug-gate, enabling frontend applications to resolve drug names to canonical identifiers (RxCUI), look up NDC codes, find generic equivalents, and retrieve full drug profiles with related concepts. Data is sourced from cash-drugs' RxNorm proxy endpoints (`rxnorm-approximate-match`, `rxnorm-spelling-suggestions`, `rxnorm-ndcs`, `rxnorm-generic-product`, `rxnorm-all-related`) and cached in Redis with appropriate TTLs.
 
 ### User Story
 
