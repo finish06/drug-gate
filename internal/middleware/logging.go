@@ -24,12 +24,16 @@ func RequestLogger(next http.Handler) http.Handler {
 
 		next.ServeHTTP(rw, r)
 
-		slog.Info("request",
+		attrs := []any{
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rw.status,
 			"duration_ms", time.Since(start).Milliseconds(),
 			"remote", r.RemoteAddr,
-		)
+		}
+		if rid := RequestIDFromContext(r.Context()); rid != "" {
+			attrs = append(attrs, "request_id", rid)
+		}
+		slog.Info("request", attrs...)
 	})
 }
