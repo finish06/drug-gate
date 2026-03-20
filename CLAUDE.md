@@ -38,6 +38,11 @@ make vet                            # go vet
 make test-integration                # Run Redis integration tests
 make test-e2e                        # Run E2E tests (full stack)
 make swagger                         # Regenerate Swagger docs
+make k6-smoke                       # k6 smoke test (staging) + baseline comparison
+make k6-load                        # k6 load test (staging) + baseline comparison
+make k6-spike                       # k6 spike test (staging) + baseline comparison
+make k6-soak                        # k6 soak test (staging, 5 min) + baseline comparison
+make k6-all                         # Run all k6 scenarios sequentially
 ```
 
 ### ADD Workflow
@@ -57,7 +62,7 @@ make swagger                         # Regenerate Swagger docs
 cmd/server/          — Application entrypoint
 internal/
   handler/           — HTTP handlers (Chi routes)
-  middleware/        — Auth, rate limiting, logging, CORS, metrics
+  middleware/        — Auth, rate limiting, logging, CORS, metrics, request ID
   client/           — cash-drugs HTTP client
   apikey/           — API key store (Redis-backed CRUD, rotation)
   ratelimit/        — Per-key sliding window rate limiter (Redis)
@@ -69,10 +74,13 @@ internal/
   version/          — Build version (set via -ldflags)
 specs/               — Feature specifications
 docs/plans/          — Implementation plans
+ops/                 — Operational runbooks (Redis persistence, Prometheus alerts)
+prometheus/          — Prometheus alert rules (alerts.yml)
 tests/
   unit/              — Pure unit tests
   integration/       — Redis-dependent tests
   e2e/               — End-to-end tests against cash-drugs
+  k6/                — k6 performance tests + baselines
 ```
 
 ### Upstream API (cash-drugs)

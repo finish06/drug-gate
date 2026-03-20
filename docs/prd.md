@@ -1,6 +1,6 @@
 # drug-gate — Product Requirements Document
 
-**Version:** 0.3.0
+**Version:** 0.4.0
 **Created:** 2026-03-07
 **Author:** calebdunn
 **Status:** Draft
@@ -96,8 +96,13 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M3: Extended Lookups | Filterable drug name, class, and drugs-by-class listings with lazy Redis caching | beta | DONE | Paginated data APIs serving frontend tools from cached cash-drugs data |
 | M3.5: Observability | Prometheus metrics, Redis health collector, container system metrics | alpha | DONE | /metrics endpoint, HTTP/cache/auth/rate-limit counters, Redis + system background collectors |
 | M4: RxNorm Integration | RxNorm drug search, profiles, NDCs, generics, related concepts | beta | DONE | 5 RxNorm endpoints, Redis caching, 42 tests |
-| M6: SPL Interactions | SPL browser, drug info cards, multi-drug interaction checker with XML parsing | beta | IN_PROGRESS | 4 SPL endpoints, background indexer, E2E tests, 80%+ coverage |
+| M6: SPL Interactions | SPL browser, drug info cards, multi-drug interaction checker with XML parsing | beta | DONE | 4 SPL endpoints, background indexer, E2E tests, 80%+ coverage, v0.6.1 tagged |
 | M5: Polish & Quality | Version endpoint, RxNorm E2E tests, admin cache clear | beta | DONE | /version endpoint, 33 E2E tests passing, staging auto-deploy, 87.4% coverage |
+| M7: Operational Hardening | Redis persistence, structured alerting, drug autocomplete | beta | DONE | AOF persistence, X-Request-ID correlation, Prometheus alert rules, autocomplete endpoint, k6 baselines, 80.7% coverage |
+| M8: Cache Architecture + Clinical Data | Generic CacheAside[T], expanded SPL sections | beta | NOW | ~300 lines boilerplate eliminated, configurable TTL per env, SPL sections 4-6 parsed |
+| M9: Upstream Resilience + Production Deploy | Circuit breaker, deploy automation with rollback | GA candidate | NEXT | Circuit breaker on cash-drugs, stale-cache serving, GH Actions deploy with health gate, one-command rollback |
+| M10: Admin Auth Hardening | HMAC-signed admin tokens, rotation, audit log | GA candidate | LATER | Static bearer token replaced, token rotation without restart, admin audit log, separate rate limits |
+| M11: Flagship Aggregation | Unified drug profile, batch drug lookup | GA | LATER | GET /v1/drugs/profile merges all data, POST /v1/drugs/batch handles 5-20 drugs with per-item errors |
 
 ### Milestone Detail
 
@@ -249,12 +254,144 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
 - [x] All endpoints authenticated, rate-limited, and cached
 - [x] 80%+ test coverage on new code
 
+#### M7: Operational Hardening [DONE]
+**Goal:** Stabilize operations and ship highest-value quick-win feature
+**Appetite:** 2 weeks
+**Target maturity:** beta
+
+**Features:**
+- Redis Persistence + Key Backup (S effort)
+  - Enable AOF persistence for Redis
+  - Nightly snapshot backup via cron
+  - Documented restore procedure
+- Request ID Correlation + Structured Alerts (M effort)
+  - `X-Request-ID` middleware (generate if absent, propagate through logs)
+  - Prometheus alert rules for error rate, latency spikes, and Redis down
+  - Structured log entries correlated by request ID
+- Drug Autocomplete / Typeahead (S effort)
+  - `GET /v1/drugs/autocomplete?q={prefix}&limit=10`
+  - Sub-50ms response time target
+  - Prefix-matched against cached drug names
+
+**Success criteria:**
+- [x] Redis AOF enabled, nightly snapshot cron running, restore procedure tested
+- [x] X-Request-ID present in all responses and correlated in logs
+- [x] Prometheus alert rules firing correctly for error rate > 5%, p95 latency > 500ms, Redis unreachable
+- [x] Autocomplete endpoint returns results in < 50ms for cached data
+- [x] 80%+ test coverage on new code
+
+#### M8: Cache Architecture + Clinical Data [NOW — next 2 weeks]
+**Goal:** Clean up technical debt that unblocks faster development, double the clinical data coverage
+**Appetite:** 2 weeks
+**Target maturity:** beta
+
+**Features:**
+- Generic CacheAside[T] refactor (M effort)
+  - Replace per-endpoint cache boilerplate with a typed generic `CacheAside[T]` utility
+  - Eliminate ~300 lines of duplicated cache fetch/store/expire logic
+  - Configurable TTL per environment (shorter in dev, longer in production)
+- Expanded SPL Sections parsing (M effort)
+  - Parse Section 4 — Contraindications
+  - Parse Section 5 — Warnings and Precautions
+  - Parse Section 6 — Adverse Reactions
+  - Alongside existing Section 7 — Drug Interactions
+
+**Success criteria:**
+- [ ] CacheAside[T] generic used by all cached endpoints (drug names, classes, NDC, RxNorm, SPL)
+- [ ] Net reduction of ~300 lines of cache boilerplate
+- [ ] TTL configurable per environment via config/env vars
+- [ ] SPL detail endpoint returns sections 4, 5, 6, and 7
+- [ ] Drug info card includes contraindications, warnings, and adverse reactions
+- [ ] 80%+ test coverage on new code
+
+#### M9: Upstream Resilience + Production Deploy [NEXT — weeks 5-6]
+**Goal:** Eliminate single points of failure and establish production-grade deployment
+**Appetite:** 2 weeks
+**Target maturity:** GA candidate
+
+**Features:**
+- Circuit Breaker + Parallel Resolution (M effort)
+  - Circuit breaker on cash-drugs HTTP client (open after N consecutive failures, half-open probe, auto-close)
+  - Stale-cache serving when circuit is open (return expired cached data rather than 502)
+  - Parallelize interaction checker with `errgroup` for multi-drug lookups
+  - `MaxBytesReader` on all upstream responses to prevent memory exhaustion
+- Production Deploy Automation + Rollback (M effort)
+  - Pin deployments to version tags (no `:latest` in production)
+  - GitHub Actions deploy workflow with health gate (deploy → health check → promote or rollback)
+  - One-command rollback to previous version
+  - Documented runbook for production operations
+
+**Success criteria:**
+- [ ] Circuit breaker trips after 5 consecutive upstream failures, serves stale cache
+- [ ] Circuit auto-recovers via half-open probe after configurable cooldown
+- [ ] Multi-drug interaction checker runs parallel upstream calls via errgroup
+- [ ] MaxBytesReader limits upstream response size to 5MB
+- [ ] Production deploy pinned to version tags, triggered by GH Actions
+- [ ] Health gate verifies deployment before promoting
+- [ ] One-command rollback documented and tested
+- [ ] Runbook covers: deploy, rollback, Redis recovery, circuit breaker reset
+
+#### M10: Admin Auth Hardening [LATER — week 7]
+**Goal:** Harden the highest-privilege credential in the system
+**Appetite:** 1 week
+**Target maturity:** GA candidate
+
+**Features:**
+- HMAC-signed short-lived admin tokens (M effort)
+  - Replace static `ADMIN_SECRET` bearer token with HMAC-SHA256 signed tokens
+  - Tokens include expiration timestamp (configurable, default 15 minutes)
+  - Server validates signature and expiry without external dependencies
+- Token rotation without restart
+  - Hot-reload signing key from Redis or environment
+  - Grace period: accept tokens signed with previous key for N minutes after rotation
+- Admin action audit log
+  - Log all admin actions (key create, key revoke, cache clear) with timestamp, token ID, action, and target
+  - Queryable via admin endpoint or structured log output
+- Rate limit admin endpoints separately
+  - Stricter rate limits on admin endpoints (e.g., 10 req/min vs 100 req/min for data APIs)
+  - Separate sliding window from regular API key rate limits
+
+**Success criteria:**
+- [ ] Static ADMIN_SECRET no longer accepted; HMAC tokens required
+- [ ] Tokens expire after configured TTL; expired tokens rejected with 401
+- [ ] Signing key rotation works without service restart
+- [ ] Grace period allows old-key tokens during rotation window
+- [ ] All admin actions logged with actor, action, target, and timestamp
+- [ ] Admin endpoints rate-limited separately from data endpoints
+- [ ] 80%+ test coverage on new code
+
+#### M11: Flagship Aggregation [LATER — weeks 8+]
+**Goal:** Ship the flagship "Tell Me Everything" endpoint and batch operations that define drug-gate's competitive advantage
+**Appetite:** 2-3 weeks
+**Target maturity:** GA
+
+**Features:**
+- Unified Drug Profile endpoint (L effort)
+  - `GET /v1/drugs/profile?name={drug_name}`
+  - Merges in a single response: drug classification (NDC/pharm_class), RxNorm data (generic, related concepts, NDCs), SPL interactions (sections 4-7), and brand/generic name mapping
+  - Parallel upstream resolution for all data sources
+  - Graceful partial responses: if one data source fails, return what succeeded with error annotations
+- Batch Drug Lookup (M effort)
+  - `POST /v1/drugs/batch` with JSON body: `{"drugs": ["simvastatin", "lisinopril", ...]}` (5-20 drugs)
+  - Parallel resolution per drug
+  - Per-item error handling: individual drug failures don't fail the batch
+  - Response includes per-drug status (success/error) and aggregated data
+
+**Success criteria:**
+- [ ] Unified profile endpoint returns classification + RxNorm + SPL data in one call
+- [ ] Partial failures return available data with error annotations (not 500)
+- [ ] Batch endpoint accepts 5-20 drugs and resolves in parallel
+- [ ] Per-item errors reported without failing the batch
+- [ ] p95 latency < 500ms for profile, < 2s for batch of 10
+- [ ] 80%+ test coverage on new code
+- [ ] E2E tests cover happy path and partial failure scenarios
+
 ### Maturity Promotion Path
 
 | From | To | Requirements |
 |------|-----|-------------|
 | alpha → beta | Feature specs for all endpoints, 50%+ coverage, PR workflow active, TDD evidence | **PROMOTED 2026-03-17** (10/10 evidence) |
-| beta → ga | 30+ days production stability, SLAs defined, 80%+ coverage, full CI/CD pipeline |
+| beta → GA | Circuit breaker on upstream (M9), production deploy automation with health gate and rollback (M9), HMAC admin auth replacing static tokens (M10), admin audit log (M10), 80%+ coverage sustained, 30+ days production stability, SLAs defined, full CI/CD pipeline with version-pinned deploys | Requires M9 + M10 complete |
 
 ## 7. Key Features
 

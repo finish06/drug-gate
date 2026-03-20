@@ -2,7 +2,7 @@
 
 **Goal:** Stabilize operations with Redis persistence, request tracing, alerting, and ship the highest-value quick-win feature (drug autocomplete).
 
-**Status:** IN_PROGRESS
+**Status:** DONE
 **Target Maturity:** Beta
 **Appetite:** 2 weeks
 **Started:** 2026-03-20
