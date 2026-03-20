@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"sort"
 	"strings"
 	"time"
 
@@ -161,4 +162,36 @@ func (s *DrugDataService) GetDrugsByClass(ctx context.Context, className string)
 	}
 
 	return entries, nil
+}
+
+// AutocompleteDrugs returns drug names matching the given prefix, sorted
+// alphabetically and capped at limit. Reuses the cached drug names from
+// GetDrugNames — no additional upstream calls.
+func (s *DrugDataService) AutocompleteDrugs(ctx context.Context, prefix string, limit int) ([]model.DrugNameEntry, error) {
+	names, err := s.GetDrugNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	lowerPrefix := strings.ToLower(prefix)
+	var matches []model.DrugNameEntry
+	for _, n := range names {
+		if strings.HasPrefix(strings.ToLower(n.Name), lowerPrefix) {
+			matches = append(matches, n)
+		}
+	}
+
+	sort.Slice(matches, func(i, j int) bool {
+		return strings.ToLower(matches[i].Name) < strings.ToLower(matches[j].Name)
+	})
+
+	if len(matches) > limit {
+		matches = matches[:limit]
+	}
+
+	if matches == nil {
+		matches = []model.DrugNameEntry{}
+	}
+
+	return matches, nil
 }

@@ -2,7 +2,7 @@
 
 **Goal:** Expose drug interaction data from FDA Structured Product Labels (SPL) via three complementary APIs: a document browser, drug info cards with interaction sections, and a multi-drug interaction checker with backend cross-referencing.
 
-**Status:** IN_PROGRESS
+**Status:** DONE
 **Target Maturity:** Beta
 **Appetite:** 1 week
 **Started:** 2026-03-17
@@ -24,8 +24,8 @@
 | SPL Document Browser | VERIFIED | Merged in PR #12 — 22 tests |
 | Drug Info Card | VERIFIED | Merged in PR #12 — 11 tests |
 | Drug Interaction Checker | VERIFIED | Merged in PR #12 — 17 tests |
-| Background Indexer | SHAPED | Deferred to cycle-2 |
-| E2E Tests | SHAPED | Needed for cycle-2 |
+| Background Indexer | VERIFIED | Delivered in cycle-2, PR #13 |
+| E2E Tests | VERIFIED | Delivered in cycle-2, PR #13 |
 
 ## Features
 
@@ -59,4 +59,4 @@
 | Cycle | Features | Status | Notes |
 |-------|----------|--------|-------|
 | cycle-1 | SPL Browser + Drug Info Card + Interaction Checker | COMPLETE | All 3 features delivered in overnight away session. PR #12 merged. |
-| cycle-2 | Background Indexer + E2E Tests + Docs | PLANNED | TBD |
+| cycle-2 | Background Indexer + E2E Tests + Docs | COMPLETE | Delivered in PR #13, v0.6.1 tagged |

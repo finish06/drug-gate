@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -582,5 +583,128 @@ func TestCacheRoundTrip_DataIntegrity(t *testing.T) {
 	}
 	if len(fromRedis) != 2 {
 		t.Errorf("expected 2 entries in Redis, got %d", len(fromRedis))
+	}
+}
+
+// --- AutocompleteDrugs tests ---
+
+func TestAutocompleteDrugs_AC002_PrefixMatchCaseInsensitive(t *testing.T) {
+	mr, rdb := setupRedis(t)
+	defer mr.Close()
+
+	mc := &mockClient{
+		drugNames: []client.DrugNameRaw{
+			{DrugName: "Metformin", NameType: "G"},
+			{DrugName: "Metoprolol", NameType: "G"},
+			{DrugName: "methotrexate", NameType: "G"},
+			{DrugName: "Lisinopril", NameType: "G"},
+			{DrugName: "Lipitor", NameType: "B"},
+		},
+	}
+	svc := NewDrugDataService(mc, rdb)
+
+	results, err := svc.AutocompleteDrugs(context.Background(), "met", 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("expected 3 matches for 'met', got %d", len(results))
+	}
+
+	// Also test uppercase prefix
+	results2, err := svc.AutocompleteDrugs(context.Background(), "MET", 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results2) != 3 {
+		t.Errorf("expected 3 matches for 'MET', got %d", len(results2))
+	}
+}
+
+func TestAutocompleteDrugs_AC006_SortedAlphabetically(t *testing.T) {
+	mr, rdb := setupRedis(t)
+	defer mr.Close()
+
+	mc := &mockClient{
+		drugNames: []client.DrugNameRaw{
+			{DrugName: "Metoprolol", NameType: "G"},
+			{DrugName: "Metformin", NameType: "G"},
+			{DrugName: "methotrexate", NameType: "G"},
+		},
+	}
+	svc := NewDrugDataService(mc, rdb)
+
+	results, err := svc.AutocompleteDrugs(context.Background(), "met", 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should be sorted alphabetically (case-insensitive)
+	for i := 1; i < len(results); i++ {
+		if strings.ToLower(results[i-1].Name) > strings.ToLower(results[i].Name) {
+			t.Errorf("results not sorted: %q > %q", results[i-1].Name, results[i].Name)
+		}
+	}
+}
+
+func TestAutocompleteDrugs_LimitCap(t *testing.T) {
+	mr, rdb := setupRedis(t)
+	defer mr.Close()
+
+	mc := &mockClient{
+		drugNames: []client.DrugNameRaw{
+			{DrugName: "Metformin", NameType: "G"},
+			{DrugName: "Metoprolol", NameType: "G"},
+			{DrugName: "methotrexate", NameType: "G"},
+			{DrugName: "methylphenidate", NameType: "G"},
+			{DrugName: "metronidazole", NameType: "G"},
+		},
+	}
+	svc := NewDrugDataService(mc, rdb)
+
+	results, err := svc.AutocompleteDrugs(context.Background(), "met", 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("expected 2 results (limit=2), got %d", len(results))
+	}
+}
+
+func TestAutocompleteDrugs_NoMatches_EmptySlice(t *testing.T) {
+	mr, rdb := setupRedis(t)
+	defer mr.Close()
+
+	mc := &mockClient{
+		drugNames: []client.DrugNameRaw{
+			{DrugName: "Metformin", NameType: "G"},
+		},
+	}
+	svc := NewDrugDataService(mc, rdb)
+
+	results, err := svc.AutocompleteDrugs(context.Background(), "zzz", 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if results == nil {
+		t.Fatal("expected empty slice, got nil")
+	}
+	if len(results) != 0 {
+		t.Errorf("expected 0 results, got %d", len(results))
+	}
+}
+
+func TestAutocompleteDrugs_UpstreamError(t *testing.T) {
+	mr, rdb := setupRedis(t)
+	defer mr.Close()
+
+	mc := &mockClient{
+		drugNamesErr: client.ErrUpstream,
+	}
+	svc := NewDrugDataService(mc, rdb)
+
+	_, err := svc.AutocompleteDrugs(context.Background(), "met", 10)
+	if !errors.Is(err, client.ErrUpstream) {
+		t.Errorf("expected ErrUpstream, got %v", err)
 	}
 }
