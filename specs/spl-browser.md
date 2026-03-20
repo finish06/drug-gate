@@ -28,7 +28,7 @@ As a **frontend developer building a drug information tool**, I want to **search
 | AC-009 | If setid is not found, return 404 | Must |
 | AC-010 | All endpoints require valid API key (X-API-Key header) | Must |
 | AC-011 | All endpoints subject to per-key rate limiting | Must |
-| AC-012 | Pagination supports `limit` and `offset` query params (default limit=20, max=100) | Should |
+| AC-012 | Pagination supports `page` and `limit` query params (default page=1, limit=20, max=100) | Should |
 | AC-013 | `name` query parameter is case-insensitive | Should |
 | AC-014 | SPL XML parsing handles missing Section 7 gracefully (returns empty interactions array) | Must |
 
@@ -85,7 +85,7 @@ Search SPL documents by drug name.
 |-------|------|----------|---------|-------------|
 | name | string | Yes | — | Drug name to search |
 | limit | int | No | 20 | Results per page (max 100) |
-| offset | int | No | 0 | Pagination offset |
+| page | int | No | 1 | Page number |
 
 **Response 200:**
 ```json
@@ -99,9 +99,10 @@ Search SPL documents by drug name.
     }
   ],
   "pagination": {
-    "total": 4,
+    "page": 1,
     "limit": 20,
-    "offset": 0
+    "total": 4,
+    "total_pages": 1
   }
 }
 ```

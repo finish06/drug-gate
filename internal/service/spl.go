@@ -43,9 +43,8 @@ func (s *SPLService) SearchSPLs(ctx context.Context, drugName string, limit, off
 	cacheKey := "cache:spls:name:" + strings.ToLower(drugName)
 
 	// Try cache
-	data, err := s.rdb.Get(ctx, cacheKey).Bytes()
+	data, err := s.rdb.GetEx(ctx, cacheKey, cacheTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, cacheKey, cacheTTL)
 		var entries []model.SPLEntry
 		if err := json.Unmarshal(data, &entries); err == nil {
 			s.recordCache("spls-by-name", "hit")
@@ -93,9 +92,8 @@ func (s *SPLService) GetSPLDetail(ctx context.Context, setID string) (*model.SPL
 	cacheKey := "cache:spl:detail:" + setID
 
 	// Try cache
-	data, err := s.rdb.Get(ctx, cacheKey).Bytes()
+	data, err := s.rdb.GetEx(ctx, cacheKey, cacheTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, cacheKey, cacheTTL)
 		var detail model.SPLDetail
 		if err := json.Unmarshal(data, &detail); err == nil {
 			s.recordCache("spl-detail", "hit")
@@ -144,9 +142,8 @@ func (s *SPLService) GetInteractionsForDrug(ctx context.Context, drugName string
 	cacheKey := "cache:spl:interactions:" + strings.ToLower(drugName)
 
 	// Try cache
-	data, err := s.rdb.Get(ctx, cacheKey).Bytes()
+	data, err := s.rdb.GetEx(ctx, cacheKey, cacheTTL).Bytes()
 	if err == nil {
-		s.rdb.Expire(ctx, cacheKey, cacheTTL)
 		var detail model.SPLDetail
 		if err := json.Unmarshal(data, &detail); err == nil {
 			s.recordCache("spl-interactions", "hit")

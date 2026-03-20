@@ -245,7 +245,7 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
 - [x] SPL detail endpoint returns parsed Section 7 from XML
 - [x] Drug info card returns SPL metadata + interaction sections
 - [x] Multi-drug interaction checker cross-references 2-10 drugs
-- [ ] Background indexer pre-fetches popular drug interactions
+- [x] Background indexer pre-fetches popular drug interactions
 - [x] All endpoints authenticated, rate-limited, and cached
 - [x] 80%+ test coverage on new code
 
@@ -317,7 +317,7 @@ Single tier for MVP or multiple from the start? Consider:
 - Rate limit tiers: single tier for MVP or multiple from the start?
 - Local caching in Redis or passthrough to cash-drugs only?
 
-## 10. Revision History
+## 11. Revision History
 
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
