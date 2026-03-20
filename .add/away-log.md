@@ -16,3 +16,9 @@
 | Time | Task | Status | Notes |
 |------|------|--------|-------|
 | 2026-03-20 | Away session started | started | Cycle-3, M7 Operational Hardening |
+| 2026-03-20 | Phase 1: Specs | complete | 4 specs written (request-id, drug-autocomplete, redis-persistence, prometheus-alerts) |
+| 2026-03-20 | Phase 2: Request ID middleware | complete | 8 tests, middleware + slog integration, wired in main.go |
+| 2026-03-20 | Phase 3: Drug autocomplete | complete | 13 tests (8 handler + 5 service), prefix match, sorted, limit capped |
+| 2026-03-20 | Phase 4: Redis persistence | complete | docker-compose AOF + volume, staging/prod ops guide |
+| 2026-03-20 | Phase 5: Prometheus alerts | complete | 4 alert rules, 8 tests, ops guide with response procedures |
+| 2026-03-20 | Phase 6: Finalize | complete | Swagger regenerated, 80.7% coverage, all tests passing, PR ready |

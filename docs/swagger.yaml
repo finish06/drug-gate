@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-  github_com_finish06_drug-gate_internal_apikey.APIKey:
+  apikey.APIKey:
     properties:
       active:
         type: boolean
@@ -19,14 +19,61 @@ definitions:
       rate_limit:
         type: integer
     type: object
-  github_com_finish06_drug-gate_internal_model.DrugClass:
+  handler.cacheClearResult:
+    properties:
+      keys_deleted:
+        type: integer
+      status:
+        type: string
+    type: object
+  handler.createKeyRequest:
+    properties:
+      app_name:
+        type: string
+      origins:
+        items:
+          type: string
+        type: array
+      rate_limit:
+        type: integer
+    type: object
+  handler.rotateKeyRequest:
+    properties:
+      grace_period:
+        type: string
+    type: object
+  handler.rotateKeyResponse:
+    properties:
+      new_key:
+        type: string
+      old_key:
+        type: string
+      old_key_expires_at:
+        type: string
+    type: object
+  model.DrugCheckResult:
+    properties:
+      error:
+        type: string
+      has_interactions:
+        type: boolean
+      input_name:
+        type: string
+      input_type:
+        type: string
+      resolved_name:
+        type: string
+      spl_setid:
+        type: string
+    type: object
+  model.DrugClass:
     properties:
       name:
         type: string
       type:
         type: string
     type: object
-  github_com_finish06_drug-gate_internal_model.DrugClassResponse:
+  model.DrugClassResponse:
     properties:
       brand_names:
         items:
@@ -34,14 +81,14 @@ definitions:
         type: array
       classes:
         items:
-          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.DrugClass'
+          $ref: '#/definitions/model.DrugClass'
         type: array
       generic_name:
         type: string
       query_name:
         type: string
     type: object
-  github_com_finish06_drug-gate_internal_model.DrugDetailResponse:
+  model.DrugDetailResponse:
     properties:
       classes:
         items:
@@ -54,20 +101,93 @@ definitions:
       ndc:
         type: string
     type: object
-  github_com_finish06_drug-gate_internal_model.ErrorResponse:
+  model.DrugIdentifier:
+    properties:
+      name:
+        type: string
+      ndc:
+        type: string
+    type: object
+  model.DrugInfoResponse:
+    properties:
+      drug_name:
+        type: string
+      input_type:
+        type: string
+      input_value:
+        type: string
+      interactions:
+        items:
+          $ref: '#/definitions/model.InteractionSection'
+        type: array
+      spl:
+        $ref: '#/definitions/model.SPLSource'
+    type: object
+  model.DrugNameEntry:
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  model.ErrorResponse:
     properties:
       error:
         type: string
       message:
         type: string
     type: object
-  github_com_finish06_drug-gate_internal_model.PaginatedResponse:
+  model.InteractionCheckRequest:
+    properties:
+      drugs:
+        items:
+          $ref: '#/definitions/model.DrugIdentifier'
+        type: array
+    type: object
+  model.InteractionCheckResponse:
+    properties:
+      checked_pairs:
+        type: integer
+      drugs:
+        items:
+          $ref: '#/definitions/model.DrugCheckResult'
+        type: array
+      found_interactions:
+        type: integer
+      interactions:
+        items:
+          $ref: '#/definitions/model.InteractionMatch'
+        type: array
+    type: object
+  model.InteractionMatch:
+    properties:
+      drug_a:
+        type: string
+      drug_b:
+        type: string
+      section_title:
+        type: string
+      source:
+        type: string
+      spl_setid:
+        type: string
+      text:
+        type: string
+    type: object
+  model.InteractionSection:
+    properties:
+      text:
+        type: string
+      title:
+        type: string
+    type: object
+  model.PaginatedResponse:
     properties:
       data: {}
       pagination:
-        $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.Pagination'
+        $ref: '#/definitions/model.Pagination'
     type: object
-  github_com_finish06_drug-gate_internal_model.Pagination:
+  model.Pagination:
     properties:
       limit:
         type: integer
@@ -78,7 +198,7 @@ definitions:
       total_pages:
         type: integer
     type: object
-  github_com_finish06_drug-gate_internal_model.RxNormCandidate:
+  model.RxNormCandidate:
     properties:
       name:
         type: string
@@ -87,23 +207,23 @@ definitions:
       score:
         type: integer
     type: object
-  github_com_finish06_drug-gate_internal_model.RxNormConcept:
+  model.RxNormConcept:
     properties:
       name:
         type: string
       rxcui:
         type: string
     type: object
-  github_com_finish06_drug-gate_internal_model.RxNormGenericResponse:
+  model.RxNormGenericResponse:
     properties:
       generics:
         items:
-          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+          $ref: '#/definitions/model.RxNormConcept'
         type: array
       rxcui:
         type: string
     type: object
-  github_com_finish06_drug-gate_internal_model.RxNormNDCResponse:
+  model.RxNormNDCResponse:
     properties:
       ndcs:
         items:
@@ -112,14 +232,14 @@ definitions:
       rxcui:
         type: string
     type: object
-  github_com_finish06_drug-gate_internal_model.RxNormProfile:
+  model.RxNormProfile:
     properties:
       brand_names:
         items:
           type: string
         type: array
       generic:
-        $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+        $ref: '#/definitions/model.RxNormConcept'
       name:
         type: string
       ndcs:
@@ -129,40 +249,40 @@ definitions:
       query:
         type: string
       related:
-        $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse'
+        $ref: '#/definitions/model.RxNormRelatedResponse'
       rxcui:
         type: string
     type: object
-  github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse:
+  model.RxNormRelatedResponse:
     properties:
       brand_names:
         items:
-          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+          $ref: '#/definitions/model.RxNormConcept'
         type: array
       branded_drugs:
         items:
-          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+          $ref: '#/definitions/model.RxNormConcept'
         type: array
       clinical_drugs:
         items:
-          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+          $ref: '#/definitions/model.RxNormConcept'
         type: array
       dose_forms:
         items:
-          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+          $ref: '#/definitions/model.RxNormConcept'
         type: array
       ingredients:
         items:
-          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
+          $ref: '#/definitions/model.RxNormConcept'
         type: array
       rxcui:
         type: string
     type: object
-  github_com_finish06_drug-gate_internal_model.RxNormSearchResult:
+  model.RxNormSearchResult:
     properties:
       candidates:
         items:
-          $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormCandidate'
+          $ref: '#/definitions/model.RxNormCandidate'
         type: array
       query:
         type: string
@@ -171,36 +291,30 @@ definitions:
           type: string
         type: array
     type: object
-  internal_handler.cacheClearResult:
+  model.SPLDetail:
     properties:
-      keys_deleted:
-        type: integer
-      status:
-        type: string
-    type: object
-  internal_handler.createKeyRequest:
-    properties:
-      app_name:
-        type: string
-      origins:
+      interactions:
         items:
-          type: string
+          $ref: '#/definitions/model.InteractionSection'
         type: array
-      rate_limit:
+      published_date:
+        type: string
+      setid:
+        type: string
+      spl_version:
         type: integer
-    type: object
-  internal_handler.rotateKeyRequest:
-    properties:
-      grace_period:
+      title:
         type: string
     type: object
-  internal_handler.rotateKeyResponse:
+  model.SPLSource:
     properties:
-      new_key:
+      published_date:
         type: string
-      old_key:
+      setid:
         type: string
-      old_key_expires_at:
+      spl_version:
+        type: integer
+      title:
         type: string
     type: object
 host: localhost:8081
@@ -226,11 +340,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_handler.cacheClearResult'
+            $ref: '#/definitions/handler.cacheClearResult'
         "502":
           description: Redis unavailable
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Clear Redis cache
       tags:
       - admin
@@ -244,12 +358,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey'
+              $ref: '#/definitions/apikey.APIKey'
             type: array
         "500":
           description: Internal error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: List all API keys
       tags:
       - admin
@@ -264,22 +378,22 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_handler.createKeyRequest'
+          $ref: '#/definitions/handler.createKeyRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey'
+            $ref: '#/definitions/apikey.APIKey'
         "400":
           description: Invalid request body or validation error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "500":
           description: Internal error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Create API key
       tags:
       - admin
@@ -305,7 +419,7 @@ paths:
         "500":
           description: Internal error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Deactivate API key
       tags:
       - admin
@@ -323,15 +437,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey'
+            $ref: '#/definitions/apikey.APIKey'
         "404":
           description: Key not found
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "500":
           description: Internal error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Get API key details
       tags:
       - admin
@@ -352,22 +466,22 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_handler.rotateKeyRequest'
+          $ref: '#/definitions/handler.rotateKeyRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_handler.rotateKeyResponse'
+            $ref: '#/definitions/handler.rotateKeyResponse'
         "400":
           description: Invalid request or grace period
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "500":
           description: Internal error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Rotate API key
       tags:
       - admin
@@ -400,6 +514,42 @@ paths:
       summary: OpenAPI spec
       tags:
       - system
+  /v1/drugs/autocomplete:
+    get:
+      description: Returns drug names matching the given prefix. Fast typeahead endpoint
+        for building search UIs.
+      parameters:
+      - description: Prefix to match (min 2 chars)
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: 'Max results (default: 10, max: 50)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/model.DrugNameEntry'
+              type: array
+            type: object
+        "400":
+          description: Missing or invalid q parameter
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Drug name autocomplete
+      tags:
+      - drugs
   /v1/drugs/class:
     get:
       description: Looks up a drug by generic or brand name and returns its pharmacological
@@ -417,19 +567,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.DrugClassResponse'
+            $ref: '#/definitions/model.DrugClassResponse'
         "400":
           description: Missing or empty name parameter
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "404":
           description: Drug not found
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "502":
           description: Upstream service error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Look up drug class by name
       tags:
       - drugs
@@ -463,11 +613,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse'
+            $ref: '#/definitions/model.PaginatedResponse'
         "502":
           description: Upstream service error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: List drug classes
       tags:
       - drugs
@@ -496,18 +646,85 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse'
+            $ref: '#/definitions/model.PaginatedResponse'
         "400":
           description: Missing or empty class parameter
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "502":
           description: Upstream service error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: List drugs in a class
       tags:
       - drugs
+  /v1/drugs/info:
+    get:
+      description: Look up a single drug by name or NDC and return SPL metadata plus
+        parsed interaction sections. NDC is normalized and resolved to drug name internally.
+      parameters:
+      - description: Drug name
+        in: query
+        name: name
+        type: string
+      - description: NDC code (any format)
+        in: query
+        name: ndc
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.DrugInfoResponse'
+        "400":
+          description: Missing name or ndc
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: NDC not found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Drug info card with interactions
+      tags:
+      - spl
+  /v1/drugs/interactions:
+    post:
+      consumes:
+      - application/json
+      description: Submit 2-10 drug identifiers (name or NDC) and get cross-referenced
+        interaction warnings from FDA SPL labels. Each drug's Section 7 is searched
+        for mentions of the other drugs.
+      parameters:
+      - description: Drug identifiers to check
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.InteractionCheckRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.InteractionCheckResponse'
+        "400":
+          description: Too few/many drugs or invalid input
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Check drug interactions
+      tags:
+      - spl
   /v1/drugs/names:
     get:
       description: Returns a paginated list of drug names from the DailyMed dataset.
@@ -539,11 +756,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse'
+            $ref: '#/definitions/model.PaginatedResponse'
         "502":
           description: Upstream service error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: List drug names
       tags:
       - drugs
@@ -564,19 +781,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.DrugDetailResponse'
+            $ref: '#/definitions/model.DrugDetailResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "502":
           description: Bad Gateway
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Look up drug by NDC
       tags:
       - drugs
@@ -596,15 +813,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormGenericResponse'
+            $ref: '#/definitions/model.RxNormGenericResponse'
         "404":
           description: RxCUI not found
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "502":
           description: Upstream service error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Get generic products for an RxCUI
       tags:
       - rxnorm
@@ -623,15 +840,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormNDCResponse'
+            $ref: '#/definitions/model.RxNormNDCResponse'
         "404":
           description: RxCUI not found
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "502":
           description: Upstream service error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Get NDCs for an RxCUI
       tags:
       - rxnorm
@@ -651,15 +868,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse'
+            $ref: '#/definitions/model.RxNormRelatedResponse'
         "404":
           description: RxCUI not found
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "502":
           description: Upstream service error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Get related concepts for an RxCUI
       tags:
       - rxnorm
@@ -679,19 +896,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormProfile'
+            $ref: '#/definitions/model.RxNormProfile'
         "400":
           description: Missing name parameter
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "404":
           description: Drug not found
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "502":
           description: Upstream service error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Get unified drug profile
       tags:
       - rxnorm
@@ -711,22 +928,86 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormSearchResult'
+            $ref: '#/definitions/model.RxNormSearchResult'
         "400":
           description: Missing name parameter
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "404":
           description: No drugs found
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
         "502":
           description: Upstream service error
           schema:
-            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Search drugs by name (RxNorm)
       tags:
       - rxnorm
+  /v1/drugs/spls:
+    get:
+      description: Search Structured Product Labels by drug name. Returns paginated
+        SPL metadata from DailyMed.
+      parameters:
+      - description: Drug name to search
+        in: query
+        name: name
+        required: true
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Results per page (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.PaginatedResponse'
+        "400":
+          description: Missing name parameter
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Search SPL documents
+      tags:
+      - spl
+  /v1/drugs/spls/{setid}:
+    get:
+      description: Retrieve SPL metadata and parsed Drug Interactions (Section 7)
+        from the SPL XML document.
+      parameters:
+      - description: SPL set ID (UUID format)
+        in: path
+        name: setid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SPLDetail'
+        "404":
+          description: SPL not found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "502":
+          description: Upstream service error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Get SPL detail with interactions
+      tags:
+      - spl
   /version:
     get:
       description: Returns build version, git commit, git branch, and Go runtime version.
