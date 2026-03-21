@@ -34,6 +34,7 @@ func RateLimit(limiter ratelimit.Limiter, m ...*metrics.Metrics) func(http.Handl
 			}
 
 			// Always set rate limit headers.
+			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(ak.RateLimit))
 			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(result.Remaining))
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(result.ResetAt.Unix(), 10))
 
