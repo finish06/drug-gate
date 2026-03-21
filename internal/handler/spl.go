@@ -195,8 +195,20 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 		resp.Contraindications = detail.Contraindications
 		resp.Warnings = detail.Warnings
 		resp.AdverseReactions = detail.AdverseReactions
-	} else {
+	}
+
+	// Ensure all section fields are empty slices, never null in JSON
+	if resp.Interactions == nil {
 		resp.Interactions = []model.InteractionSection{}
+	}
+	if resp.Contraindications == nil {
+		resp.Contraindications = []model.InteractionSection{}
+	}
+	if resp.Warnings == nil {
+		resp.Warnings = []model.InteractionSection{}
+	}
+	if resp.AdverseReactions == nil {
+		resp.AdverseReactions = []model.InteractionSection{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
