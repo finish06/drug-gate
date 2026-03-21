@@ -2,9 +2,9 @@
 
 **Milestone:** M8 — Cache Architecture + Clinical Data
 **Maturity:** Beta
-**Status:** PLANNED
-**Started:** TBD
-**Completed:** TBD
+**Status:** COMPLETE
+**Started:** 2026-03-20
+**Completed:** 2026-03-21
 **Duration Budget:** 24 hours (away mode)
 
 ## Work Items

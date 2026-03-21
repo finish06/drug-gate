@@ -149,6 +149,6 @@
     "current_cycle": "cycle-4",
     "wip_limit": 3,
     "parallel_agents": 1,
-    "cycle_history": ["cycle-1", "cycle-2", "cycle-3"]
+    "cycle_history": ["cycle-1", "cycle-2", "cycle-3", "cycle-4"]
   }
 }

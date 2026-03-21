@@ -48,4 +48,4 @@
 
 | Cycle | Features | Status | Notes |
 |-------|----------|--------|-------|
-| cycle-4 | CacheAside[T] + Expanded SPL Sections | COMPLETE | 211 lines eliminated, 15 new tests, 81.1% coverage |
+| cycle-4 | CacheAside[T] + Expanded SPL Sections | COMPLETE | 211 lines eliminated, 15 new tests, 81.1% coverage. PR #16 merged. |

@@ -197,6 +197,19 @@
       "date": "2026-03-20",
       "classified_by": "agent",
       "checkpoint_type": "post-tdd"
+    },
+    {
+      "id": "L-016",
+      "title": "Cycle 4 complete: M8 CacheAside[T] + SPL sections 4-6",
+      "body": "Duration: 1 day. Features: 2 advanced SHAPED→VERIFIED. CacheAside[T] eliminated 211 lines across 11 methods. SPL sections 4-6 added with 6 parser tests. Coverage 81.1%. Pointer-vs-value generics required not-found sentinel pattern. TTL per environment deferred — only open M8 criterion. Documentation discipline improved: checkpoints L-014/L-015 written during cycle, specs updated.",
+      "scope": "project",
+      "stack": ["go", "redis"],
+      "category": "process",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-03-21",
+      "classified_by": "agent",
+      "checkpoint_type": "retro"
     }
   ]
 }
