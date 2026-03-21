@@ -29,21 +29,50 @@ type SPLClient interface {
 type HTTPSPLClient struct {
 	baseURL    string
 	httpClient *http.Client
+	breaker    *CircuitBreaker
 }
 
 // NewHTTPSPLClient creates a client pointing at the given cash-drugs base URL.
-func NewHTTPSPLClient(baseURL string) *HTTPSPLClient {
+func NewHTTPSPLClient(baseURL string, breaker ...*CircuitBreaker) *HTTPSPLClient {
+	var cb *CircuitBreaker
+	if len(breaker) > 0 {
+		cb = breaker[0]
+	} else {
+		cb = NewCircuitBreaker(10, 30*time.Second)
+	}
 	return &HTTPSPLClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second, // SPL XML can be large
+			Timeout: 30 * time.Second,
 			Transport: &http.Transport{
 				MaxIdleConns:        100,
 				MaxIdleConnsPerHost: 10,
 				IdleConnTimeout:     90 * time.Second,
 			},
 		},
+		breaker: cb,
 	}
+}
+
+// doRequest wraps HTTP calls with circuit breaker and response size limiting.
+func (c *HTTPSPLClient) doRequest(req *http.Request) (*http.Response, error) {
+	var resp *http.Response
+	err := c.breaker.Execute(func() error {
+		var doErr error
+		resp, doErr = c.httpClient.Do(req)
+		if doErr != nil {
+			return doErr
+		}
+		resp.Body = io.NopCloser(io.LimitReader(resp.Body, maxResponseBytes))
+		if resp.StatusCode >= 500 {
+			return fmt.Errorf("upstream returned status %d", resp.StatusCode)
+		}
+		return nil
+	})
+	if err != nil && resp != nil && resp.StatusCode < 500 {
+		return resp, nil
+	}
+	return resp, err
 }
 
 // FetchSPLsByName queries cash-drugs spls-by-name endpoint.
@@ -55,7 +84,7 @@ func (c *HTTPSPLClient) FetchSPLsByName(ctx context.Context, drugName string) ([
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
@@ -88,7 +117,7 @@ func (c *HTTPSPLClient) FetchSPLDetail(ctx context.Context, setID string) (*SPLE
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
@@ -125,7 +154,7 @@ func (c *HTTPSPLClient) FetchSPLXML(ctx context.Context, setID string) ([]byte, 
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}

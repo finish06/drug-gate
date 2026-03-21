@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
 )
+
+// maxResponseBytes is the maximum upstream response body size (5MB).
+const maxResponseBytes = 5 << 20
 
 // ErrUpstream indicates the upstream cash-drugs service returned an error or is unreachable.
 var ErrUpstream = errors.New("upstream service error")
@@ -47,10 +51,17 @@ type DrugClassRaw struct {
 type HTTPDrugClient struct {
 	baseURL    string
 	httpClient *http.Client
+	breaker    *CircuitBreaker
 }
 
 // NewHTTPDrugClient creates a client pointing at the given cash-drugs base URL.
-func NewHTTPDrugClient(baseURL string) *HTTPDrugClient {
+func NewHTTPDrugClient(baseURL string, breaker ...*CircuitBreaker) *HTTPDrugClient {
+	var cb *CircuitBreaker
+	if len(breaker) > 0 {
+		cb = breaker[0]
+	} else {
+		cb = NewCircuitBreaker(10, 30*time.Second)
+	}
 	return &HTTPDrugClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
@@ -61,7 +72,39 @@ func NewHTTPDrugClient(baseURL string) *HTTPDrugClient {
 				IdleConnTimeout:     90 * time.Second,
 			},
 		},
+		breaker: cb,
 	}
+}
+
+// Breaker returns the circuit breaker for health check inspection.
+func (c *HTTPDrugClient) Breaker() *CircuitBreaker {
+	return c.breaker
+}
+
+// doRequest executes an HTTP request wrapped with circuit breaker protection
+// and response body size limiting.
+func (c *HTTPDrugClient) doRequest(req *http.Request) (*http.Response, error) {
+	var resp *http.Response
+	err := c.breaker.Execute(func() error {
+		var doErr error
+		resp, doErr = c.httpClient.Do(req)
+		if doErr != nil {
+			return doErr
+		}
+		// Limit response body size to 5MB
+		resp.Body = io.NopCloser(io.LimitReader(resp.Body, maxResponseBytes))
+		// Count 5xx as upstream failures (trips breaker)
+		// 4xx are client errors — don't trip the breaker
+		if resp.StatusCode >= 500 {
+			return fmt.Errorf("upstream returned status %d", resp.StatusCode)
+		}
+		return nil
+	})
+	if err != nil && resp != nil && resp.StatusCode < 500 {
+		// Non-5xx response with breaker wrapping — return response for status handling
+		return resp, nil
+	}
+	return resp, err
 }
 
 // LookupByNDC queries cash-drugs fda-ndc endpoint with the given product NDC.
@@ -75,7 +118,7 @@ func (c *HTTPDrugClient) LookupByNDC(ctx context.Context, ndc string) (*DrugResu
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
@@ -118,7 +161,7 @@ func (c *HTTPDrugClient) lookupByNameParam(ctx context.Context, param, value str
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
@@ -166,7 +209,7 @@ func (c *HTTPDrugClient) FetchDrugNames(ctx context.Context) ([]DrugNameRaw, err
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
@@ -195,7 +238,7 @@ func (c *HTTPDrugClient) FetchDrugClasses(ctx context.Context) ([]DrugClassRaw, 
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
