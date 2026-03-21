@@ -11,7 +11,7 @@
 
 - [x] CacheAside[T] generic used by all cached endpoints (drug names, classes, NDC, RxNorm, SPL)
 - [x] Net reduction of ~300 lines of cache boilerplate
-- [ ] TTL configurable per environment via config/env vars
+- [x] TTL configurable per environment via config/env vars
 - [x] SPL detail endpoint returns sections 4, 5, 6, and 7
 - [x] Drug info card includes contraindications, warnings, and adverse reactions
 - [x] 80%+ test coverage on new code

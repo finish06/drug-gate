@@ -15,11 +15,19 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const (
-	rxnormSearchTTL = 24 * time.Hour
-	rxnormLookupTTL = 7 * 24 * time.Hour
-	maxCandidates   = 5
-)
+const maxCandidates = 5
+
+// rxnormSearchTTL returns the RxNorm search/profile TTL, scaled from CacheTTL.
+// Default: 24h (when CacheTTL is 60m, ratio is 24x).
+func rxnormSearchTTL() time.Duration {
+	return CacheTTL * 24 // 60m * 24 = 24h default
+}
+
+// rxnormLookupTTL returns the RxNorm lookup TTL (NDCs, generics, related), scaled from CacheTTL.
+// Default: 7d (when CacheTTL is 60m, ratio is 168x).
+func rxnormLookupTTL() time.Duration {
+	return CacheTTL * 168 // 60m * 168 = 7d default
+}
 
 // RxNormService provides RxNorm data with lazy Redis caching.
 type RxNormService struct {
@@ -41,7 +49,7 @@ func NewRxNormService(c client.RxNormClient, rdb *redis.Client, m ...*metrics.Me
 // Falls back to spelling suggestions when no candidates are found.
 func (s *RxNormService) Search(ctx context.Context, name string) (*model.RxNormSearchResult, error) {
 	key := "cache:rxnorm:search:" + strings.ToLower(name)
-	ca := cache.New[model.RxNormSearchResult](s.rdb, s.metrics, key, rxnormSearchTTL, "rxnorm-search")
+	ca := cache.New[model.RxNormSearchResult](s.rdb, s.metrics, key, rxnormSearchTTL(), "rxnorm-search")
 	result, err := ca.Get(ctx, func(ctx context.Context) (model.RxNormSearchResult, error) {
 		rawCandidates, err := s.client.SearchApproximate(ctx, name)
 		if err != nil {
@@ -101,7 +109,7 @@ func (s *RxNormService) Search(ctx context.Context, name string) (*model.RxNormS
 // GetNDCs returns NDC codes for the given RxCUI.
 func (s *RxNormService) GetNDCs(ctx context.Context, rxcui string) (*model.RxNormNDCResponse, error) {
 	key := "cache:rxnorm:ndcs:" + rxcui
-	ca := cache.New[model.RxNormNDCResponse](s.rdb, s.metrics, key, rxnormLookupTTL, "rxnorm-ndcs")
+	ca := cache.New[model.RxNormNDCResponse](s.rdb, s.metrics, key, rxnormLookupTTL(), "rxnorm-ndcs")
 	result, err := ca.Get(ctx, func(ctx context.Context) (model.RxNormNDCResponse, error) {
 		ndcs, err := s.client.FetchNDCs(ctx, rxcui)
 		if err != nil {
@@ -121,7 +129,7 @@ func (s *RxNormService) GetNDCs(ctx context.Context, rxcui string) (*model.RxNor
 // GetGenerics returns generic product info for the given RxCUI.
 func (s *RxNormService) GetGenerics(ctx context.Context, rxcui string) (*model.RxNormGenericResponse, error) {
 	key := "cache:rxnorm:generic:" + rxcui
-	ca := cache.New[model.RxNormGenericResponse](s.rdb, s.metrics, key, rxnormLookupTTL, "rxnorm-generic")
+	ca := cache.New[model.RxNormGenericResponse](s.rdb, s.metrics, key, rxnormLookupTTL(), "rxnorm-generic")
 	result, err := ca.Get(ctx, func(ctx context.Context) (model.RxNormGenericResponse, error) {
 		raw, err := s.client.FetchGenericProduct(ctx, rxcui)
 		if err != nil {
@@ -142,7 +150,7 @@ func (s *RxNormService) GetGenerics(ctx context.Context, rxcui string) (*model.R
 // GetRelated returns related concepts grouped by type for the given RxCUI.
 func (s *RxNormService) GetRelated(ctx context.Context, rxcui string) (*model.RxNormRelatedResponse, error) {
 	key := "cache:rxnorm:related:" + rxcui
-	ca := cache.New[model.RxNormRelatedResponse](s.rdb, s.metrics, key, rxnormLookupTTL, "rxnorm-related")
+	ca := cache.New[model.RxNormRelatedResponse](s.rdb, s.metrics, key, rxnormLookupTTL(), "rxnorm-related")
 	result, err := ca.Get(ctx, func(ctx context.Context) (model.RxNormRelatedResponse, error) {
 		groups, err := s.client.FetchAllRelated(ctx, rxcui)
 		if err != nil {
@@ -185,7 +193,7 @@ func (s *RxNormService) GetRelated(ctx context.Context, rxcui string) (*model.Rx
 // GetProfile assembles a unified drug profile by orchestrating search, NDCs, generics, and related.
 func (s *RxNormService) GetProfile(ctx context.Context, name string) (*model.RxNormProfile, error) {
 	key := "cache:rxnorm:profile:" + strings.ToLower(name)
-	ca := cache.New[model.RxNormProfile](s.rdb, s.metrics, key, rxnormSearchTTL, "rxnorm-profile")
+	ca := cache.New[model.RxNormProfile](s.rdb, s.metrics, key, rxnormSearchTTL(), "rxnorm-profile")
 	result, err := ca.Get(ctx, func(ctx context.Context) (model.RxNormProfile, error) {
 		searchResult, err := s.Search(ctx, name)
 		if err != nil {

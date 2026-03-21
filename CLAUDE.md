@@ -98,6 +98,7 @@ tests/
 | `REDIS_URL` | `redis:6379` | Redis connection address |
 | `ADMIN_SECRET` | (none) | Bearer token for admin endpoints |
 | `SYSTEM_METRICS_INTERVAL` | `15s` | System metrics collection interval (Go duration, Linux only) |
+| `CACHE_TTL` | `60m` | Base cache TTL for drug data (Go duration). RxNorm TTLs scale proportionally (24x for search, 168x for lookups). |
 
 ### Environments
 
