@@ -74,18 +74,26 @@ func (s *SPLService) GetSPLDetail(ctx context.Context, setID string) (*model.SPL
 			return model.SPLDetail{}, nil
 		}
 
-		interactions, err := s.fetchAndParseInteractions(ctx, setID)
+		sections, err := s.fetchAndParseSections(ctx, setID)
 		if err != nil {
 			slog.Warn("failed to fetch SPL XML, returning metadata only", "setid", setID, "err", err)
-			interactions = []model.InteractionSection{}
+			sections = splpkg.SectionsResult{
+				Interactions:      []model.InteractionSection{},
+				Contraindications: []model.InteractionSection{},
+				Warnings:          []model.InteractionSection{},
+				AdverseReactions:  []model.InteractionSection{},
+			}
 		}
 
 		return model.SPLDetail{
-			Title:         meta.Title,
-			SetID:         meta.SetID,
-			PublishedDate: meta.PublishedDate,
-			SPLVersion:    meta.SPLVersion,
-			Interactions:  interactions,
+			Title:             meta.Title,
+			SetID:             meta.SetID,
+			PublishedDate:     meta.PublishedDate,
+			SPLVersion:        meta.SPLVersion,
+			Interactions:      sections.Interactions,
+			Contraindications: sections.Contraindications,
+			Warnings:          sections.Warnings,
+			AdverseReactions:  sections.AdverseReactions,
 		}, nil
 	})
 	if err != nil {
@@ -113,18 +121,26 @@ func (s *SPLService) GetInteractionsForDrug(ctx context.Context, drugName string
 
 		best := raw[0]
 
-		interactions, err := s.fetchAndParseInteractions(ctx, best.SetID)
+		sections, err := s.fetchAndParseSections(ctx, best.SetID)
 		if err != nil {
 			slog.Warn("failed to fetch SPL XML for drug", "drug", drugName, "setid", best.SetID, "err", err)
-			interactions = []model.InteractionSection{}
+			sections = splpkg.SectionsResult{
+				Interactions:      []model.InteractionSection{},
+				Contraindications: []model.InteractionSection{},
+				Warnings:          []model.InteractionSection{},
+				AdverseReactions:  []model.InteractionSection{},
+			}
 		}
 
 		return model.SPLDetail{
-			Title:         best.Title,
-			SetID:         best.SetID,
-			PublishedDate: best.PublishedDate,
-			SPLVersion:    best.SPLVersion,
-			Interactions:  interactions,
+			Title:             best.Title,
+			SetID:             best.SetID,
+			PublishedDate:     best.PublishedDate,
+			SPLVersion:        best.SPLVersion,
+			Interactions:      sections.Interactions,
+			Contraindications: sections.Contraindications,
+			Warnings:          sections.Warnings,
+			AdverseReactions:  sections.AdverseReactions,
 		}, nil
 	})
 	if err != nil {
@@ -259,16 +275,21 @@ func (s *SPLService) CheckInteractions(ctx context.Context, drugs []model.DrugId
 	}, nil
 }
 
-// fetchAndParseInteractions fetches SPL XML and parses Section 7.
-func (s *SPLService) fetchAndParseInteractions(ctx context.Context, setID string) ([]model.InteractionSection, error) {
+// fetchAndParseSections fetches SPL XML and parses sections 4-7.
+func (s *SPLService) fetchAndParseSections(ctx context.Context, setID string) (splpkg.SectionsResult, error) {
 	xmlData, err := s.splClient.FetchSPLXML(ctx, setID)
 	if err != nil {
-		return nil, err
+		return splpkg.SectionsResult{}, err
 	}
 	if xmlData == nil {
-		return []model.InteractionSection{}, nil
+		return splpkg.SectionsResult{
+			Interactions:      []model.InteractionSection{},
+			Contraindications: []model.InteractionSection{},
+			Warnings:          []model.InteractionSection{},
+			AdverseReactions:  []model.InteractionSection{},
+		}, nil
 	}
-	return splpkg.ParseInteractions(xmlData), nil
+	return splpkg.ParseSections(xmlData), nil
 }
 
 // paginate returns a slice of SPLEntry for the given limit/offset.

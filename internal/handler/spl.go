@@ -186,6 +186,9 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 			SPLVersion:    detail.SPLVersion,
 		}
 		resp.Interactions = detail.Interactions
+		resp.Contraindications = detail.Contraindications
+		resp.Warnings = detail.Warnings
+		resp.AdverseReactions = detail.AdverseReactions
 	} else {
 		resp.Interactions = []model.InteractionSection{}
 	}
