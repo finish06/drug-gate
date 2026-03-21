@@ -7,6 +7,31 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-03-21
+
+### Added
+- `CACHE_TTL` env var for configurable base cache TTL — RxNorm TTLs scale proportionally
+- Health check now verifies Redis and upstream dependencies — returns 503 when degraded
+- `X-RateLimit-Limit` header shows total quota on all rate-limited responses
+- CI publishes to GHCR alongside private registry on release tags
+
+### Changed
+- Error codes standardized to 5 canonical values: `bad_request`, `not_found`, `upstream_error`, `internal_error`, `rate_limited`
+- Whitespace trimmed on all query parameters across all endpoints
+- RxNorm NDCs and generics endpoints return 200 with empty data instead of 404 for valid RxCUI
+- API key truncated to first 12 chars in Prometheus rate limit metrics labels
+
+### Fixed
+- **SECURITY:** Admin endpoints open when ADMIN_SECRET unset — empty Bearer token passed auth
+- **SECURITY:** No request body size limit on POST /interactions — DoS vector (now 1MB limit)
+- **SECURITY:** Wildcard CORS when API key has no origins — now requires explicit `"*"` in origins
+- SPL search pagination returns correct `total_pages` (was always 0)
+- Autocomplete uses `errors.Is` for upstream error matching (was string comparison, returned 500 instead of 502)
+- Drug info safety fields (contraindications, warnings, adverse_reactions) return `[]` not `null`
+- SPL indexer respects `CACHE_TTL` env var (was hardcoded 60m)
+
+## [0.7.0] - 2026-03-20
+
 ### Added
 - SPL detail and drug info endpoints now return sections 4 (Contraindications), 5 (Warnings and Precautions), and 6 (Adverse Reactions) alongside existing Section 7
 - Generic `CacheAside[T]` utility for Redis cache-aside pattern — eliminates 211 lines of duplicated boilerplate
@@ -22,6 +47,7 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 ### Changed
 - Atomic cache TTL reset, connection pooling, and allocation reduction (performance)
 - Request logger now includes `request_id` field when X-Request-ID middleware is active
+- All 11 cached service methods migrated to generic `CacheAside[T]` (service files 865 → 654 lines)
 
 ### Fixed
 - Old-format SPL Drug Interactions titles now handled correctly in XML parser
