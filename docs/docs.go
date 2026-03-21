@@ -1210,6 +1210,18 @@ const docTemplate = `{
         "model.DrugInfoResponse": {
             "type": "object",
             "properties": {
+                "adverse_reactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.InteractionSection"
+                    }
+                },
+                "contraindications": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.InteractionSection"
+                    }
+                },
                 "drug_name": {
                     "type": "string"
                 },
@@ -1227,6 +1239,12 @@ const docTemplate = `{
                 },
                 "spl": {
                     "$ref": "#/definitions/model.SPLSource"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.InteractionSection"
+                    }
                 }
             }
         },
@@ -1492,6 +1510,18 @@ const docTemplate = `{
         "model.SPLDetail": {
             "type": "object",
             "properties": {
+                "adverse_reactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.InteractionSection"
+                    }
+                },
+                "contraindications": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.InteractionSection"
+                    }
+                },
                 "interactions": {
                     "type": "array",
                     "items": {
@@ -1509,6 +1539,12 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.InteractionSection"
+                    }
                 }
             }
         },

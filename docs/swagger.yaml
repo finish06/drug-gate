@@ -110,6 +110,14 @@ definitions:
     type: object
   model.DrugInfoResponse:
     properties:
+      adverse_reactions:
+        items:
+          $ref: '#/definitions/model.InteractionSection'
+        type: array
+      contraindications:
+        items:
+          $ref: '#/definitions/model.InteractionSection'
+        type: array
       drug_name:
         type: string
       input_type:
@@ -122,6 +130,10 @@ definitions:
         type: array
       spl:
         $ref: '#/definitions/model.SPLSource'
+      warnings:
+        items:
+          $ref: '#/definitions/model.InteractionSection'
+        type: array
     type: object
   model.DrugNameEntry:
     properties:
@@ -293,6 +305,14 @@ definitions:
     type: object
   model.SPLDetail:
     properties:
+      adverse_reactions:
+        items:
+          $ref: '#/definitions/model.InteractionSection'
+        type: array
+      contraindications:
+        items:
+          $ref: '#/definitions/model.InteractionSection'
+        type: array
       interactions:
         items:
           $ref: '#/definitions/model.InteractionSection'
@@ -305,6 +325,10 @@ definitions:
         type: integer
       title:
         type: string
+      warnings:
+        items:
+          $ref: '#/definitions/model.InteractionSection'
+        type: array
     type: object
   model.SPLSource:
     properties:

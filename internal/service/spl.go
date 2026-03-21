@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sort"
 	"strings"
 
+	"github.com/finish06/drug-gate/internal/cache"
 	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/metrics"
 	"github.com/finish06/drug-gate/internal/model"
@@ -32,160 +32,124 @@ func NewSPLService(sc client.SPLClient, dc client.DrugClient, rdb *redis.Client,
 	return &SPLService{splClient: sc, drugClient: dc, rdb: rdb, metrics: met}
 }
 
-func (s *SPLService) recordCache(keyType, outcome string) {
-	if s.metrics != nil {
-		s.metrics.CacheHitsTotal.WithLabelValues(keyType, outcome).Inc()
-	}
-}
-
 // SearchSPLs returns SPL entries matching a drug name, with pagination.
 func (s *SPLService) SearchSPLs(ctx context.Context, drugName string, limit, offset int) ([]model.SPLEntry, int, error) {
 	cacheKey := "cache:spls:name:" + strings.ToLower(drugName)
-
-	// Try cache
-	data, err := s.rdb.GetEx(ctx, cacheKey, cacheTTL).Bytes()
-	if err == nil {
-		var entries []model.SPLEntry
-		if err := json.Unmarshal(data, &entries); err == nil {
-			s.recordCache("spls-by-name", "hit")
-			return paginate(entries, limit, offset), len(entries), nil
+	ca := cache.New[[]model.SPLEntry](s.rdb, s.metrics, cacheKey, cacheTTL, "spls-by-name")
+	entries, err := ca.Get(ctx, func(ctx context.Context) ([]model.SPLEntry, error) {
+		raw, err := s.splClient.FetchSPLsByName(ctx, drugName)
+		if err != nil {
+			return nil, err
 		}
-		slog.Warn("failed to unmarshal cached SPLs, fetching fresh")
-	}
-
-	s.recordCache("spls-by-name", "miss")
-
-	// Fetch upstream
-	raw, err := s.splClient.FetchSPLsByName(ctx, drugName)
+		entries := make([]model.SPLEntry, len(raw))
+		for i, r := range raw {
+			entries[i] = model.SPLEntry{
+				Title:         r.Title,
+				SetID:         r.SetID,
+				PublishedDate: r.PublishedDate,
+				SPLVersion:    r.SPLVersion,
+			}
+		}
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].PublishedDate > entries[j].PublishedDate
+		})
+		return entries, nil
+	})
 	if err != nil {
 		return nil, 0, err
 	}
-
-	// Convert to model
-	entries := make([]model.SPLEntry, len(raw))
-	for i, r := range raw {
-		entries[i] = model.SPLEntry{
-			Title:         r.Title,
-			SetID:         r.SetID,
-			PublishedDate: r.PublishedDate,
-			SPLVersion:    r.SPLVersion,
-		}
-	}
-
-	// Sort by published_date descending (most recent first)
-	// Since dates are "Mon DD, YYYY" format, we sort by the raw string for now
-	// A proper date parse would be better but this works for the common case
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].PublishedDate > entries[j].PublishedDate
-	})
-
-	// Cache result
-	if cacheData, err := json.Marshal(entries); err == nil {
-		s.rdb.Set(ctx, cacheKey, cacheData, cacheTTL)
-	}
-
 	return paginate(entries, limit, offset), len(entries), nil
 }
 
 // GetSPLDetail returns SPL detail with parsed interaction sections.
 func (s *SPLService) GetSPLDetail(ctx context.Context, setID string) (*model.SPLDetail, error) {
 	cacheKey := "cache:spl:detail:" + setID
-
-	// Try cache
-	data, err := s.rdb.GetEx(ctx, cacheKey, cacheTTL).Bytes()
-	if err == nil {
-		var detail model.SPLDetail
-		if err := json.Unmarshal(data, &detail); err == nil {
-			s.recordCache("spl-detail", "hit")
-			return &detail, nil
+	ca := cache.New[model.SPLDetail](s.rdb, s.metrics, cacheKey, cacheTTL, "spl-detail")
+	result, err := ca.Get(ctx, func(ctx context.Context) (model.SPLDetail, error) {
+		meta, err := s.splClient.FetchSPLDetail(ctx, setID)
+		if err != nil {
+			return model.SPLDetail{}, err
 		}
-		slog.Warn("failed to unmarshal cached SPL detail, fetching fresh")
-	}
+		if meta == nil {
+			return model.SPLDetail{}, nil
+		}
 
-	s.recordCache("spl-detail", "miss")
+		sections, err := s.fetchAndParseSections(ctx, setID)
+		if err != nil {
+			slog.Warn("failed to fetch SPL XML, returning metadata only", "setid", setID, "err", err)
+			sections = splpkg.SectionsResult{
+				Interactions:      []model.InteractionSection{},
+				Contraindications: []model.InteractionSection{},
+				Warnings:          []model.InteractionSection{},
+				AdverseReactions:  []model.InteractionSection{},
+			}
+		}
 
-	// Fetch metadata
-	meta, err := s.splClient.FetchSPLDetail(ctx, setID)
+		return model.SPLDetail{
+			Title:             meta.Title,
+			SetID:             meta.SetID,
+			PublishedDate:     meta.PublishedDate,
+			SPLVersion:        meta.SPLVersion,
+			Interactions:      sections.Interactions,
+			Contraindications: sections.Contraindications,
+			Warnings:          sections.Warnings,
+			AdverseReactions:  sections.AdverseReactions,
+		}, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	if meta == nil {
+	if result.SetID == "" {
 		return nil, nil
 	}
-
-	// Fetch XML and parse interactions
-	interactions, err := s.fetchAndParseInteractions(ctx, setID)
-	if err != nil {
-		slog.Warn("failed to fetch SPL XML, returning metadata only", "setid", setID, "err", err)
-		interactions = []model.InteractionSection{}
-	}
-
-	detail := &model.SPLDetail{
-		Title:         meta.Title,
-		SetID:         meta.SetID,
-		PublishedDate: meta.PublishedDate,
-		SPLVersion:    meta.SPLVersion,
-		Interactions:  interactions,
-	}
-
-	// Cache result
-	if cacheData, err := json.Marshal(detail); err == nil {
-		s.rdb.Set(ctx, cacheKey, cacheData, cacheTTL)
-	}
-
-	return detail, nil
+	return &result, nil
 }
 
 // GetInteractionsForDrug returns parsed interaction sections for a drug by name.
 // Uses the most recently published SPL.
 func (s *SPLService) GetInteractionsForDrug(ctx context.Context, drugName string) (*model.SPLDetail, error) {
 	cacheKey := "cache:spl:interactions:" + strings.ToLower(drugName)
-
-	// Try cache
-	data, err := s.rdb.GetEx(ctx, cacheKey, cacheTTL).Bytes()
-	if err == nil {
-		var detail model.SPLDetail
-		if err := json.Unmarshal(data, &detail); err == nil {
-			s.recordCache("spl-interactions", "hit")
-			return &detail, nil
+	ca := cache.New[model.SPLDetail](s.rdb, s.metrics, cacheKey, cacheTTL, "spl-interactions")
+	result, err := ca.Get(ctx, func(ctx context.Context) (model.SPLDetail, error) {
+		raw, err := s.splClient.FetchSPLsByName(ctx, drugName)
+		if err != nil {
+			return model.SPLDetail{}, err
 		}
-	}
+		if len(raw) == 0 {
+			return model.SPLDetail{}, nil
+		}
 
-	s.recordCache("spl-interactions", "miss")
+		best := raw[0]
 
-	// Search SPLs for this drug
-	raw, err := s.splClient.FetchSPLsByName(ctx, drugName)
+		sections, err := s.fetchAndParseSections(ctx, best.SetID)
+		if err != nil {
+			slog.Warn("failed to fetch SPL XML for drug", "drug", drugName, "setid", best.SetID, "err", err)
+			sections = splpkg.SectionsResult{
+				Interactions:      []model.InteractionSection{},
+				Contraindications: []model.InteractionSection{},
+				Warnings:          []model.InteractionSection{},
+				AdverseReactions:  []model.InteractionSection{},
+			}
+		}
+
+		return model.SPLDetail{
+			Title:             best.Title,
+			SetID:             best.SetID,
+			PublishedDate:     best.PublishedDate,
+			SPLVersion:        best.SPLVersion,
+			Interactions:      sections.Interactions,
+			Contraindications: sections.Contraindications,
+			Warnings:          sections.Warnings,
+			AdverseReactions:  sections.AdverseReactions,
+		}, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	if len(raw) == 0 {
+	if result.SetID == "" {
 		return nil, nil
 	}
-
-	// Use the first entry (cash-drugs returns most recent first typically)
-	best := raw[0]
-
-	// Fetch and parse interactions
-	interactions, err := s.fetchAndParseInteractions(ctx, best.SetID)
-	if err != nil {
-		slog.Warn("failed to fetch SPL XML for drug", "drug", drugName, "setid", best.SetID, "err", err)
-		interactions = []model.InteractionSection{}
-	}
-
-	detail := &model.SPLDetail{
-		Title:         best.Title,
-		SetID:         best.SetID,
-		PublishedDate: best.PublishedDate,
-		SPLVersion:    best.SPLVersion,
-		Interactions:  interactions,
-	}
-
-	// Cache
-	if cacheData, err := json.Marshal(detail); err == nil {
-		s.rdb.Set(ctx, cacheKey, cacheData, cacheTTL)
-	}
-
-	return detail, nil
+	return &result, nil
 }
 
 // ResolveDrugNameFromNDC uses the drug client to resolve an NDC to a generic drug name.
@@ -203,8 +167,8 @@ func (s *SPLService) ResolveDrugNameFromNDC(ctx context.Context, ndc string) (st
 // CheckInteractions resolves multiple drugs and cross-references their interaction sections.
 func (s *SPLService) CheckInteractions(ctx context.Context, drugs []model.DrugIdentifier) (*model.InteractionCheckResponse, error) {
 	type resolvedDrug struct {
-		result  model.DrugCheckResult
-		detail  *model.SPLDetail
+		result model.DrugCheckResult
+		detail *model.SPLDetail
 	}
 
 	resolved := make([]resolvedDrug, len(drugs))
@@ -271,46 +235,33 @@ func (s *SPLService) CheckInteractions(ctx context.Context, drugs []model.DrugId
 			a := resolved[i]
 			b := resolved[j]
 
-			// Skip if either drug failed to resolve
 			if a.result.Error != "" || b.result.Error != "" {
 				continue
 			}
-			// Skip self-pair (same resolved name)
 			if strings.EqualFold(a.result.ResolvedName, b.result.ResolvedName) {
 				continue
 			}
 
 			checkedPairs++
 
-			// Check A's sections for mentions of B
 			xrefs := splpkg.CrossReference(a.result.ResolvedName, a.detail, b.result.ResolvedName)
 			for _, xr := range xrefs {
 				matches = append(matches, model.InteractionMatch{
-					DrugA:        xr.DrugA,
-					DrugB:        xr.DrugB,
-					Source:       xr.Source,
-					SectionTitle: xr.SectionTitle,
-					Text:         xr.Text,
-					SPLSetID:     xr.SPLSetID,
+					DrugA: xr.DrugA, DrugB: xr.DrugB, Source: xr.Source,
+					SectionTitle: xr.SectionTitle, Text: xr.Text, SPLSetID: xr.SPLSetID,
 				})
 			}
 
-			// Check B's sections for mentions of A
 			xrefs = splpkg.CrossReference(b.result.ResolvedName, b.detail, a.result.ResolvedName)
 			for _, xr := range xrefs {
 				matches = append(matches, model.InteractionMatch{
-					DrugA:        xr.DrugA,
-					DrugB:        xr.DrugB,
-					Source:       xr.Source,
-					SectionTitle: xr.SectionTitle,
-					Text:         xr.Text,
-					SPLSetID:     xr.SPLSetID,
+					DrugA: xr.DrugA, DrugB: xr.DrugB, Source: xr.Source,
+					SectionTitle: xr.SectionTitle, Text: xr.Text, SPLSetID: xr.SPLSetID,
 				})
 			}
 		}
 	}
 
-	// Build response
 	drugResults := make([]model.DrugCheckResult, len(resolved))
 	for i, r := range resolved {
 		drugResults[i] = r.result
@@ -324,16 +275,21 @@ func (s *SPLService) CheckInteractions(ctx context.Context, drugs []model.DrugId
 	}, nil
 }
 
-// fetchAndParseInteractions fetches SPL XML and parses Section 7.
-func (s *SPLService) fetchAndParseInteractions(ctx context.Context, setID string) ([]model.InteractionSection, error) {
+// fetchAndParseSections fetches SPL XML and parses sections 4-7.
+func (s *SPLService) fetchAndParseSections(ctx context.Context, setID string) (splpkg.SectionsResult, error) {
 	xmlData, err := s.splClient.FetchSPLXML(ctx, setID)
 	if err != nil {
-		return nil, err
+		return splpkg.SectionsResult{}, err
 	}
 	if xmlData == nil {
-		return []model.InteractionSection{}, nil
+		return splpkg.SectionsResult{
+			Interactions:      []model.InteractionSection{},
+			Contraindications: []model.InteractionSection{},
+			Warnings:          []model.InteractionSection{},
+			AdverseReactions:  []model.InteractionSection{},
+		}, nil
 	}
-	return splpkg.ParseInteractions(xmlData), nil
+	return splpkg.ParseSections(xmlData), nil
 }
 
 // paginate returns a slice of SPLEntry for the given limit/offset.

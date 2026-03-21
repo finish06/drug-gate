@@ -13,6 +13,15 @@ var (
 	// - Unnumbered (older SPLs): "Drug Interactions" under PRECAUTIONS
 	titleRe = regexp.MustCompile(`<title>((?:7(?:\.\d+)?[^<]*)|(?:Drug Interactions[^<]*))</title>`)
 
+	// Section 4: Contraindications
+	contraTitleRe = regexp.MustCompile(`<title>((?:4(?:\.\d+)?[^<]*)|(?:CONTRAINDICATIONS[^<]*))</title>`)
+
+	// Section 5: Warnings and Precautions
+	warningsTitleRe = regexp.MustCompile(`<title>((?:5(?:\.\d+)?[^<]*)|(?:WARNINGS AND PRECAUTIONS[^<]*))</title>`)
+
+	// Section 6: Adverse Reactions
+	adverseTitleRe = regexp.MustCompile(`<title>((?:6(?:\.\d+)?[^<]*)|(?:ADVERSE REACTIONS[^<]*))</title>`)
+
 	// xmlTagRe strips all XML tags.
 	xmlTagRe = regexp.MustCompile(`<[^>]+>`)
 
@@ -20,13 +29,37 @@ var (
 	whitespaceRe = regexp.MustCompile(`\s+`)
 )
 
+// SectionsResult holds all parsed clinical sections from an SPL document.
+type SectionsResult struct {
+	Interactions      []model.InteractionSection
+	Contraindications []model.InteractionSection
+	Warnings          []model.InteractionSection
+	AdverseReactions  []model.InteractionSection
+}
+
 // ParseInteractions extracts Section 7 (Drug Interactions) from SPL XML.
 // Returns an empty slice if no Section 7 is found (e.g., OTC products).
+// This function is preserved for backward compatibility.
 func ParseInteractions(xmlData []byte) []model.InteractionSection {
-	xml := string(xmlData)
+	return parseSectionsByRegex(string(xmlData), titleRe)
+}
 
-	// Find all Section 7 titles and their positions
-	matches := titleRe.FindAllStringSubmatchIndex(xml, -1)
+// ParseSections extracts sections 4 (Contraindications), 5 (Warnings),
+// 6 (Adverse Reactions), and 7 (Interactions) from SPL XML.
+// Missing sections return empty slices.
+func ParseSections(xmlData []byte) SectionsResult {
+	xml := string(xmlData)
+	return SectionsResult{
+		Interactions:      parseSectionsByRegex(xml, titleRe),
+		Contraindications: parseSectionsByRegex(xml, contraTitleRe),
+		Warnings:          parseSectionsByRegex(xml, warningsTitleRe),
+		AdverseReactions:  parseSectionsByRegex(xml, adverseTitleRe),
+	}
+}
+
+// parseSectionsByRegex extracts sections matching the given title regex.
+func parseSectionsByRegex(xml string, re *regexp.Regexp) []model.InteractionSection {
+	matches := re.FindAllStringSubmatchIndex(xml, -1)
 	if len(matches) == 0 {
 		return []model.InteractionSection{}
 	}
@@ -34,10 +67,8 @@ func ParseInteractions(xmlData []byte) []model.InteractionSection {
 	var sections []model.InteractionSection
 
 	for _, match := range matches {
-		// match[2]:match[3] is the captured title group
 		title := strings.TrimSpace(xml[match[2]:match[3]])
 
-		// Find the <text> block after this title
 		afterTitle := xml[match[1]:]
 		text := extractTextBlock(afterTitle)
 		if text == "" {

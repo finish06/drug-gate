@@ -8,28 +8,35 @@ type SPLEntry struct {
 	SPLVersion    int    `json:"spl_version"`
 }
 
-// InteractionSection represents a parsed subsection from SPL Section 7.
+// InteractionSection represents a parsed subsection from an SPL section.
+// Reused for sections 4 (Contraindications), 5 (Warnings), 6 (Adverse Reactions), and 7 (Interactions).
 type InteractionSection struct {
 	Title string `json:"title"`
 	Text  string `json:"text"`
 }
 
-// SPLDetail is the detail endpoint response with parsed interaction sections.
+// SPLDetail is the detail endpoint response with parsed clinical sections.
 type SPLDetail struct {
-	Title         string               `json:"title"`
-	SetID         string               `json:"setid"`
-	PublishedDate string               `json:"published_date"`
-	SPLVersion    int                  `json:"spl_version"`
-	Interactions  []InteractionSection `json:"interactions"`
+	Title              string               `json:"title"`
+	SetID              string               `json:"setid"`
+	PublishedDate      string               `json:"published_date"`
+	SPLVersion         int                  `json:"spl_version"`
+	Interactions       []InteractionSection `json:"interactions"`
+	Contraindications  []InteractionSection `json:"contraindications"`
+	Warnings           []InteractionSection `json:"warnings"`
+	AdverseReactions   []InteractionSection `json:"adverse_reactions"`
 }
 
 // DrugInfoResponse is the response for the drug info card endpoint.
 type DrugInfoResponse struct {
-	DrugName     string               `json:"drug_name"`
-	InputType    string               `json:"input_type"`
-	InputValue   string               `json:"input_value"`
-	SPL          *SPLSource           `json:"spl"`
-	Interactions []InteractionSection `json:"interactions"`
+	DrugName          string               `json:"drug_name"`
+	InputType         string               `json:"input_type"`
+	InputValue        string               `json:"input_value"`
+	SPL               *SPLSource           `json:"spl"`
+	Interactions      []InteractionSection `json:"interactions"`
+	Contraindications []InteractionSection `json:"contraindications"`
+	Warnings          []InteractionSection `json:"warnings"`
+	AdverseReactions  []InteractionSection `json:"adverse_reactions"`
 }
 
 // SPLSource identifies which SPL provided the interaction data.

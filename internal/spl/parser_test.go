@@ -240,6 +240,156 @@ func TestParseInteractions_MixedNumberedAndBare(t *testing.T) {
 	}
 }
 
+// --- Expanded Sections (4-6) Tests ---
+
+const testExpandedSPLXML = `<?xml version="1.0" encoding="UTF-8"?>
+<document xmlns="urn:hl7-org:v3">
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <title>4 CONTRAINDICATIONS</title>
+          <text>Warfarin is contraindicated in patients with known hypersensitivity.</text>
+        </section>
+      </component>
+      <component>
+        <section>
+          <title>5 WARNINGS AND PRECAUTIONS</title>
+          <text>Warfarin can cause major or fatal bleeding.</text>
+        </section>
+      </component>
+      <component>
+        <section>
+          <title>5.1 Hemorrhage</title>
+          <text>Risk of hemorrhage increases with higher INR values.</text>
+        </section>
+      </component>
+      <component>
+        <section>
+          <title>5.2 Tissue Necrosis</title>
+          <text>Necrosis and gangrene of skin have been reported.</text>
+        </section>
+      </component>
+      <component>
+        <section>
+          <title>6 ADVERSE REACTIONS</title>
+          <text>Fatal and non-fatal hemorrhage from any tissue or organ.</text>
+        </section>
+      </component>
+      <component>
+        <section>
+          <title>6.1 Clinical Trials Experience</title>
+          <text>Most common adverse reactions include bleeding complications.</text>
+        </section>
+      </component>
+      <component>
+        <section>
+          <title>7 DRUG INTERACTIONS</title>
+          <text>See full prescribing information for drug interactions.</text>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</document>`
+
+func TestParseSections_AC001_Contraindications(t *testing.T) {
+	result := ParseSections([]byte(testExpandedSPLXML))
+	if len(result.Contraindications) == 0 {
+		t.Fatal("expected contraindications sections, got none")
+	}
+	if result.Contraindications[0].Title != "4 CONTRAINDICATIONS" {
+		t.Errorf("title = %q", result.Contraindications[0].Title)
+	}
+	if !strings.Contains(result.Contraindications[0].Text, "hypersensitivity") {
+		t.Error("expected text to contain 'hypersensitivity'")
+	}
+}
+
+func TestParseSections_AC002_Warnings(t *testing.T) {
+	result := ParseSections([]byte(testExpandedSPLXML))
+	if len(result.Warnings) < 3 {
+		t.Fatalf("expected 3 warnings sections (5, 5.1, 5.2), got %d", len(result.Warnings))
+	}
+	if result.Warnings[0].Title != "5 WARNINGS AND PRECAUTIONS" {
+		t.Errorf("title = %q", result.Warnings[0].Title)
+	}
+	if !strings.Contains(result.Warnings[1].Text, "hemorrhage") {
+		t.Error("5.1 should contain 'hemorrhage'")
+	}
+}
+
+func TestParseSections_AC003_AdverseReactions(t *testing.T) {
+	result := ParseSections([]byte(testExpandedSPLXML))
+	if len(result.AdverseReactions) < 2 {
+		t.Fatalf("expected 2 adverse reactions sections (6, 6.1), got %d", len(result.AdverseReactions))
+	}
+	if result.AdverseReactions[0].Title != "6 ADVERSE REACTIONS" {
+		t.Errorf("title = %q", result.AdverseReactions[0].Title)
+	}
+}
+
+func TestParseSections_AC004_MissingSections(t *testing.T) {
+	xml := `<document>
+  <section>
+    <title>7 DRUG INTERACTIONS</title>
+    <text>Only interactions present.</text>
+  </section>
+</document>`
+
+	result := ParseSections([]byte(xml))
+	if len(result.Contraindications) != 0 {
+		t.Errorf("expected empty contraindications, got %d", len(result.Contraindications))
+	}
+	if len(result.Warnings) != 0 {
+		t.Errorf("expected empty warnings, got %d", len(result.Warnings))
+	}
+	if len(result.AdverseReactions) != 0 {
+		t.Errorf("expected empty adverse reactions, got %d", len(result.AdverseReactions))
+	}
+	if len(result.Interactions) != 1 {
+		t.Errorf("expected 1 interaction section, got %d", len(result.Interactions))
+	}
+}
+
+func TestParseSections_AC008_BackwardCompatible(t *testing.T) {
+	// ParseInteractions should still work exactly as before
+	sections := ParseInteractions([]byte(testExpandedSPLXML))
+	if len(sections) != 1 {
+		t.Fatalf("ParseInteractions should only return Section 7, got %d", len(sections))
+	}
+	if sections[0].Title != "7 DRUG INTERACTIONS" {
+		t.Errorf("title = %q", sections[0].Title)
+	}
+}
+
+func TestParseSections_UnnumberedSections(t *testing.T) {
+	xml := `<document>
+  <section>
+    <title>CONTRAINDICATIONS</title>
+    <text>Old format contraindications.</text>
+  </section>
+  <section>
+    <title>WARNINGS AND PRECAUTIONS</title>
+    <text>Old format warnings.</text>
+  </section>
+  <section>
+    <title>ADVERSE REACTIONS</title>
+    <text>Old format adverse reactions.</text>
+  </section>
+</document>`
+
+	result := ParseSections([]byte(xml))
+	if len(result.Contraindications) != 1 {
+		t.Errorf("expected 1 contraindication, got %d", len(result.Contraindications))
+	}
+	if len(result.Warnings) != 1 {
+		t.Errorf("expected 1 warning, got %d", len(result.Warnings))
+	}
+	if len(result.AdverseReactions) != 1 {
+		t.Errorf("expected 1 adverse reaction, got %d", len(result.AdverseReactions))
+	}
+}
+
 func TestCleanXMLText(t *testing.T) {
 	tests := []struct {
 		name string
