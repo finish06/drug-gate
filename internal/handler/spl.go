@@ -228,6 +228,9 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
 // @Router       /v1/drugs/interactions [post]
 func (h *SPLHandler) HandleCheckInteractions(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req model.InteractionCheckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "Request body must be valid JSON with a 'drugs' array")
