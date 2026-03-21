@@ -2,9 +2,9 @@
 
 **Milestone:** M8.5 — Bugathon
 **Maturity:** Beta
-**Status:** PLANNED
-**Started:** TBD
-**Completed:** TBD
+**Status:** COMPLETE
+**Started:** 2026-03-21
+**Completed:** 2026-03-21
 **Duration Budget:** 5 hours (away mode)
 
 ## Work Items

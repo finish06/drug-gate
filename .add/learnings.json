@@ -210,6 +210,32 @@
       "date": "2026-03-21",
       "classified_by": "agent",
       "checkpoint_type": "retro"
+    },
+    {
+      "id": "L-017",
+      "title": "Cycle 6+7 complete: M8.5 Bugathon Tier 1+2 (13 bugs fixed)",
+      "body": "Duration: 1 day. Tier 1: 7 security/correctness fixes (admin auth, SPL pagination, error matching, null fields, body limit, CORS wildcard, indexer TTL). Tier 2: 6 DX/reliability fixes (error codes, whitespace, RxNorm 200, rate limit header, metrics key truncation, health deps). DX-4 marked not-a-bug. Coverage 81.0%. Staging API keys updated for CORS change. 3-agent swarm audit was highly effective for bug discovery.",
+      "scope": "project",
+      "stack": ["go"],
+      "category": "process",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-03-21",
+      "classified_by": "agent",
+      "checkpoint_type": "retro"
+    },
+    {
+      "id": "L-018",
+      "title": "3-agent bug-finding swarm found critical admin auth vulnerability",
+      "body": "spawn-swarm with QA/Principal/Support roles found 35 bugs including a critical auth bypass (empty ADMIN_SECRET). Only the code-review agent caught it — live testing didn't expose it. Multi-perspective swarm audits should be standard before any public launch.",
+      "scope": "workstation",
+      "stack": [],
+      "category": "process",
+      "severity": "high",
+      "source": "drug-gate",
+      "date": "2026-03-21",
+      "classified_by": "agent",
+      "checkpoint_type": "retro"
     }
   ]
 }
