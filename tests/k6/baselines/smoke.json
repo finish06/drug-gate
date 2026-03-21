@@ -1,27 +1,24 @@
 {
     "root_group": {
-        "path": "",
-        "id": "d41d8cd98f00b204e9800998ecf8427e",
         "groups": {
             "public endpoints": {
-                "name": "public endpoints",
                 "path": "::public endpoints",
                 "id": "27d0d78932efe4d904c9f2666b9fc44d",
                 "groups": {},
                 "checks": {
                         "health: 200": {
-                            "name": "health: 200",
-                            "path": "::public endpoints::health: 200",
                             "id": "5522e036412ea49a7cdafd59e181261e",
                             "passes": 1,
-                            "fails": 0
+                            "fails": 0,
+                            "name": "health: 200",
+                            "path": "::public endpoints::health: 200"
                         },
                         "health: X-Request-ID present": {
+                            "passes": 1,
+                            "fails": 0,
                             "name": "health: X-Request-ID present",
                             "path": "::public endpoints::health: X-Request-ID present",
-                            "id": "edafa6a5fcf5f7caf396abcd31dff327",
-                            "passes": 1,
-                            "fails": 0
+                            "id": "edafa6a5fcf5f7caf396abcd31dff327"
                         },
                         "version: 200": {
                             "name": "version: 200",
@@ -45,18 +42,18 @@
                             "name": "metrics: 200"
                         },
                         "metrics: has druggate counters": {
+                            "id": "b1dc8bd57d8e295a52d603de39c3afc1",
                             "passes": 1,
                             "fails": 0,
                             "name": "metrics: has druggate counters",
-                            "path": "::public endpoints::metrics: has druggate counters",
-                            "id": "b1dc8bd57d8e295a52d603de39c3afc1"
+                            "path": "::public endpoints::metrics: has druggate counters"
                         },
                         "openapi: 200": {
-                            "name": "openapi: 200",
                             "path": "::public endpoints::openapi: 200",
                             "id": "c0367f79cff2600f9f8f1c59d38d74f1",
                             "passes": 1,
-                            "fails": 0
+                            "fails": 0,
+                            "name": "openapi: 200"
                         },
                         "openapi: valid JSON": {
                             "name": "openapi: valid JSON",
@@ -65,18 +62,18 @@
                             "passes": 1,
                             "fails": 0
                         }
-                    }
+                    },
+                "name": "public endpoints"
             },
             "X-Request-ID": {
-                "id": "9c905878594e3b41c599b79bbeac9a16",
                 "groups": {},
                 "checks": {
                         "request-id: auto-generated": {
-                            "passes": 1,
-                            "fails": 0,
                             "name": "request-id: auto-generated",
                             "path": "::X-Request-ID::request-id: auto-generated",
-                            "id": "76482ba6fbb00fef5fc86c3835fa29ea"
+                            "id": "76482ba6fbb00fef5fc86c3835fa29ea",
+                            "passes": 1,
+                            "fails": 0
                         },
                         "request-id: passthrough": {
                             "fails": 0,
@@ -87,31 +84,34 @@
                         }
                     },
                 "name": "X-Request-ID",
-                "path": "::X-Request-ID"
+                "path": "::X-Request-ID",
+                "id": "9c905878594e3b41c599b79bbeac9a16"
             },
             "auth": {
-                "name": "auth",
                 "path": "::auth",
                 "id": "7974aac4a665813eaeed4ec3fc0411a7",
                 "groups": {},
                 "checks": {
                         "auth: 401 without key": {
-                            "fails": 0,
                             "name": "auth: 401 without key",
                             "path": "::auth::auth: 401 without key",
                             "id": "5eaad4d0348dfd62e3980b3540dbd676",
-                            "passes": 1
+                            "passes": 1,
+                            "fails": 0
                         },
                         "auth: error body": {
-                            "fails": 0,
                             "name": "auth: error body",
                             "path": "::auth::auth: error body",
                             "id": "cc1aac7c39b96bd110d0394fbea59677",
-                            "passes": 1
+                            "passes": 1,
+                            "fails": 0
                         }
-                    }
+                    },
+                "name": "auth"
             },
             "drug names": {
+                "path": "::drug names",
+                "id": "6cdc322da95eca14235a62f0bf2df36d",
                 "groups": {},
                 "checks": {
                         "names: 200": {
@@ -122,145 +122,143 @@
                             "fails": 0
                         },
                         "names: has pagination": {
+                            "name": "names: has pagination",
+                            "path": "::drug names::names: has pagination",
                             "id": "0f7dbd58ea2a09c0afa701fd854ef410",
                             "passes": 1,
-                            "fails": 0,
-                            "name": "names: has pagination",
-                            "path": "::drug names::names: has pagination"
+                            "fails": 0
                         },
                         "names: data is array": {
-                            "path": "::drug names::names: data is array",
                             "id": "e51dcbbdd2dda9114718b55fc0d4c15f",
                             "passes": 1,
                             "fails": 0,
-                            "name": "names: data is array"
+                            "name": "names: data is array",
+                            "path": "::drug names::names: data is array"
                         },
                         "names: limit respected": {
+                            "name": "names: limit respected",
+                            "path": "::drug names::names: limit respected",
                             "id": "908e53ac8b9bfa137d413cf1494fe8b2",
                             "passes": 1,
-                            "fails": 0,
-                            "name": "names: limit respected",
-                            "path": "::drug names::names: limit respected"
+                            "fails": 0
                         },
                         "names: search works": {
-                            "name": "names: search works",
-                            "path": "::drug names::names: search works",
                             "id": "84385f391b6cababcb6981ab610e151f",
                             "passes": 1,
-                            "fails": 0
+                            "fails": 0,
+                            "name": "names: search works",
+                            "path": "::drug names::names: search works"
                         },
                         "names: type filter works": {
-                            "name": "names: type filter works",
-                            "path": "::drug names::names: type filter works",
                             "id": "157dc2dffe41334abcfba5b4f919a729",
                             "passes": 1,
-                            "fails": 0
+                            "fails": 0,
+                            "name": "names: type filter works",
+                            "path": "::drug names::names: type filter works"
                         }
                     },
-                "name": "drug names",
-                "path": "::drug names",
-                "id": "6cdc322da95eca14235a62f0bf2df36d"
+                "name": "drug names"
             },
             "autocomplete": {
-                "id": "3ea2dce7002552485d81c063b8c1bea0",
-                "groups": {},
                 "checks": {
-                        "autocomplete: 200": {
-                            "name": "autocomplete: 200",
-                            "path": "::autocomplete::autocomplete: 200",
-                            "id": "c11809500e89b866cd2d9b26fdba7eb0",
-                            "passes": 1,
-                            "fails": 0
-                        },
-                        "autocomplete: returns matches": {
-                            "fails": 0,
-                            "name": "autocomplete: returns matches",
-                            "path": "::autocomplete::autocomplete: returns matches",
-                            "id": "ab9c1605af054b51ea3a11a432549baf",
-                            "passes": 1
-                        },
-                        "autocomplete: entries have name+type": {
-                            "name": "autocomplete: entries have name+type",
-                            "path": "::autocomplete::autocomplete: entries have name+type",
-                            "id": "67edab567dada7474166f42720f1e78d",
-                            "passes": 1,
-                            "fails": 0
-                        },
-                        "autocomplete: limit capped": {
-                            "path": "::autocomplete::autocomplete: limit capped",
-                            "id": "1e1d32e72e01b620bfaa9811df4f1d6f",
-                            "passes": 1,
-                            "fails": 0,
-                            "name": "autocomplete: limit capped"
-                        },
-                        "autocomplete: short q → 400": {
-                            "id": "f32f19701d60cf577e54a7b4864f5891",
-                            "passes": 1,
-                            "fails": 0,
-                            "name": "autocomplete: short q → 400",
-                            "path": "::autocomplete::autocomplete: short q → 400"
-                        },
-                        "autocomplete: no match → empty": {
-                            "id": "3acbe24c624a890524e86f860739e33a",
-                            "passes": 1,
-                            "fails": 0,
-                            "name": "autocomplete: no match → empty",
-                            "path": "::autocomplete::autocomplete: no match → empty"
-                        }
+                    "autocomplete: 200": {
+                        "path": "::autocomplete::autocomplete: 200",
+                        "id": "c11809500e89b866cd2d9b26fdba7eb0",
+                        "passes": 1,
+                        "fails": 0,
+                        "name": "autocomplete: 200"
                     },
+                    "autocomplete: returns matches": {
+                        "name": "autocomplete: returns matches",
+                        "path": "::autocomplete::autocomplete: returns matches",
+                        "id": "ab9c1605af054b51ea3a11a432549baf",
+                        "passes": 1,
+                        "fails": 0
+                    },
+                    "autocomplete: entries have name+type": {
+                        "name": "autocomplete: entries have name+type",
+                        "path": "::autocomplete::autocomplete: entries have name+type",
+                        "id": "67edab567dada7474166f42720f1e78d",
+                        "passes": 1,
+                        "fails": 0
+                    },
+                    "autocomplete: limit capped": {
+                        "id": "1e1d32e72e01b620bfaa9811df4f1d6f",
+                        "passes": 1,
+                        "fails": 0,
+                        "name": "autocomplete: limit capped",
+                        "path": "::autocomplete::autocomplete: limit capped"
+                    },
+                    "autocomplete: short q → 400": {
+                        "fails": 0,
+                        "name": "autocomplete: short q → 400",
+                        "path": "::autocomplete::autocomplete: short q → 400",
+                        "id": "f32f19701d60cf577e54a7b4864f5891",
+                        "passes": 1
+                    },
+                    "autocomplete: no match → empty": {
+                        "name": "autocomplete: no match → empty",
+                        "path": "::autocomplete::autocomplete: no match → empty",
+                        "id": "3acbe24c624a890524e86f860739e33a",
+                        "passes": 1,
+                        "fails": 0
+                    }
+                },
                 "name": "autocomplete",
-                "path": "::autocomplete"
+                "path": "::autocomplete",
+                "id": "3ea2dce7002552485d81c063b8c1bea0",
+                "groups": {}
             },
             "drug classes": {
+                "name": "drug classes",
                 "path": "::drug classes",
                 "id": "4b3e618c8d1e9f0512ada603dd861d67",
                 "groups": {},
                 "checks": {
                         "classes: 200": {
-                            "path": "::drug classes::classes: 200",
                             "id": "5b2d447750a064f39a845134a16e7951",
                             "passes": 1,
                             "fails": 0,
-                            "name": "classes: 200"
+                            "name": "classes: 200",
+                            "path": "::drug classes::classes: 200"
                         },
                         "classes: has data": {
-                            "fails": 0,
                             "name": "classes: has data",
                             "path": "::drug classes::classes: has data",
                             "id": "8efb51e97704cc02f0e3b0523d9d5657",
-                            "passes": 1
+                            "passes": 1,
+                            "fails": 0
                         },
                         "classes: type filter": {
-                            "fails": 0,
                             "name": "classes: type filter",
                             "path": "::drug classes::classes: type filter",
                             "id": "7cef77b2d62c1a2ba3ad8960389dd874",
-                            "passes": 1
+                            "passes": 1,
+                            "fails": 0
                         }
-                    },
-                "name": "drug classes"
+                    }
             },
             "drug class lookup": {
-                "checks": {
-                    "class lookup: 200 or 502": {
-                        "path": "::drug class lookup::class lookup: 200 or 502",
-                        "id": "a449ceade584c598e5905cd36d0d5ca5",
-                        "passes": 1,
-                        "fails": 0,
-                        "name": "class lookup: 200 or 502"
-                    },
-                    "class lookup: has query_name": {
-                        "name": "class lookup: has query_name",
-                        "path": "::drug class lookup::class lookup: has query_name",
-                        "id": "b631a2a3e3966430f98adc296a0bd0f7",
-                        "passes": 1,
-                        "fails": 0
-                    }
-                },
                 "name": "drug class lookup",
                 "path": "::drug class lookup",
                 "id": "52f88e1f51335ff1344fbe4192e47cba",
-                "groups": {}
+                "groups": {},
+                "checks": {
+                        "class lookup: 200 or 502": {
+                            "fails": 0,
+                            "name": "class lookup: 200 or 502",
+                            "path": "::drug class lookup::class lookup: 200 or 502",
+                            "id": "a449ceade584c598e5905cd36d0d5ca5",
+                            "passes": 1
+                        },
+                        "class lookup: has query_name": {
+                            "id": "b631a2a3e3966430f98adc296a0bd0f7",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "class lookup: has query_name",
+                            "path": "::drug class lookup::class lookup: has query_name"
+                        }
+                    }
             },
             "drugs by class": {
                 "name": "drugs by class",
@@ -269,11 +267,11 @@
                 "groups": {},
                 "checks": {
                         "drugs-by-class: 200 or 502": {
+                            "path": "::drugs by class::drugs-by-class: 200 or 502",
                             "id": "3951f0c4a41b8ab1081837474d0014d8",
                             "passes": 1,
                             "fails": 0,
-                            "name": "drugs-by-class: 200 or 502",
-                            "path": "::drugs by class::drugs-by-class: 200 or 502"
+                            "name": "drugs-by-class: 200 or 502"
                         }
                     }
             },
@@ -293,6 +291,7 @@
                     }
             },
             "SPL browser": {
+                "name": "SPL browser",
                 "path": "::SPL browser",
                 "id": "e8b02452ce6340d443f3a444b4bf954c",
                 "groups": {},
@@ -305,64 +304,94 @@
                             "fails": 0
                         },
                         "drug info: 200 or 502": {
+                            "passes": 1,
+                            "fails": 0,
                             "name": "drug info: 200 or 502",
                             "path": "::SPL browser::drug info: 200 or 502",
-                            "id": "cad446c5c79eca895293d2c577bbd9b9",
-                            "passes": 1,
-                            "fails": 0
+                            "id": "cad446c5c79eca895293d2c577bbd9b9"
                         }
-                    },
-                "name": "SPL browser"
+                    }
             },
             "interaction checker": {
-                "name": "interaction checker",
                 "path": "::interaction checker",
                 "id": "54892b5fdaf9704a3648e5b1e7912ed9",
                 "groups": {},
                 "checks": {
                         "interactions: 200 or 502": {
+                            "id": "1bf6164747dc77ef58785205c4d7d621",
                             "passes": 1,
                             "fails": 0,
                             "name": "interactions: 200 or 502",
-                            "path": "::interaction checker::interactions: 200 or 502",
-                            "id": "1bf6164747dc77ef58785205c4d7d621"
+                            "path": "::interaction checker::interactions: 200 or 502"
                         }
-                    }
+                    },
+                "name": "interaction checker"
             },
             "RxNorm": {
+                "checks": {
+                    "rxnorm search: 200 or 502": {
+                        "name": "rxnorm search: 200 or 502",
+                        "path": "::RxNorm::rxnorm search: 200 or 502",
+                        "id": "c86bca47fb3fee729246f7e652781d7c",
+                        "passes": 1,
+                        "fails": 0
+                    },
+                    "rxnorm profile: 200 or 502": {
+                        "fails": 0,
+                        "name": "rxnorm profile: 200 or 502",
+                        "path": "::RxNorm::rxnorm profile: 200 or 502",
+                        "id": "2c6d02493078f12679768a7164ad86e7",
+                        "passes": 1
+                    }
+                },
                 "name": "RxNorm",
                 "path": "::RxNorm",
                 "id": "76a523a71f0e932169daeea10868a075",
-                "groups": {},
-                "checks": {
-                        "rxnorm search: 200 or 502": {
-                            "name": "rxnorm search: 200 or 502",
-                            "path": "::RxNorm::rxnorm search: 200 or 502",
-                            "id": "c86bca47fb3fee729246f7e652781d7c",
-                            "passes": 1,
-                            "fails": 0
-                        },
-                        "rxnorm profile: 200 or 502": {
-                            "name": "rxnorm profile: 200 or 502",
-                            "path": "::RxNorm::rxnorm profile: 200 or 502",
-                            "id": "2c6d02493078f12679768a7164ad86e7",
-                            "passes": 1,
-                            "fails": 0
-                        }
-                    }
+                "groups": {}
             }
         },
         "checks": {},
-        "name": ""
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e"
     },
     "metrics": {
-        "endpoint_hits": {
-            "count": 24,
-            "rate": 24.25371814552029
+        "http_req_failed": {
+            "passes": 2,
+            "fails": 22,
+            "value": 0.08333333333333333
         },
-        "data_received": {
-            "count": 120326,
-            "rate": 121598.03706574476
+        "http_req_waiting": {
+            "max": 158.034,
+            "p(90)": 144.6638,
+            "p(95)": 146.9716,
+            "avg": 40.27195833333334,
+            "min": 3.599,
+            "med": 5.8095
+        },
+        "group_duration": {
+            "p(90)": 398.6238256000001,
+            "p(95)": 439.51853995,
+            "avg": 82.38420141666666,
+            "min": 3.659416,
+            "med": 9.9233335,
+            "max": 440.595875
+        },
+        "data_sent": {
+            "count": 3571,
+            "rate": 3606.3239430218996
+        },
+        "http_req_connecting": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.12016666666666666,
+            "min": 0,
+            "med": 0,
+            "max": 2.884
+        },
+        "http_reqs": {
+            "count": 24,
+            "rate": 24.237405385753455
         },
         "http_req_tls_handshaking": {
             "avg": 0,
@@ -372,44 +401,92 @@
             "p(90)": 0,
             "p(95)": 0
         },
-        "http_req_sending": {
-            "p(95)": 0.036849999999999994,
-            "avg": 0.013583333333333336,
-            "min": 0.002,
-            "med": 0.009000000000000001,
-            "max": 0.058,
-            "p(90)": 0.03270000000000001
-        },
-        "http_req_waiting": {
-            "min": 2.703,
-            "med": 5.2989999999999995,
-            "max": 167.813,
-            "p(90)": 148.0235,
-            "p(95)": 163.20119999999997,
-            "avg": 40.398541666666674
+        "http_req_duration": {
+            "max": 158.135,
+            "p(90)": 144.7321,
+            "p(95)": 147.0535,
+            "avg": 40.681333333333335,
+            "min": 3.624,
+            "med": 6.0905000000000005,
+            "thresholds": {
+                "p(95)<1000": false
+            }
         },
         "autocomplete_p95": {
+            "p(90)": 0,
             "p(95)": 0,
             "avg": 0,
             "min": 0,
             "med": 0,
             "max": 0,
-            "p(90)": 0,
             "thresholds": {
                 "p(95)<500": false
             }
         },
-        "http_req_connecting": {
-            "avg": 0.123125,
-            "min": 0,
-            "med": 0,
-            "max": 2.955,
-            "p(90)": 0,
-            "p(95)": 0
+        "error_rate": {
+            "passes": 0,
+            "fails": 0,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0
         },
-        "http_reqs": {
+        "http_req_sending": {
+            "avg": 0.028166666666666673,
+            "min": 0.002,
+            "med": 0.0085,
+            "max": 0.441,
+            "p(90)": 0.026200000000000005,
+            "p(95)": 0.030549999999999997
+        },
+        "http_req_blocked": {
+            "avg": 0.16091666666666654,
+            "min": 0,
+            "med": 0.002,
+            "max": 3.788,
+            "p(90)": 0.0104,
+            "p(95)": 0.01185
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 145.10670000000002,
+            "p(95)": 147.2605,
+            "avg": 44.044000000000004,
+            "min": 4.032,
+            "med": 6.356999999999999,
+            "max": 158.135
+        },
+        "checks": {
+            "passes": 36,
+            "fails": 0,
+            "value": 1
+        },
+        "iteration_duration": {
+            "med": 989.59875,
+            "max": 989.59875,
+            "p(90)": 989.59875,
+            "p(95)": 989.59875,
+            "avg": 989.59875,
+            "min": 989.59875
+        },
+        "data_received": {
+            "count": 121001,
+            "rate": 122197.92871173141
+        },
+        "endpoint_hits": {
             "count": 24,
-            "rate": 24.25371814552029
+            "rate": 24.237405385753455
+        },
+        "http_req_receiving": {
+            "med": 0.047,
+            "max": 4.739,
+            "p(90)": 0.1564,
+            "p(95)": 2.7100999999999966,
+            "avg": 0.38120833333333337,
+            "min": 0.018
+        },
+        "iterations": {
+            "count": 1,
+            "rate": 1.0098918910730605
         },
         "request_id_present": {
             "passes": 24,
@@ -418,83 +495,6 @@
                 "rate>0.99": false
             },
             "value": 1
-        },
-        "http_req_failed": {
-            "passes": 2,
-            "fails": 22,
-            "value": 0.08333333333333333
-        },
-        "group_duration": {
-            "avg": 82.43657983333334,
-            "min": 3.500375,
-            "med": 7.8941665,
-            "max": 458.98,
-            "p(90)": 395.3825081000001,
-            "p(95)": 446.0882519
-        },
-        "http_req_duration": {
-            "min": 2.808,
-            "med": 5.3425,
-            "max": 167.942,
-            "p(90)": 148.09660000000002,
-            "p(95)": 163.33085,
-            "avg": 40.89366666666667,
-            "thresholds": {
-                "p(95)<1000": false
-            }
-        },
-        "checks": {
-            "passes": 36,
-            "fails": 0,
-            "value": 1
-        },
-        "data_sent": {
-            "count": 3571,
-            "rate": 3608.7511457355395
-        },
-        "iteration_duration": {
-            "avg": 989.41625,
-            "min": 989.41625,
-            "med": 989.41625,
-            "max": 989.41625,
-            "p(90)": 989.41625,
-            "p(95)": 989.41625
-        },
-        "http_req_blocked": {
-            "avg": 0.12820833333333323,
-            "min": 0.001,
-            "med": 0.0025,
-            "max": 2.992,
-            "p(90)": 0.009,
-            "p(95)": 0.014949999999999993
-        },
-        "http_req_receiving": {
-            "avg": 0.48154166666666676,
-            "min": 0.017,
-            "med": 0.041999999999999996,
-            "max": 5.315,
-            "p(90)": 0.44660000000000016,
-            "p(95)": 4.003049999999996
-        },
-        "error_rate": {
-            "fails": 0,
-            "passes": 0,
-            "thresholds": {
-                "rate<0.05": false
-            },
-            "value": 0
-        },
-        "http_req_duration{expected_response:true}": {
-            "med": 5.491,
-            "max": 167.942,
-            "p(90)": 149.99020000000002,
-            "p(95)": 164.78895,
-            "avg": 44.24386363636364,
-            "min": 2.808
-        },
-        "iterations": {
-            "count": 1,
-            "rate": 1.0105715893966787
         }
     }
 }

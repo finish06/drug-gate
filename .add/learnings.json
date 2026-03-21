@@ -236,6 +236,32 @@
       "date": "2026-03-21",
       "classified_by": "agent",
       "checkpoint_type": "retro"
+    },
+    {
+      "id": "L-019",
+      "title": "M9 Circuit breaker: io.NopCloser breaks HTTP connection reuse",
+      "body": "Wrapping resp.Body with io.NopCloser(io.LimitReader(...)) prevents the original Close() from releasing the connection back to the pool. Must use a custom limitedReadCloser that preserves the original Closer. Also, drugnames endpoint returns 7.4MB — initial 5MB limit truncated the response causing silent JSON decode failures (502). Always check actual upstream response sizes before setting limits.",
+      "scope": "workstation",
+      "stack": ["go"],
+      "category": "anti-pattern",
+      "severity": "high",
+      "source": "drug-gate",
+      "date": "2026-03-21",
+      "classified_by": "agent",
+      "checkpoint_type": "post-tdd"
+    },
+    {
+      "id": "L-020",
+      "title": "Cycle 8 complete: M9 circuit breaker + stale-cache + parallel interactions",
+      "body": "Duration: 1 session. Circuit breaker (9 tests), stale-cache with dual-key strategy (3 tests), parallel interactions with semaphore(5), MaxBytesReader (10MB). Two production bugs found post-merge: NopCloser connection leak and 5MB limit too low. Both fixed same session. Coverage 81.1%.",
+      "scope": "project",
+      "stack": ["go", "redis"],
+      "category": "process",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-03-21",
+      "classified_by": "agent",
+      "checkpoint_type": "retro"
     }
   ]
 }
