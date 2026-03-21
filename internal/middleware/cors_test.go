@@ -102,8 +102,8 @@ func TestPerKeyCORS_AC005_WrongOrigin(t *testing.T) {
 	}
 }
 
-// AC-006: Origin-free key → Access-Control-Allow-Origin: *
-func TestPerKeyCORS_AC006_OriginFreeKey(t *testing.T) {
+// SEC-3: Empty origins → deny cross-origin (no implicit wildcard)
+func TestPerKeyCORS_SEC3_EmptyOriginsDeny(t *testing.T) {
 	key := &apikey.APIKey{
 		Key:     "test-key-4",
 		AppName: "test-app",
@@ -121,13 +121,13 @@ func TestPerKeyCORS_AC006_OriginFreeKey(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	got := rr.Header().Get("Access-Control-Allow-Origin")
-	if got != "*" {
-		t.Errorf("AC-006: expected Access-Control-Allow-Origin %q, got %q", "*", got)
+	if got != "" {
+		t.Errorf("SEC-3: empty origins should deny CORS, got %q", got)
 	}
 }
 
-// AC-006: Nil origins also treated as origin-free
-func TestPerKeyCORS_AC006_NilOrigins(t *testing.T) {
+// SEC-3: Nil origins → deny cross-origin
+func TestPerKeyCORS_SEC3_NilOriginsDeny(t *testing.T) {
 	key := &apikey.APIKey{
 		Key:     "test-key-5",
 		AppName: "test-app",
@@ -145,8 +145,32 @@ func TestPerKeyCORS_AC006_NilOrigins(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	got := rr.Header().Get("Access-Control-Allow-Origin")
+	if got != "" {
+		t.Errorf("SEC-3: nil origins should deny CORS, got %q", got)
+	}
+}
+
+// SEC-3: Explicit "*" in origins → allow all
+func TestPerKeyCORS_SEC3_ExplicitWildcard(t *testing.T) {
+	key := &apikey.APIKey{
+		Key:     "test-key-wildcard",
+		AppName: "test-app",
+		Origins: []string{"*"},
+		Active:  true,
+	}
+
+	handler := PerKeyCORS(dummyHandler())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req.Header.Set("Origin", "https://anywhere.com")
+	req = injectAPIKey(req, key)
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	got := rr.Header().Get("Access-Control-Allow-Origin")
 	if got != "*" {
-		t.Errorf("AC-006: expected Access-Control-Allow-Origin %q for nil origins, got %q", "*", got)
+		t.Errorf("SEC-3: explicit '*' should allow all, got %q", got)
 	}
 }
 
@@ -189,8 +213,8 @@ func TestPerKeyCORS_AC019_PreflightOptions(t *testing.T) {
 	}
 }
 
-// AC-019: Preflight with origin-free key → Allow-Origin: *
-func TestPerKeyCORS_AC019_PreflightOriginFree(t *testing.T) {
+// SEC-3: Preflight with empty origins → deny (no implicit wildcard)
+func TestPerKeyCORS_SEC3_PreflightEmptyOriginsDeny(t *testing.T) {
 	key := &apikey.APIKey{
 		Key:     "test-key-7",
 		AppName: "test-app",
@@ -209,12 +233,12 @@ func TestPerKeyCORS_AC019_PreflightOriginFree(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusNoContent {
-		t.Errorf("AC-019: expected status 204 for preflight, got %d", rr.Code)
+		t.Errorf("expected status 204 for preflight, got %d", rr.Code)
 	}
 
 	allowOrigin := rr.Header().Get("Access-Control-Allow-Origin")
-	if allowOrigin != "*" {
-		t.Errorf("AC-019: expected Access-Control-Allow-Origin %q for origin-free key, got %q", "*", allowOrigin)
+	if allowOrigin != "" {
+		t.Errorf("SEC-3: empty origins should deny CORS on preflight, got %q", allowOrigin)
 	}
 }
 
