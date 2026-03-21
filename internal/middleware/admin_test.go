@@ -147,6 +147,42 @@ func TestAdminAuth_AC015_BasicAuthScheme(t *testing.T) {
 	}
 }
 
+// TestAdminAuth_SEC1_EmptySecretRejectsAll verifies that when ADMIN_SECRET
+// is empty, ALL admin requests are rejected (even with Bearer header).
+func TestAdminAuth_SEC1_EmptySecretRejectsAll(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("inner handler should never be called when secret is empty")
+	})
+
+	handler := AdminAuth("")(inner)
+
+	// Try with no auth header
+	req := httptest.NewRequest(http.MethodGet, "/admin/keys", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("no header: status = %d, want 401", rr.Code)
+	}
+
+	// Try with empty Bearer token (the actual exploit)
+	req = httptest.NewRequest(http.MethodGet, "/admin/keys", nil)
+	req.Header.Set("Authorization", "Bearer ")
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("empty bearer: status = %d, want 401", rr.Code)
+	}
+
+	// Try with any Bearer token
+	req = httptest.NewRequest(http.MethodPost, "/admin/keys", nil)
+	req.Header.Set("Authorization", "Bearer anything")
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("any bearer: status = %d, want 401", rr.Code)
+	}
+}
+
 // TestAdminAuth_AC014_ValidSecret_POST verifies the middleware works for
 // non-GET methods (POST) as well.
 func TestAdminAuth_AC014_ValidSecret_POST(t *testing.T) {
