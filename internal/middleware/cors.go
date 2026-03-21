@@ -44,14 +44,19 @@ func PerKeyCORS(next http.Handler) http.Handler {
 }
 
 // resolveOrigin returns the allowed origin string, or empty if not allowed.
+// Keys with no origins configured deny all cross-origin requests.
+// To allow all origins, include explicit "*" in the origins list.
 func resolveOrigin(ak *apikey.APIKey, origin string) string {
-	// Origin-free key — allow all
+	// No origins configured — deny cross-origin requests
 	if len(ak.Origins) == 0 {
-		return "*"
+		return ""
 	}
 
 	// Check if origin is in the allowed list
 	for _, o := range ak.Origins {
+		if o == "*" {
+			return "*"
+		}
 		if o == origin {
 			return origin
 		}

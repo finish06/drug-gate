@@ -64,12 +64,18 @@ func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	totalPages := total / p.Limit
+	if total%p.Limit != 0 {
+		totalPages++
+	}
+
 	resp := model.PaginatedResponse{
 		Data: entries,
 		Pagination: model.Pagination{
-			Page:  p.Page,
-			Limit: p.Limit,
-			Total: total,
+			Page:       p.Page,
+			Limit:      p.Limit,
+			Total:      total,
+			TotalPages: totalPages,
 		},
 	}
 
@@ -189,8 +195,20 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 		resp.Contraindications = detail.Contraindications
 		resp.Warnings = detail.Warnings
 		resp.AdverseReactions = detail.AdverseReactions
-	} else {
+	}
+
+	// Ensure all section fields are empty slices, never null in JSON
+	if resp.Interactions == nil {
 		resp.Interactions = []model.InteractionSection{}
+	}
+	if resp.Contraindications == nil {
+		resp.Contraindications = []model.InteractionSection{}
+	}
+	if resp.Warnings == nil {
+		resp.Warnings = []model.InteractionSection{}
+	}
+	if resp.AdverseReactions == nil {
+		resp.AdverseReactions = []model.InteractionSection{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -210,6 +228,9 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
 // @Router       /v1/drugs/interactions [post]
 func (h *SPLHandler) HandleCheckInteractions(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req model.InteractionCheckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "Request body must be valid JSON with a 'drugs' array")

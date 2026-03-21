@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -56,7 +57,7 @@ func (h *AutocompleteHandler) HandleAutocomplete(w http.ResponseWriter, r *http.
 
 	results, err := h.svc.AutocompleteDrugs(r.Context(), q, limit)
 	if err != nil {
-		if isUpstreamError(err) {
+		if errors.Is(err, client.ErrUpstream) {
 			writeError(w, http.StatusBadGateway, "upstream_error", "Unable to reach drug data service")
 			return
 		}
@@ -71,15 +72,3 @@ func (h *AutocompleteHandler) HandleAutocomplete(w http.ResponseWriter, r *http.
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// isUpstreamError checks if an error is an upstream client error.
-func isUpstreamError(err error) bool {
-	// Check for the client.ErrUpstream sentinel
-	if err == client.ErrUpstream {
-		return true
-	}
-	// Check if the error message indicates upstream failure
-	if err.Error() == "upstream error" {
-		return true
-	}
-	return false
-}

@@ -64,6 +64,7 @@ func main() {
 	if cacheTTLStr := os.Getenv("CACHE_TTL"); cacheTTLStr != "" {
 		if d, err := time.ParseDuration(cacheTTLStr); err == nil {
 			service.SetCacheTTL(d)
+			spl.SetIndexerCacheTTL(d)
 			slog.Info("cache TTL configured", "ttl", d)
 		} else {
 			slog.Warn("invalid CACHE_TTL, using default 60m", "value", cacheTTLStr, "err", err)

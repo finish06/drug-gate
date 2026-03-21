@@ -16,10 +16,19 @@ import (
 const (
 	// interactionCachePrefix is the Redis key prefix for cached interaction data.
 	interactionCachePrefix = "cache:spl:interactions:"
-
-	// interactionCacheTTL is the TTL for cached interaction data.
-	interactionCacheTTL = 60 * time.Minute
 )
+
+// DefaultIndexerCacheTTL is the default TTL for cached interaction data.
+const DefaultIndexerCacheTTL = 60 * time.Minute
+
+// IndexerCacheTTL is the active TTL used by the indexer for caching.
+// Set via SetIndexerCacheTTL to align with service.CacheTTL.
+var IndexerCacheTTL = DefaultIndexerCacheTTL
+
+// SetIndexerCacheTTL updates the TTL used by the indexer.
+func SetIndexerCacheTTL(ttl time.Duration) {
+	IndexerCacheTTL = ttl
+}
 
 // Indexer pre-fetches and caches parsed interaction data for popular drugs.
 type Indexer struct {
@@ -151,7 +160,7 @@ func (idx *Indexer) indexOnce() {
 			continue
 		}
 
-		idx.rdb.Set(ctx, cacheKey, data, interactionCacheTTL)
+		idx.rdb.Set(ctx, cacheKey, data, IndexerCacheTTL)
 		indexed++
 	}
 

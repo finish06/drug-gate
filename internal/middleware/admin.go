@@ -13,6 +13,12 @@ import (
 func AdminAuth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Reject all requests if no admin secret is configured
+			if secret == "" {
+				writeAdminError(w, "Admin endpoints are disabled (ADMIN_SECRET not configured)")
+				return
+			}
+
 			auth := r.Header.Get("Authorization")
 			if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
 				writeAdminError(w, "Admin authorization required")

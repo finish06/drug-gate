@@ -3,10 +3,12 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/model"
 	"github.com/go-chi/chi/v5"
 )
@@ -199,7 +201,7 @@ func TestHandleAutocomplete_AC009_EmptyResults(t *testing.T) {
 // Test upstream error returns 502.
 func TestHandleAutocomplete_UpstreamError(t *testing.T) {
 	svc := &mockAutocompleteService{
-		err: &mockUpstreamError{},
+		err: fmt.Errorf("fetch failed: %w", client.ErrUpstream),
 	}
 	h := NewAutocompleteHandler(svc)
 	router := newAutocompleteRouter(h)
@@ -209,7 +211,3 @@ func TestHandleAutocomplete_UpstreamError(t *testing.T) {
 		t.Fatalf("status = %d, want 502", rr.Code)
 	}
 }
-
-type mockUpstreamError struct{}
-
-func (e *mockUpstreamError) Error() string { return "upstream error" }
