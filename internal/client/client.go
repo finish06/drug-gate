@@ -14,6 +14,13 @@ import (
 // maxResponseBytes is the maximum upstream response body size (5MB).
 const maxResponseBytes = 5 << 20
 
+// limitedReadCloser wraps a LimitReader while preserving the original body's
+// Close method for HTTP connection reuse.
+type limitedReadCloser struct {
+	io.Reader
+	io.Closer
+}
+
 // ErrUpstream indicates the upstream cash-drugs service returned an error or is unreachable.
 var ErrUpstream = errors.New("upstream service error")
 
@@ -91,8 +98,8 @@ func (c *HTTPDrugClient) doRequest(req *http.Request) (*http.Response, error) {
 		if doErr != nil {
 			return doErr
 		}
-		// Limit response body size to 5MB
-		resp.Body = io.NopCloser(io.LimitReader(resp.Body, maxResponseBytes))
+		// Limit response body size to 5MB (preserve original Close for connection reuse)
+		resp.Body = &limitedReadCloser{Reader: io.LimitReader(resp.Body, maxResponseBytes), Closer: resp.Body}
 		// Count 5xx as upstream failures (trips breaker)
 		// 4xx are client errors — don't trip the breaker
 		if resp.StatusCode >= 500 {

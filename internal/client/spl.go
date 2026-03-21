@@ -63,7 +63,7 @@ func (c *HTTPSPLClient) doRequest(req *http.Request) (*http.Response, error) {
 		if doErr != nil {
 			return doErr
 		}
-		resp.Body = io.NopCloser(io.LimitReader(resp.Body, maxResponseBytes))
+		resp.Body = &limitedReadCloser{Reader: io.LimitReader(resp.Body, maxResponseBytes), Closer: resp.Body}
 		if resp.StatusCode >= 500 {
 			return fmt.Errorf("upstream returned status %d", resp.StatusCode)
 		}
