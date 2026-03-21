@@ -2,12 +2,11 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"log/slog"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/finish06/drug-gate/internal/cache"
 	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/metrics"
 	"github.com/finish06/drug-gate/internal/model"
@@ -33,135 +32,66 @@ func NewDrugDataService(c client.DrugClient, rdb *redis.Client, m ...*metrics.Me
 	return &DrugDataService{client: c, rdb: rdb, metrics: met}
 }
 
-func (s *DrugDataService) recordCache(keyType, outcome string) {
-	if s.metrics != nil {
-		s.metrics.CacheHitsTotal.WithLabelValues(keyType, outcome).Inc()
-	}
-}
-
 // GetDrugNames returns all drug names, loading from cache or upstream.
 func (s *DrugDataService) GetDrugNames(ctx context.Context) ([]model.DrugNameEntry, error) {
-	const key = "cache:drugnames"
-
-	// Try cache
-	data, err := s.rdb.GetEx(ctx, key, cacheTTL).Bytes()
-	if err == nil {
-		var entries []model.DrugNameEntry
-		if err := json.Unmarshal(data, &entries); err == nil {
-			s.recordCache("drugnames", "hit")
-			return entries, nil
+	ca := cache.New[[]model.DrugNameEntry](s.rdb, s.metrics, "cache:drugnames", cacheTTL, "drugnames")
+	return ca.Get(ctx, func(ctx context.Context) ([]model.DrugNameEntry, error) {
+		raw, err := s.client.FetchDrugNames(ctx)
+		if err != nil {
+			return nil, err
 		}
-		slog.Warn("failed to unmarshal cached drug names, fetching fresh")
-	}
-
-	s.recordCache("drugnames", "miss")
-
-	// Cache miss — fetch from upstream
-	raw, err := s.client.FetchDrugNames(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	entries := make([]model.DrugNameEntry, len(raw))
-	for i, r := range raw {
-		nameType := "generic"
-		if strings.ToUpper(r.NameType) == "B" {
-			nameType = "brand"
+		entries := make([]model.DrugNameEntry, len(raw))
+		for i, r := range raw {
+			nameType := "generic"
+			if strings.ToUpper(r.NameType) == "B" {
+				nameType = "brand"
+			}
+			entries[i] = model.DrugNameEntry{
+				Name: r.DrugName,
+				Type: nameType,
+			}
 		}
-		entries[i] = model.DrugNameEntry{
-			Name: r.DrugName,
-			Type: nameType,
-		}
-	}
-
-	// Cache the result
-	if encoded, err := json.Marshal(entries); err == nil {
-		if err := s.rdb.Set(ctx, key, encoded, cacheTTL).Err(); err != nil {
-			slog.Warn("failed to cache drug names", "err", err)
-		}
-	}
-
-	return entries, nil
+		return entries, nil
+	})
 }
 
 // GetDrugClasses returns all drug classes, loading from cache or upstream.
 func (s *DrugDataService) GetDrugClasses(ctx context.Context) ([]model.DrugClassEntry, error) {
-	const key = "cache:drugclasses"
-
-	// Try cache
-	data, err := s.rdb.GetEx(ctx, key, cacheTTL).Bytes()
-	if err == nil {
-		var entries []model.DrugClassEntry
-		if err := json.Unmarshal(data, &entries); err == nil {
-			s.recordCache("drugclasses", "hit")
-			return entries, nil
+	ca := cache.New[[]model.DrugClassEntry](s.rdb, s.metrics, "cache:drugclasses", cacheTTL, "drugclasses")
+	return ca.Get(ctx, func(ctx context.Context) ([]model.DrugClassEntry, error) {
+		raw, err := s.client.FetchDrugClasses(ctx)
+		if err != nil {
+			return nil, err
 		}
-		slog.Warn("failed to unmarshal cached drug classes, fetching fresh")
-	}
-
-	s.recordCache("drugclasses", "miss")
-
-	// Cache miss — fetch from upstream
-	raw, err := s.client.FetchDrugClasses(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	entries := make([]model.DrugClassEntry, len(raw))
-	for i, r := range raw {
-		entries[i] = model.DrugClassEntry{
-			Name: r.ClassName,
-			Type: strings.ToLower(r.ClassType),
+		entries := make([]model.DrugClassEntry, len(raw))
+		for i, r := range raw {
+			entries[i] = model.DrugClassEntry{
+				Name: r.ClassName,
+				Type: strings.ToLower(r.ClassType),
+			}
 		}
-	}
-
-	if encoded, err := json.Marshal(entries); err == nil {
-		if err := s.rdb.Set(ctx, key, encoded, cacheTTL).Err(); err != nil {
-			slog.Warn("failed to cache drug classes", "err", err)
-		}
-	}
-
-	return entries, nil
+		return entries, nil
+	})
 }
 
 // GetDrugsByClass returns drugs in a given pharmacological class, with caching.
 func (s *DrugDataService) GetDrugsByClass(ctx context.Context, className string) ([]model.DrugInClassEntry, error) {
 	key := "cache:drugsbyclass:" + strings.ToLower(className)
-
-	// Try cache
-	data, err := s.rdb.GetEx(ctx, key, cacheTTL).Bytes()
-	if err == nil {
-		var entries []model.DrugInClassEntry
-		if err := json.Unmarshal(data, &entries); err == nil {
-			s.recordCache("drugsbyclass", "hit")
-			return entries, nil
+	ca := cache.New[[]model.DrugInClassEntry](s.rdb, s.metrics, key, cacheTTL, "drugsbyclass")
+	return ca.Get(ctx, func(ctx context.Context) ([]model.DrugInClassEntry, error) {
+		results, err := s.client.LookupByPharmClass(ctx, className)
+		if err != nil {
+			return nil, err
 		}
-		slog.Warn("failed to unmarshal cached drugs-by-class, fetching fresh")
-	}
-
-	s.recordCache("drugsbyclass", "miss")
-
-	// Cache miss — fetch from upstream
-	results, err := s.client.LookupByPharmClass(ctx, className)
-	if err != nil {
-		return nil, err
-	}
-
-	entries := make([]model.DrugInClassEntry, len(results))
-	for i, r := range results {
-		entries[i] = model.DrugInClassEntry{
-			GenericName: r.GenericName,
-			BrandName:   r.BrandName,
+		entries := make([]model.DrugInClassEntry, len(results))
+		for i, r := range results {
+			entries[i] = model.DrugInClassEntry{
+				GenericName: r.GenericName,
+				BrandName:   r.BrandName,
+			}
 		}
-	}
-
-	if encoded, err := json.Marshal(entries); err == nil {
-		if err := s.rdb.Set(ctx, key, encoded, cacheTTL).Err(); err != nil {
-			slog.Warn("failed to cache drugs-by-class", "err", err)
-		}
-	}
-
-	return entries, nil
+		return entries, nil
+	})
 }
 
 // AutocompleteDrugs returns drug names matching the given prefix, sorted
