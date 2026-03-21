@@ -60,6 +60,16 @@ func main() {
 		slog.Warn("ADMIN_SECRET not set — admin endpoints will reject all requests")
 	}
 
+	// Cache TTL configuration
+	if cacheTTLStr := os.Getenv("CACHE_TTL"); cacheTTLStr != "" {
+		if d, err := time.ParseDuration(cacheTTLStr); err == nil {
+			service.SetCacheTTL(d)
+			slog.Info("cache TTL configured", "ttl", d)
+		} else {
+			slog.Warn("invalid CACHE_TTL, using default 60m", "value", cacheTTLStr, "err", err)
+		}
+	}
+
 	// Redis client
 	rdb := redis.NewClient(&redis.Options{
 		Addr: redisURL,
