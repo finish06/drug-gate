@@ -252,7 +252,7 @@ func TestRxNormHandler_NDCs_UpstreamError(t *testing.T) {
 	}
 }
 
-func TestRxNormHandler_NDCs_NotFound(t *testing.T) {
+func TestRxNormHandler_NDCs_EmptyResult(t *testing.T) {
 	svc := &mockRxNormService{
 		ndcResult: &model.RxNormNDCResponse{RxCUI: "999999", NDCs: []string{}},
 	}
@@ -263,8 +263,8 @@ func TestRxNormHandler_NDCs_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404", w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200 (empty result, not 404)", w.Code)
 	}
 }
 
@@ -282,7 +282,7 @@ func TestRxNormHandler_Generics_UpstreamError(t *testing.T) {
 	}
 }
 
-func TestRxNormHandler_Generics_NotFound(t *testing.T) {
+func TestRxNormHandler_Generics_EmptyResult(t *testing.T) {
 	svc := &mockRxNormService{
 		genericResult: &model.RxNormGenericResponse{RxCUI: "999999", Generics: []model.RxNormConcept{}},
 	}
@@ -293,8 +293,8 @@ func TestRxNormHandler_Generics_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404", w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200 (empty result, not 404)", w.Code)
 	}
 }
 

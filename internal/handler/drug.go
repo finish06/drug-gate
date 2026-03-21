@@ -38,7 +38,7 @@ func (h *DrugHandler) HandleNDCLookup(w http.ResponseWriter, r *http.Request) {
 
 	parsed, err := ndc.Parse(raw)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_ndc", err.Error())
+		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 

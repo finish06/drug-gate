@@ -57,11 +57,11 @@ func (h *AdminHandler) CreateKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.AppName == "" {
-		writeAdminHandlerError(w, http.StatusBadRequest, "validation_error", "app_name is required")
+		writeAdminHandlerError(w, http.StatusBadRequest, "bad_request", "app_name is required")
 		return
 	}
 	if req.RateLimit <= 0 {
-		writeAdminHandlerError(w, http.StatusBadRequest, "validation_error", "rate_limit must be greater than 0")
+		writeAdminHandlerError(w, http.StatusBadRequest, "bad_request", "rate_limit must be greater than 0")
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *AdminHandler) RotateKey(w http.ResponseWriter, r *http.Request) {
 
 	gracePeriod, err := time.ParseDuration(req.GracePeriod)
 	if err != nil {
-		writeAdminHandlerError(w, http.StatusBadRequest, "validation_error", "Invalid grace_period duration")
+		writeAdminHandlerError(w, http.StatusBadRequest, "bad_request", "Invalid grace_period duration")
 		return
 	}
 

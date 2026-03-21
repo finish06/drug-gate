@@ -90,7 +90,7 @@ Reuses existing `model.DrugNameEntry`:
 }
 ```
 
-No pagination — autocomplete returns a capped list (default 10, max 50).
+**No pagination.** This endpoint intentionally omits the `pagination` wrapper used by list endpoints (`/v1/drugs/names`, `/v1/drugs/classes`). Autocomplete returns a flat `{"data": [...]}` response capped by the `limit` parameter. This is a design decision — autocomplete is a typeahead helper, not a browseable list. Clients should not expect `pagination.total` or `pagination.total_pages` fields.
 
 ## 5. API Contract
 

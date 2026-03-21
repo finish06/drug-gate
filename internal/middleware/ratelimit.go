@@ -34,12 +34,18 @@ func RateLimit(limiter ratelimit.Limiter, m ...*metrics.Metrics) func(http.Handl
 			}
 
 			// Always set rate limit headers.
+			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(ak.RateLimit))
 			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(result.Remaining))
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(result.ResetAt.Unix(), 10))
 
 			if !result.Allowed {
 				if met != nil {
-					met.RateLimitRejectionsTotal.WithLabelValues(ak.Key).Inc()
+					// Truncate key in metrics to avoid exposing full API keys
+					keyLabel := ak.Key
+					if len(keyLabel) > 12 {
+						keyLabel = keyLabel[:12] + "..."
+					}
+					met.RateLimitRejectionsTotal.WithLabelValues(keyLabel).Inc()
 				}
 				w.Header().Set("Retry-After", strconv.Itoa(int(result.RetryAfter.Seconds())))
 				w.Header().Set("Content-Type", "application/json")

@@ -256,8 +256,8 @@ func TestHandleNDCLookup_AC005_DashlessRejected(t *testing.T) {
 
 	var resp model.ErrorResponse
 	_ = json.Unmarshal(rr.Body.Bytes(), &resp)
-	if resp.Error != "invalid_ndc" {
-		t.Errorf("Error = %q, want %q", resp.Error, "invalid_ndc")
+	if resp.Error != "bad_request" {
+		t.Errorf("Error = %q, want %q", resp.Error, "bad_request")
 	}
 }
 

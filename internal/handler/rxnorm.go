@@ -46,7 +46,7 @@ func NewRxNormHandler(svc RxNormDataService) *RxNormHandler {
 func (h *RxNormHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.URL.Query().Get("name"))
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "validation_error", "name query parameter is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "name query parameter is required")
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *RxNormHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
 	rxcui := strings.TrimSpace(chi.URLParam(r, "rxcui"))
 	if rxcui == "" {
-		writeError(w, http.StatusBadRequest, "validation_error", "rxcui path parameter is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "rxcui path parameter is required")
 		return
 	}
 
@@ -94,11 +94,6 @@ func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Unexpected error")
-		return
-	}
-
-	if len(result.NDCs) == 0 {
-		writeError(w, http.StatusNotFound, "not_found", "No data found for RxCUI '"+rxcui+"'")
 		return
 	}
 
@@ -120,7 +115,7 @@ func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
 func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
 	rxcui := strings.TrimSpace(chi.URLParam(r, "rxcui"))
 	if rxcui == "" {
-		writeError(w, http.StatusBadRequest, "validation_error", "rxcui path parameter is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "rxcui path parameter is required")
 		return
 	}
 
@@ -131,11 +126,6 @@ func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Unexpected error")
-		return
-	}
-
-	if len(result.Generics) == 0 {
-		writeError(w, http.StatusNotFound, "not_found", "No data found for RxCUI '"+rxcui+"'")
 		return
 	}
 
@@ -157,7 +147,7 @@ func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
 func (h *RxNormHandler) HandleRelated(w http.ResponseWriter, r *http.Request) {
 	rxcui := strings.TrimSpace(chi.URLParam(r, "rxcui"))
 	if rxcui == "" {
-		writeError(w, http.StatusBadRequest, "validation_error", "rxcui path parameter is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "rxcui path parameter is required")
 		return
 	}
 
@@ -197,7 +187,7 @@ func (h *RxNormHandler) HandleRelated(w http.ResponseWriter, r *http.Request) {
 func (h *RxNormHandler) HandleProfile(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.URL.Query().Get("name"))
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "validation_error", "name query parameter is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "name query parameter is required")
 		return
 	}
 
