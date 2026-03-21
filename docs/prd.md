@@ -99,7 +99,8 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M6: SPL Interactions | SPL browser, drug info cards, multi-drug interaction checker with XML parsing | beta | DONE | 4 SPL endpoints, background indexer, E2E tests, 80%+ coverage, v0.6.1 tagged |
 | M5: Polish & Quality | Version endpoint, RxNorm E2E tests, admin cache clear | beta | DONE | /version endpoint, 33 E2E tests passing, staging auto-deploy, 87.4% coverage |
 | M7: Operational Hardening | Redis persistence, structured alerting, drug autocomplete | beta | DONE | AOF persistence, X-Request-ID correlation, Prometheus alert rules, autocomplete endpoint, k6 baselines, 80.7% coverage |
-| M8: Cache Architecture + Clinical Data | Generic CacheAside[T], expanded SPL sections | beta | NOW | ~300 lines boilerplate eliminated, configurable TTL per env, SPL sections 4-6 parsed |
+| M8: Cache Architecture + Clinical Data | Generic CacheAside[T], expanded SPL sections | beta | DONE | 211 lines eliminated, configurable TTL, SPL sections 4-6, 81.1% coverage |
+| M8.5: Bugathon | Security, correctness, and DX fixes from 3-agent audit | beta | NOW | 35 findings: 7 Tier 1 (critical), 7 Tier 2 (DX), 8 Tier 3 (triage), 13 Tier 4 (backlog) |
 | M9: Upstream Resilience + Production Deploy | Circuit breaker, deploy automation with rollback | GA candidate | NEXT | Circuit breaker on cash-drugs, stale-cache serving, GH Actions deploy with health gate, one-command rollback |
 | M10: Admin Auth Hardening | HMAC-signed admin tokens, rotation, audit log | GA candidate | LATER | Static bearer token replaced, token rotation without restart, admin audit log, separate rate limits |
 | M11: Flagship Aggregation | Unified drug profile, batch drug lookup | GA | LATER | GET /v1/drugs/profile merges all data, POST /v1/drugs/batch handles 5-20 drugs with per-item errors |
