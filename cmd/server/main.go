@@ -111,7 +111,10 @@ func main() {
 	// Dependencies
 	store := apikey.NewRedisStore(rdb)
 	limiter := ratelimit.NewRedisLimiter(rdb)
-	drugClient := client.NewHTTPDrugClient(cashDrugsURL)
+	// Shared circuit breaker for all upstream clients (same cash-drugs backend)
+	upstreamBreaker := client.NewCircuitBreaker(10, 30*time.Second)
+
+	drugClient := client.NewHTTPDrugClient(cashDrugsURL, upstreamBreaker)
 	drugHandler := handler.NewDrugHandler(drugClient)
 	drugClassHandler := handler.NewDrugClassHandler(drugClient)
 	dataSvc := service.NewDrugDataService(drugClient, rdb, m)
@@ -119,12 +122,12 @@ func main() {
 	drugClassesHandler := handler.NewDrugClassesHandler(dataSvc)
 	drugsByClassHandler := handler.NewDrugsByClassHandler(dataSvc)
 	autocompleteHandler := handler.NewAutocompleteHandler(dataSvc)
-	rxnormClient := client.NewHTTPRxNormClient(cashDrugsURL)
+	rxnormClient := client.NewHTTPRxNormClient(cashDrugsURL, upstreamBreaker)
 	rxnormSvc := service.NewRxNormService(rxnormClient, rdb, m)
 	rxnormHandler := handler.NewRxNormHandler(rxnormSvc)
 	adminHandler := handler.NewAdminHandler(store)
 	cacheHandler := handler.NewCacheHandler(rdb)
-	splClient := client.NewHTTPSPLClient(cashDrugsURL)
+	splClient := client.NewHTTPSPLClient(cashDrugsURL, upstreamBreaker)
 	splSvc := service.NewSPLService(splClient, drugClient, rdb, m)
 	splHandler := handler.NewSPLHandler(splSvc)
 
@@ -138,7 +141,7 @@ func main() {
 	r.Use(middleware.MetricsMiddleware(m))
 
 	// Public routes (no auth)
-	healthHandler := handler.NewHealthHandler(rdb, cashDrugsURL)
+	healthHandler := handler.NewHealthHandler(rdb, cashDrugsURL, upstreamBreaker)
 	r.Get("/health", healthHandler.Handle)
 	r.Get("/version", handler.VersionInfo)
 	r.Handle("/metrics", promhttp.Handler())

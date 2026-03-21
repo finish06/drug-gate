@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/finish06/drug-gate/internal/cache"
 	"github.com/finish06/drug-gate/internal/client"
@@ -173,58 +174,70 @@ func (s *SPLService) CheckInteractions(ctx context.Context, drugs []model.DrugId
 
 	resolved := make([]resolvedDrug, len(drugs))
 
-	// Phase 1: Resolve all drugs and fetch their interaction data
-	for i, d := range drugs {
-		var drugName, inputName, inputType string
+	// Phase 1: Resolve all drugs in parallel (capped at 5 concurrent)
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 5) // concurrency limiter
 
-		if d.NDC != "" {
-			inputType = "ndc"
-			inputName = d.NDC
-			name, err := s.ResolveDrugNameFromNDC(ctx, d.NDC)
+	for i, d := range drugs {
+		wg.Add(1)
+		go func(idx int, drug model.DrugIdentifier) {
+			defer wg.Done()
+			sem <- struct{}{}        // acquire
+			defer func() { <-sem }() // release
+
+			var drugName, inputName, inputType string
+
+			if drug.NDC != "" {
+				inputType = "ndc"
+				inputName = drug.NDC
+				name, err := s.ResolveDrugNameFromNDC(ctx, drug.NDC)
+				if err != nil {
+					resolved[idx] = resolvedDrug{
+						result: model.DrugCheckResult{
+							InputName: inputName, InputType: inputType,
+							Error: err.Error(),
+						},
+					}
+					return
+				}
+				drugName = name
+			} else {
+				inputType = "name"
+				inputName = drug.Name
+				drugName = drug.Name
+			}
+
+			detail, err := s.GetInteractionsForDrug(ctx, drugName)
 			if err != nil {
-				resolved[i] = resolvedDrug{
+				resolved[idx] = resolvedDrug{
 					result: model.DrugCheckResult{
-						InputName: inputName, InputType: inputType,
+						InputName: inputName, InputType: inputType, ResolvedName: drugName,
 						Error: err.Error(),
 					},
 				}
-				continue
+				return
 			}
-			drugName = name
-		} else {
-			inputType = "name"
-			inputName = d.Name
-			drugName = d.Name
-		}
 
-		detail, err := s.GetInteractionsForDrug(ctx, drugName)
-		if err != nil {
-			resolved[i] = resolvedDrug{
+			hasInteractions := detail != nil && len(detail.Interactions) > 0
+			setID := ""
+			if detail != nil {
+				setID = detail.SetID
+			}
+
+			resolved[idx] = resolvedDrug{
 				result: model.DrugCheckResult{
-					InputName: inputName, InputType: inputType, ResolvedName: drugName,
-					Error: err.Error(),
+					InputName:       inputName,
+					InputType:       inputType,
+					ResolvedName:    drugName,
+					HasInteractions: hasInteractions,
+					SPLSetID:        setID,
 				},
+				detail: detail,
 			}
-			continue
-		}
-
-		hasInteractions := detail != nil && len(detail.Interactions) > 0
-		setID := ""
-		if detail != nil {
-			setID = detail.SetID
-		}
-
-		resolved[i] = resolvedDrug{
-			result: model.DrugCheckResult{
-				InputName:       inputName,
-				InputType:       inputType,
-				ResolvedName:    drugName,
-				HasInteractions: hasInteractions,
-				SPLSetID:        setID,
-			},
-			detail: detail,
-		}
+		}(i, d)
 	}
+
+	wg.Wait()
 
 	// Phase 2: Cross-reference all pairs
 	var matches []model.InteractionMatch

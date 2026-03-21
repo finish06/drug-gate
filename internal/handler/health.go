@@ -6,9 +6,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/version"
 	"github.com/redis/go-redis/v9"
 )
+
+// CircuitChecker can report circuit breaker state.
+type CircuitChecker interface {
+	IsOpen() bool
+}
 
 // HealthResponse is the structured health check response.
 type HealthResponse struct {
@@ -19,13 +25,18 @@ type HealthResponse struct {
 
 // HealthHandler provides health checks with dependency verification.
 type HealthHandler struct {
-	rdb        *redis.Client
+	rdb         *redis.Client
 	upstreamURL string
+	breaker     *client.CircuitBreaker
 }
 
 // NewHealthHandler creates a health handler with dependency checks.
-func NewHealthHandler(rdb *redis.Client, upstreamURL string) *HealthHandler {
-	return &HealthHandler{rdb: rdb, upstreamURL: upstreamURL}
+func NewHealthHandler(rdb *redis.Client, upstreamURL string, breaker ...*client.CircuitBreaker) *HealthHandler {
+	h := &HealthHandler{rdb: rdb, upstreamURL: upstreamURL}
+	if len(breaker) > 0 {
+		h.breaker = breaker[0]
+	}
+	return h
 }
 
 // Handle returns service health status with dependency checks.
@@ -68,6 +79,14 @@ func (h *HealthHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		if resp != nil {
 			_ = resp.Body.Close()
 		}
+	}
+
+	// Check circuit breaker
+	if h.breaker != nil && h.breaker.IsOpen() {
+		deps["circuit_breaker"] = "open"
+		healthy = false
+	} else if h.breaker != nil {
+		deps["circuit_breaker"] = "closed"
 	}
 
 	status := "ok"

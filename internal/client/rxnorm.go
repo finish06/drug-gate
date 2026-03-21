@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -47,10 +48,17 @@ type RxNormClient interface {
 type HTTPRxNormClient struct {
 	baseURL    string
 	httpClient *http.Client
+	breaker    *CircuitBreaker
 }
 
 // NewHTTPRxNormClient creates a client pointing at the given cash-drugs base URL.
-func NewHTTPRxNormClient(baseURL string) *HTTPRxNormClient {
+func NewHTTPRxNormClient(baseURL string, breaker ...*CircuitBreaker) *HTTPRxNormClient {
+	var cb *CircuitBreaker
+	if len(breaker) > 0 {
+		cb = breaker[0]
+	} else {
+		cb = NewCircuitBreaker(10, 30*time.Second)
+	}
 	return &HTTPRxNormClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
@@ -61,7 +69,29 @@ func NewHTTPRxNormClient(baseURL string) *HTTPRxNormClient {
 				IdleConnTimeout:     90 * time.Second,
 			},
 		},
+		breaker: cb,
 	}
+}
+
+// doRequest wraps HTTP calls with circuit breaker and response size limiting.
+func (c *HTTPRxNormClient) doRequest(req *http.Request) (*http.Response, error) {
+	var resp *http.Response
+	err := c.breaker.Execute(func() error {
+		var doErr error
+		resp, doErr = c.httpClient.Do(req)
+		if doErr != nil {
+			return doErr
+		}
+		resp.Body = io.NopCloser(io.LimitReader(resp.Body, maxResponseBytes))
+		if resp.StatusCode >= 500 {
+			return fmt.Errorf("upstream returned status %d", resp.StatusCode)
+		}
+		return nil
+	})
+	if err != nil && resp != nil && resp.StatusCode < 500 {
+		return resp, nil
+	}
+	return resp, err
 }
 
 func (c *HTTPRxNormClient) doGet(ctx context.Context, reqURL string) (*http.Response, error) {
@@ -70,7 +100,7 @@ func (c *HTTPRxNormClient) doGet(ctx context.Context, reqURL string) (*http.Resp
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}

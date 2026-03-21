@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
@@ -260,5 +262,90 @@ func TestCacheAside_SlidingTTL(t *testing.T) {
 
 	if fetchCount != 0 {
 		t.Error("TTL should have been reset by GetEx — expected cache hit")
+	}
+}
+
+// AC-009: Stale cache served when circuit is open.
+func TestCacheAside_AC009_StaleOnCircuitOpen(t *testing.T) {
+	mr, rdb := setupTestRedis(t)
+	defer mr.Close()
+
+	m := newTestMetrics(t)
+	ca := New[testItem](rdb, m, "test:stale", 60*time.Minute, "test")
+
+	// Populate via GetWithStale (creates both fresh + stale keys)
+	_, _ = ca.GetWithStale(context.Background(), func(ctx context.Context) (testItem, error) {
+		return testItem{Name: "original", Value: 42}, nil
+	})
+
+	// Expire the fresh cache key
+	mr.FastForward(61 * time.Minute)
+
+	// Stale backup key (stale:test:stale) should still exist (no TTL)
+	if !mr.Exists("stale:test:stale") {
+		t.Fatal("stale backup key should exist")
+	}
+
+	// Fetch with circuit open error — should serve stale from backup key
+	result, err := ca.GetWithStale(context.Background(), func(ctx context.Context) (testItem, error) {
+		return testItem{}, fmt.Errorf("wrapped: %w", client.ErrCircuitOpen)
+	})
+
+	if err != nil {
+		t.Fatalf("expected stale cache, got error: %v", err)
+	}
+	if !result.Stale {
+		t.Error("expected Stale=true")
+	}
+	if result.Value.Name != "original" {
+		t.Errorf("expected stale value 'original', got %q", result.Value.Name)
+	}
+}
+
+// AC-012: No stale cache + circuit open → error.
+func TestCacheAside_AC012_NoStaleCircuitOpen(t *testing.T) {
+	mr, rdb := setupTestRedis(t)
+	defer mr.Close()
+
+	m := newTestMetrics(t)
+	ca := New[testItem](rdb, m, "test:nostale", 60*time.Minute, "test")
+
+	// No cache populated — fetch with circuit open
+	_, err := ca.GetWithStale(context.Background(), func(ctx context.Context) (testItem, error) {
+		return testItem{}, client.ErrCircuitOpen
+	})
+
+	if !errors.Is(err, client.ErrCircuitOpen) {
+		t.Errorf("expected ErrCircuitOpen, got: %v", err)
+	}
+}
+
+// GetWithStale returns fresh data when cache is valid.
+func TestCacheAside_GetWithStale_FreshHit(t *testing.T) {
+	mr, rdb := setupTestRedis(t)
+	defer mr.Close()
+
+	m := newTestMetrics(t)
+	ca := New[testItem](rdb, m, "test:freshstale", 60*time.Minute, "test")
+
+	// Populate
+	_, _ = ca.Get(context.Background(), func(ctx context.Context) (testItem, error) {
+		return testItem{Name: "fresh"}, nil
+	})
+
+	// GetWithStale should return fresh (not stale)
+	result, err := ca.GetWithStale(context.Background(), func(ctx context.Context) (testItem, error) {
+		t.Error("fetch should not be called on cache hit")
+		return testItem{}, nil
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Stale {
+		t.Error("expected Stale=false for fresh cache hit")
+	}
+	if result.Value.Name != "fresh" {
+		t.Errorf("expected 'fresh', got %q", result.Value.Name)
 	}
 }
