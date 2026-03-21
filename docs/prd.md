@@ -323,7 +323,7 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
   - Documented runbook for production operations
 
 **Success criteria:**
-- [ ] Circuit breaker trips after 5 consecutive upstream failures, serves stale cache
+- [ ] Circuit breaker trips after 10 consecutive upstream failures, serves stale cache
 - [ ] Circuit auto-recovers via half-open probe after configurable cooldown
 - [ ] Multi-drug interaction checker runs parallel upstream calls via errgroup
 - [ ] MaxBytesReader limits upstream response size to 5MB
