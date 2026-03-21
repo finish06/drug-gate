@@ -2,7 +2,7 @@
 
 **Goal:** Clean up technical debt that unblocks faster development, double the clinical data coverage by parsing additional SPL sections.
 
-**Status:** IN_PROGRESS
+**Status:** DONE
 **Target Maturity:** Beta
 **Appetite:** 2 weeks
 **Started:** 2026-03-20

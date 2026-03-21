@@ -100,8 +100,9 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M5: Polish & Quality | Version endpoint, RxNorm E2E tests, admin cache clear | beta | DONE | /version endpoint, 33 E2E tests passing, staging auto-deploy, 87.4% coverage |
 | M7: Operational Hardening | Redis persistence, structured alerting, drug autocomplete | beta | DONE | AOF persistence, X-Request-ID correlation, Prometheus alert rules, autocomplete endpoint, k6 baselines, 80.7% coverage |
 | M8: Cache Architecture + Clinical Data | Generic CacheAside[T], expanded SPL sections | beta | DONE | 211 lines eliminated, configurable TTL, SPL sections 4-6, 81.1% coverage |
-| M8.5: Bugathon | Security, correctness, and DX fixes from 3-agent audit | beta | NOW | 35 findings: 7 Tier 1 (critical), 7 Tier 2, 8 Tier 3, 13 Tier 4 (backlog) |
-| M9: Upstream Resilience + Production Deploy | Circuit breaker, deploy automation with rollback | GA candidate | NEXT | Circuit breaker on cash-drugs, stale-cache serving, GH Actions deploy with health gate, one-command rollback |
+| M8.5: Bugathon | Security, correctness, and DX fixes from 3-agent audit | beta | DONE | 13 bugs fixed (7 Tier 1, 6 Tier 2), v0.7.1 tagged |
+| M9: Upstream Resilience | Circuit breaker, stale-cache, parallel interactions, MaxBytesReader | beta | DONE | Circuit breaker (10 fails), stale-cache serving, errgroup(5), 10MB limit, v0.8.0 tagged |
+| M9.5: Production Deploy | Deploy automation with rollback | GA candidate | NEXT | GH Actions deploy workflow with health gate, version-pinned deploys, one-command rollback, runbook |
 | M10: Admin Auth Hardening | HMAC-signed admin tokens, rotation, audit log | GA candidate | LATER | Static bearer token replaced, token rotation without restart, admin audit log, separate rate limits |
 | M11: Flagship Aggregation | Unified drug profile, batch drug lookup | GA | LATER | GET /v1/drugs/profile merges all data, POST /v1/drugs/batch handles 5-20 drugs with per-item errors |
 

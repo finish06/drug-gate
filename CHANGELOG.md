@@ -7,6 +7,25 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-03-21
+
+### Added
+- Circuit breaker on all upstream HTTP clients — 10 consecutive failures trips the circuit, 30s cooldown, half-open probe for auto-recovery
+- Stale-cache serving when circuit is open — dual-key strategy (fresh + stale backup with no TTL), `Result.Stale` flag for `X-Cache-Stale` header
+- Parallel interaction checker — goroutine pool with semaphore capped at 5 concurrent upstream calls (was sequential)
+- MaxBytesReader limits upstream response bodies to 10MB
+- Health endpoint reports circuit breaker state (`circuit_breaker: closed|open`)
+- `ErrCircuitOpen` sentinel error for circuit breaker state detection
+- Shared circuit breaker instance across all 3 upstream clients (drug, rxnorm, spl)
+
+### Changed
+- Upstream HTTP clients now use `doRequest` wrapper with circuit breaker + response size limiting
+- Drug, RxNorm, and SPL client constructors accept optional shared `CircuitBreaker`
+
+### Fixed
+- HTTP connection reuse preserved in MaxBytesReader wrapper (was using `io.NopCloser` which prevented connection pool recycling)
+- MaxBytesReader limit increased from 5MB to 10MB (drugnames endpoint returns ~7.4MB)
+
 ## [0.7.1] - 2026-03-21
 
 ### Added
