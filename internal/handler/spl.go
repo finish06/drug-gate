@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/model"
@@ -45,7 +46,7 @@ func NewSPLHandler(svc SPLDataService) *SPLHandler {
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
 // @Router       /v1/drugs/spls [get]
 func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
-	name := r.URL.Query().Get("name")
+	name := strings.TrimSpace(r.URL.Query().Get("name"))
 	if name == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "Query parameter 'name' is required")
 		return
@@ -134,8 +135,8 @@ func (h *SPLHandler) HandleSPLDetail(w http.ResponseWriter, r *http.Request) {
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
 // @Router       /v1/drugs/info [get]
 func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
-	name := r.URL.Query().Get("name")
-	ndcParam := r.URL.Query().Get("ndc")
+	name := strings.TrimSpace(r.URL.Query().Get("name"))
+	ndcParam := strings.TrimSpace(r.URL.Query().Get("ndc"))
 
 	if name == "" && ndcParam == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "Either 'name' or 'ndc' query parameter is required")

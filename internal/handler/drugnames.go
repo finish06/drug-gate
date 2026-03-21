@@ -65,7 +65,7 @@ func (h *DrugNamesHandler) HandleDrugNames(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Apply search filter
-	q := strings.ToLower(r.URL.Query().Get("q"))
+	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	if q != "" {
 		filtered := make([]model.DrugNameEntry, 0, len(names)/4)
 		for _, n := range names {

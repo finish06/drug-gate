@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/finish06/drug-gate/internal/client"
 	"github.com/finish06/drug-gate/internal/model"
@@ -39,7 +40,7 @@ func NewAutocompleteHandler(svc AutocompleteService) *AutocompleteHandler {
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
 // @Router       /v1/drugs/autocomplete [get]
 func (h *AutocompleteHandler) HandleAutocomplete(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if len(q) < 2 {
 		writeError(w, http.StatusBadRequest, "bad_request", "q parameter is required and must be at least 2 characters")
 		return
