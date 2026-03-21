@@ -40,7 +40,12 @@ func RateLimit(limiter ratelimit.Limiter, m ...*metrics.Metrics) func(http.Handl
 
 			if !result.Allowed {
 				if met != nil {
-					met.RateLimitRejectionsTotal.WithLabelValues(ak.Key).Inc()
+					// Truncate key in metrics to avoid exposing full API keys
+					keyLabel := ak.Key
+					if len(keyLabel) > 12 {
+						keyLabel = keyLabel[:12] + "..."
+					}
+					met.RateLimitRejectionsTotal.WithLabelValues(keyLabel).Inc()
 				}
 				w.Header().Set("Retry-After", strconv.Itoa(int(result.RetryAfter.Seconds())))
 				w.Header().Set("Content-Type", "application/json")
