@@ -11,8 +11,9 @@ import (
 	"time"
 )
 
-// maxResponseBytes is the maximum upstream response body size (5MB).
-const maxResponseBytes = 5 << 20
+// maxResponseBytes is the maximum upstream response body size (10MB).
+// The drugnames endpoint returns ~7.4MB, so 5MB was too low.
+const maxResponseBytes = 10 << 20
 
 // limitedReadCloser wraps a LimitReader while preserving the original body's
 // Close method for HTTP connection reuse.
