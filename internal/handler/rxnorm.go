@@ -97,11 +97,6 @@ func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(result.NDCs) == 0 {
-		writeError(w, http.StatusNotFound, "not_found", "No data found for RxCUI '"+rxcui+"'")
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(result)
 }
@@ -131,11 +126,6 @@ func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Unexpected error")
-		return
-	}
-
-	if len(result.Generics) == 0 {
-		writeError(w, http.StatusNotFound, "not_found", "No data found for RxCUI '"+rxcui+"'")
 		return
 	}
 
