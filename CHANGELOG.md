@@ -8,18 +8,64 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 ## [Unreleased]
 
 ### Added
+- SPL detail and drug info endpoints now return sections 4 (Contraindications), 5 (Warnings and Precautions), and 6 (Adverse Reactions) alongside existing Section 7
+- Generic `CacheAside[T]` utility for Redis cache-aside pattern — eliminates 211 lines of duplicated boilerplate
+- `GET /v1/drugs/autocomplete?q={prefix}&limit={n}` — drug name typeahead endpoint with prefix matching, case-insensitive, sorted alphabetically (default limit 10, max 50)
+- `X-Request-ID` middleware — generates UUID v4 or passes through client-provided ID, correlates in slog request logs, set in all response headers
+- Prometheus alert rules (`prometheus/alerts.yml`) — 4 alerts: high error rate, high latency, Redis down, rate limit abuse
+- Redis AOF persistence in docker-compose with named volume for data durability
+- k6 performance test harness (`tests/k6/staging.js`) — 4 scenarios (smoke, load, spike, soak) covering all 21 endpoints
+- k6 baseline comparison tool (`tests/k6/compare.js`) — compares runs against stored baselines, exits non-zero on >15% regression
+- `ops/redis-persistence.md` — backup cron, restore procedures for local, staging, and production
+- `ops/prometheus-alerts.md` — per-alert response procedures, threshold tuning guide, Alertmanager integration
+
+### Changed
+- Atomic cache TTL reset, connection pooling, and allocation reduction (performance)
+- Request logger now includes `request_id` field when X-Request-ID middleware is active
+
+### Fixed
+- Old-format SPL Drug Interactions titles now handled correctly in XML parser
+- DrugClassLookup E2E test tolerant of missing pharm_class data
+- RxNorm E2E tests gracefully handle upstream timeouts
+- golangci-lint errcheck warnings resolved across test files
+
+## [0.6.1] - 2026-03-20
+
+### Added
+- Background SPL interaction indexer — pre-fetches and caches parsed interactions for popular drugs on startup (24h refresh, configurable top-N)
+- SPL E2E tests against live cash-drugs (search, detail, drug info, interaction checker)
+- Swagger annotations on all 4 SPL endpoints
+
+### Documentation
+- PRD updated for beta promotion, M6 milestones, and roadmap through M11
+
+## [0.6.0] - 2026-03-17
+
+### Added
+- SPL document browser: `GET /v1/drugs/spls` (search by name) and `GET /v1/drugs/spls/{setid}` (detail with parsed Section 7)
+- Drug info card: `GET /v1/drugs/info` — returns SPL metadata + structured interaction sections (by name or NDC)
+- Multi-drug interaction checker: `POST /v1/drugs/interactions` — accepts 2-10 drugs, cross-references Section 7 text
+- SPL XML parser for Section 7 (Drug Interactions) extraction via regex
+- SPL Redis caching with 60-minute sliding TTL
+
+## [0.5.1] - 2026-03-16
+
+### Added
 - `GET /version` endpoint — returns build version, git commit, git branch, Go version (public, no auth)
 - Build-time injection of `GIT_COMMIT` and `GIT_BRANCH` via Dockerfile and CI ldflags
 - RxNorm E2E tests (search, profile, NDCs, related, validation, not-found)
 - Admin cache clear E2E test
 - Version endpoint E2E test
+- Staging auto-deploy via cron (replaces Watchtower)
 
 ### Fixed
-- RxNorm client JSON parsing aligned with cash-drugs response shapes (cash-drugs flattens nested RxNorm structures into `data[]`)
-- RxNorm scores parsed as floats (upstream sends `"14.335"`, not integers) — fixes broken candidate ranking
+- RxNorm client JSON parsing aligned with cash-drugs response shapes
+- RxNorm scores parsed as floats (upstream sends `"14.335"`, not integers)
 - Nameless RxNorm candidates (MMSL source) filtered out of search results
 
-### Previously Added
+## [0.5.0] - 2026-03-15
+
+### Added
 - RxNorm integration: 5 new endpoints under `/v1/drugs/rxnorm/`
   - `GET /search?name=` — approximate match drug search (top 5 candidates + spelling suggestions)
   - `GET /profile?name=` — unified drug profile (RxCUI, generics, NDCs, brand names, related concepts)
@@ -29,7 +75,6 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 - RxNorm Redis caching: 24h sliding TTL for search/profile, 7d for RxCUI-based lookups
 - Grafana dashboard JSON (`grafana/drug-gate-dashboard.json`) for all drug-gate metrics
 - Staging environment on 192.168.1.145:8082 (auto-deploys via cron every 5m)
-- `docker-compose.staging.yml` for staging deployment
 - `DELETE /admin/cache` endpoint for Redis cache clearing (prefix-based, SCAN-safe)
 
 ## [0.4.1] - 2026-03-15

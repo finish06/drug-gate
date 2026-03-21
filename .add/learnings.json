@@ -171,6 +171,32 @@
       "date": "2026-03-20",
       "classified_by": "human",
       "checkpoint_type": "retro"
+    },
+    {
+      "id": "L-014",
+      "title": "M8 CacheAside[T]: 211 lines eliminated across 11 methods",
+      "body": "Generic CacheAside[T] replaced per-method cache boilerplate in DrugDataService (3), RxNormService (5), SPLService (3). Service files 865→654 lines. Pointer-vs-value return needed care: not-found sentinel via zero-value check (RxCUI==\"\" for profile). 9 unit tests for the generic.",
+      "scope": "project",
+      "stack": ["go", "redis"],
+      "category": "architecture",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-03-20",
+      "classified_by": "agent",
+      "checkpoint_type": "post-tdd"
+    },
+    {
+      "id": "L-015",
+      "title": "M8 Expanded SPL sections: regex parser extended for sections 4-6",
+      "body": "Same regex approach as Section 7 applied to sections 4 (Contraindications), 5 (Warnings), 6 (Adverse Reactions). SPLDetail model gains 3 new fields. Reuses InteractionSection type. ParseInteractions preserved for backward compat.",
+      "scope": "project",
+      "stack": ["go"],
+      "category": "technical",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-03-20",
+      "classified_by": "agent",
+      "checkpoint_type": "post-tdd"
     }
   ]
 }

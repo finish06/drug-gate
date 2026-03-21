@@ -16,3 +16,8 @@
 | Time | Task | Status | Notes |
 |------|------|--------|-------|
 | 2026-03-20 | Away session started | started | Cycle-4, M8 Cache Architecture + Clinical Data |
+| 2026-03-20 | Phase 1: Specs | complete | cache-aside.md + spl-expanded-sections.md |
+| 2026-03-20 | Phase 2: CacheAside[T] generic | complete | 9 tests, 73 lines, RED→GREEN clean |
+| 2026-03-20 | Phase 3: Migrate all services | complete | 11 methods migrated, 865→654 lines (-211), all tests pass |
+| 2026-03-20 | Phase 4: Expanded SPL sections | complete | 6 parser tests, model + handler updated, sections 4-6 |
+| 2026-03-20 | Phase 5: Finalize | complete | 81.1% coverage, Swagger, changelog, learnings L-014/L-015 |
