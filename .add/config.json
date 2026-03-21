@@ -141,14 +141,14 @@
     "lastDetected": null
   },
   "changelog": {
-    "lastProcessedCommit": "edf92157dbecf063e3e5b2232c1e33ff592d8b65",
-    "lastVersionTag": "v0.5.0"
+    "lastProcessedCommit": "b37d285fb955c5885ab74f68b8d282c55b16c107",
+    "lastVersionTag": "v0.6.1"
   },
   "planning": {
-    "current_milestone": "M7",
-    "current_cycle": "cycle-3",
+    "current_milestone": "M8",
+    "current_cycle": "cycle-4",
     "wip_limit": 3,
     "parallel_agents": 1,
-    "cycle_history": ["cycle-1", "cycle-2"]
+    "cycle_history": ["cycle-1", "cycle-2", "cycle-3"]
   }
 }
