@@ -36,7 +36,7 @@ func NewDrugsByClassHandler(svc DataService) *DrugsByClassHandler {
 func (h *DrugsByClassHandler) HandleDrugsByClass(w http.ResponseWriter, r *http.Request) {
 	className := strings.TrimSpace(r.URL.Query().Get("class"))
 	if className == "" {
-		writeError(w, http.StatusBadRequest, "validation_error", "class query parameter is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "class query parameter is required")
 		return
 	}
 

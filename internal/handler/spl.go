@@ -47,7 +47,7 @@ func NewSPLHandler(svc SPLDataService) *SPLHandler {
 func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "missing_param", "Query parameter 'name' is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "Query parameter 'name' is required")
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
 func (h *SPLHandler) HandleSPLDetail(w http.ResponseWriter, r *http.Request) {
 	setID := chi.URLParam(r, "setid")
 	if setID == "" {
-		writeError(w, http.StatusBadRequest, "missing_param", "Set ID is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "Set ID is required")
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 	ndcParam := r.URL.Query().Get("ndc")
 
 	if name == "" && ndcParam == "" {
-		writeError(w, http.StatusBadRequest, "missing_param", "Either 'name' or 'ndc' query parameter is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "Either 'name' or 'ndc' query parameter is required")
 		return
 	}
 
@@ -233,23 +233,23 @@ func (h *SPLHandler) HandleCheckInteractions(w http.ResponseWriter, r *http.Requ
 
 	var req model.InteractionCheckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "Request body must be valid JSON with a 'drugs' array")
+		writeError(w, http.StatusBadRequest, "bad_request", "Request body must be valid JSON with a 'drugs' array")
 		return
 	}
 
 	if len(req.Drugs) < 2 {
-		writeError(w, http.StatusBadRequest, "too_few_drugs", "At least 2 drugs are required")
+		writeError(w, http.StatusBadRequest, "bad_request", "At least 2 drugs are required")
 		return
 	}
 	if len(req.Drugs) > 10 {
-		writeError(w, http.StatusBadRequest, "too_many_drugs", "Maximum 10 drugs per request")
+		writeError(w, http.StatusBadRequest, "bad_request", "Maximum 10 drugs per request")
 		return
 	}
 
 	// Validate each drug has at least name or ndc
 	for i, d := range req.Drugs {
 		if d.Name == "" && d.NDC == "" {
-			writeError(w, http.StatusBadRequest, "invalid_drug", fmt.Sprintf("Drug at index %d must have 'name' or 'ndc'", i))
+			writeError(w, http.StatusBadRequest, "bad_request", fmt.Sprintf("Drug at index %d must have 'name' or 'ndc'", i))
 			return
 		}
 	}

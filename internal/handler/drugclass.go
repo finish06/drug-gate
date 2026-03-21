@@ -43,7 +43,7 @@ func NewDrugClassHandler(c DrugClassClient) *DrugClassHandler {
 func (h *DrugClassHandler) HandleDrugClassLookup(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.URL.Query().Get("name"))
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "validation_error", "name query parameter is required")
+		writeError(w, http.StatusBadRequest, "bad_request", "name query parameter is required")
 		return
 	}
 
