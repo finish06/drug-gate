@@ -64,12 +64,18 @@ func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	totalPages := total / p.Limit
+	if total%p.Limit != 0 {
+		totalPages++
+	}
+
 	resp := model.PaginatedResponse{
 		Data: entries,
 		Pagination: model.Pagination{
-			Page:  p.Page,
-			Limit: p.Limit,
-			Total: total,
+			Page:       p.Page,
+			Limit:      p.Limit,
+			Total:      total,
+			TotalPages: totalPages,
 		},
 	}
 
