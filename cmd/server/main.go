@@ -138,7 +138,8 @@ func main() {
 	r.Use(middleware.MetricsMiddleware(m))
 
 	// Public routes (no auth)
-	r.Get("/health", handler.HealthCheck)
+	healthHandler := handler.NewHealthHandler(rdb, cashDrugsURL)
+	r.Get("/health", healthHandler.Handle)
 	r.Get("/version", handler.VersionInfo)
 	r.Handle("/metrics", promhttp.Handler())
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
