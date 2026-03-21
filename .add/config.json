@@ -146,7 +146,7 @@
   },
   "planning": {
     "current_milestone": "M8",
-    "current_cycle": "cycle-4",
+    "current_cycle": "cycle-5",
     "wip_limit": 3,
     "parallel_agents": 1,
     "cycle_history": ["cycle-1", "cycle-2", "cycle-3", "cycle-4"]
