@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"sort"
 	"strings"
 	"time"
 
@@ -28,9 +27,10 @@ func SetCacheTTL(ttl time.Duration) {
 
 // DrugDataService provides drug data with lazy Redis caching.
 type DrugDataService struct {
-	client  client.DrugClient
-	rdb     *redis.Client
-	metrics *metrics.Metrics
+	client      client.DrugClient
+	rdb         *redis.Client
+	metrics     *metrics.Metrics
+	acIndex     *drugNameIndex
 }
 
 // NewDrugDataService creates a service with the given client and Redis connection.
@@ -40,7 +40,12 @@ func NewDrugDataService(c client.DrugClient, rdb *redis.Client, m ...*metrics.Me
 	if len(m) > 0 {
 		met = m[0]
 	}
-	return &DrugDataService{client: c, rdb: rdb, metrics: met}
+	return &DrugDataService{
+		client:  c,
+		rdb:     rdb,
+		metrics: met,
+		acIndex: newDrugNameIndex(CacheTTL),
+	}
 }
 
 // GetDrugNames returns all drug names, loading from cache or upstream.
@@ -106,33 +111,17 @@ func (s *DrugDataService) GetDrugsByClass(ctx context.Context, className string)
 }
 
 // AutocompleteDrugs returns drug names matching the given prefix, sorted
-// alphabetically and capped at limit. Reuses the cached drug names from
-// GetDrugNames — no additional upstream calls.
+// alphabetically and capped at limit. Uses an in-memory pre-sorted index
+// for O(log n) prefix lookup — avoids deserializing 7.4MB JSON per request.
 func (s *DrugDataService) AutocompleteDrugs(ctx context.Context, prefix string, limit int) ([]model.DrugNameEntry, error) {
-	names, err := s.GetDrugNames(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	lowerPrefix := strings.ToLower(prefix)
-	var matches []model.DrugNameEntry
-	for _, n := range names {
-		if strings.HasPrefix(strings.ToLower(n.Name), lowerPrefix) {
-			matches = append(matches, n)
+	// Refresh index if stale or empty
+	if s.acIndex.isStale() {
+		names, err := s.GetDrugNames(ctx)
+		if err != nil {
+			return nil, err
 		}
+		s.acIndex.load(names)
 	}
 
-	sort.Slice(matches, func(i, j int) bool {
-		return strings.ToLower(matches[i].Name) < strings.ToLower(matches[j].Name)
-	})
-
-	if len(matches) > limit {
-		matches = matches[:limit]
-	}
-
-	if matches == nil {
-		matches = []model.DrugNameEntry{}
-	}
-
-	return matches, nil
+	return s.acIndex.search(prefix, limit), nil
 }
