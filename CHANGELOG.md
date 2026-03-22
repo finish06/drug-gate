@@ -7,6 +7,13 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-03-22
+
+### Changed
+- Autocomplete endpoint uses in-memory pre-sorted index with binary search — **119,730x faster** (30ms → 0.25μs per call, 29MB → 1KB allocation)
+- Drug name index refreshes from Redis cache on CacheTTL interval (default 60m)
+- Prefix search uses `sort.Search` (O(log n)) instead of linear scan (O(n)) on 104K entries
+
 ## [0.8.0] - 2026-03-21
 
 ### Added

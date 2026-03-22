@@ -262,6 +262,19 @@
       "date": "2026-03-21",
       "classified_by": "agent",
       "checkpoint_type": "retro"
+    },
+    {
+      "id": "L-021",
+      "title": "Autocomplete optimization: in-memory index gives 119,730x speedup",
+      "body": "Replaced per-request 7.4MB JSON deserialize + O(n) linear scan with pre-sorted in-memory index + O(log n) binary search. 30ms→0.25μs, 29MB→1KB, 200K→5 allocs. Key insight: the bottleneck was JSON deserialization from Redis on every request, not the prefix matching itself. Pre-lowercasing entries during index build eliminates repeated ToLower calls during search. Index refreshes on CacheTTL interval.",
+      "scope": "workstation",
+      "stack": ["go", "redis"],
+      "category": "performance",
+      "severity": "high",
+      "source": "drug-gate",
+      "date": "2026-03-22",
+      "classified_by": "agent",
+      "checkpoint_type": "post-verify"
     }
   ]
 }
