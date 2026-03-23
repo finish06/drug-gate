@@ -34,6 +34,16 @@ import (
 // @host     localhost:8081
 // @BasePath /
 
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-Key
+// @description Publishable API key for accessing /v1/* endpoints. Create one via POST /admin/keys.
+
+// @securityDefinitions.apikey AdminAuth
+// @in header
+// @name Authorization
+// @description Bearer token for admin endpoints. Value: "Bearer {ADMIN_SECRET}"
+
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,

@@ -39,6 +39,7 @@ func NewDrugClassHandler(c DrugClassClient) *DrugClassHandler {
 // @Failure      400  {object}  model.ErrorResponse  "Missing or empty name parameter"
 // @Failure      404  {object}  model.ErrorResponse  "Drug not found"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/class [get]
 func (h *DrugClassHandler) HandleDrugClassLookup(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.URL.Query().Get("name"))

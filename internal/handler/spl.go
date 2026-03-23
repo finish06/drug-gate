@@ -44,6 +44,7 @@ func NewSPLHandler(svc SPLDataService) *SPLHandler {
 // @Success      200  {object}  model.PaginatedResponse
 // @Failure      400  {object}  model.ErrorResponse  "Missing name parameter"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/spls [get]
 func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.URL.Query().Get("name"))
@@ -94,6 +95,7 @@ func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  model.SPLDetail
 // @Failure      404  {object}  model.ErrorResponse  "SPL not found"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/spls/{setid} [get]
 func (h *SPLHandler) HandleSPLDetail(w http.ResponseWriter, r *http.Request) {
 	setID := chi.URLParam(r, "setid")
@@ -133,6 +135,7 @@ func (h *SPLHandler) HandleSPLDetail(w http.ResponseWriter, r *http.Request) {
 // @Failure      400  {object}  model.ErrorResponse  "Missing name or ndc"
 // @Failure      404  {object}  model.ErrorResponse  "NDC not found"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/info [get]
 func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.URL.Query().Get("name"))
@@ -227,6 +230,7 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  model.InteractionCheckResponse
 // @Failure      400  {object}  model.ErrorResponse  "Too few/many drugs or invalid input"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/interactions [post]
 func (h *SPLHandler) HandleCheckInteractions(w http.ResponseWriter, r *http.Request) {
 	// Limit request body to 1MB to prevent DoS

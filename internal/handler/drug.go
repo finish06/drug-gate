@@ -32,6 +32,7 @@ func NewDrugHandler(c client.DrugClient) *DrugHandler {
 // @Failure      400  {object}  model.ErrorResponse
 // @Failure      404  {object}  model.ErrorResponse
 // @Failure      502  {object}  model.ErrorResponse
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/ndc/{ndc} [get]
 func (h *DrugHandler) HandleNDCLookup(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "ndc")

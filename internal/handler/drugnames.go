@@ -40,6 +40,7 @@ func NewDrugNamesHandler(svc DataService) *DrugNamesHandler {
 // @Param        limit  query  int     false  "Results per page (default: 50, max: 100)"
 // @Success      200  {object}  model.PaginatedResponse
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/names [get]
 func (h *DrugNamesHandler) HandleDrugNames(w http.ResponseWriter, r *http.Request) {
 	names, err := h.svc.GetDrugNames(r.Context())

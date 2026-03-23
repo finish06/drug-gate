@@ -34,6 +34,7 @@ type cacheClearResult struct {
 // @Param        prefix  query  string  false  "Key prefix filter (e.g. rxnorm, drugnames)"
 // @Success      200  {object}  cacheClearResult
 // @Failure      502  {object}  model.ErrorResponse  "Redis unavailable"
+// @Security     AdminAuth
 // @Router       /admin/cache [delete]
 func (h *CacheHandler) ClearCache(w http.ResponseWriter, r *http.Request) {
 	prefix := r.URL.Query().Get("prefix")

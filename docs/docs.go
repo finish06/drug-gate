@@ -17,6 +17,11 @@ const docTemplate = `{
     "paths": {
         "/admin/cache": {
             "delete": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
                 "description": "Deletes all cache keys matching cache:*, or a subset matching cache:{prefix}* if the prefix query parameter is provided. Does not affect API key or rate limit data.",
                 "produces": [
                     "application/json"
@@ -37,13 +42,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handler.cacheClearResult"
+                            "$ref": "#/definitions/internal_handler.cacheClearResult"
                         }
                     },
                     "502": {
                         "description": "Redis unavailable",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -51,6 +56,11 @@ const docTemplate = `{
         },
         "/admin/keys": {
             "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
                 "description": "Returns all provisioned API keys with metadata.",
                 "produces": [
                     "application/json"
@@ -65,19 +75,24 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/apikey.APIKey"
+                                "$ref": "#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
                 "description": "Provisions a new publishable API key with app name, allowed origins, and rate limit.",
                 "consumes": [
                     "application/json"
@@ -96,7 +111,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.createKeyRequest"
+                            "$ref": "#/definitions/internal_handler.createKeyRequest"
                         }
                     }
                 ],
@@ -104,19 +119,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/apikey.APIKey"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey"
                         }
                     },
                     "400": {
                         "description": "Invalid request body or validation error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -124,6 +139,11 @@ const docTemplate = `{
         },
         "/admin/keys/{key}": {
             "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
                 "description": "Returns metadata for a specific API key.",
                 "produces": [
                     "application/json"
@@ -145,24 +165,29 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apikey.APIKey"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey"
                         }
                     },
                     "404": {
                         "description": "Key not found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
                 "description": "Marks an API key as inactive. The key remains retrievable but will be rejected by auth middleware.",
                 "produces": [
                     "application/json"
@@ -193,7 +218,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -201,6 +226,11 @@ const docTemplate = `{
         },
         "/admin/keys/{key}/rotate": {
             "post": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
                 "description": "Creates a new key with the same metadata and sets a grace period expiration on the old key. Both keys are valid during the grace period.",
                 "consumes": [
                     "application/json"
@@ -226,7 +256,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.rotateKeyRequest"
+                            "$ref": "#/definitions/internal_handler.rotateKeyRequest"
                         }
                     }
                 ],
@@ -234,19 +264,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handler.rotateKeyResponse"
+                            "$ref": "#/definitions/internal_handler.rotateKeyResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request or grace period",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -254,7 +284,7 @@ const docTemplate = `{
         },
         "/health": {
             "get": {
-                "description": "Returns service health status and build version.",
+                "description": "Returns service health status, build version, and dependency health (Redis, upstream).",
                 "produces": [
                     "application/json"
                 ],
@@ -264,12 +294,15 @@ const docTemplate = `{
                 "summary": "Health check",
                 "responses": {
                     "200": {
-                        "description": "status and version",
+                        "description": "healthy",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/internal_handler.HealthResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "degraded — one or more dependencies unhealthy",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.HealthResponse"
                         }
                     }
                 }
@@ -298,6 +331,11 @@ const docTemplate = `{
         },
         "/v1/drugs/autocomplete": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns drug names matching the given prefix. Fast typeahead endpoint for building search UIs.",
                 "produces": [
                     "application/json"
@@ -329,7 +367,7 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/model.DrugNameEntry"
+                                    "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugNameEntry"
                                 }
                             }
                         }
@@ -337,13 +375,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Missing or invalid q parameter",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -351,6 +389,11 @@ const docTemplate = `{
         },
         "/v1/drugs/class": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Looks up a drug by generic or brand name and returns its pharmacological classes, brand names, and generic name. Tries generic name first, falls back to brand name.",
                 "produces": [
                     "application/json"
@@ -372,25 +415,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.DrugClassResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugClassResponse"
                         }
                     },
                     "400": {
                         "description": "Missing or empty name parameter",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Drug not found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -398,6 +441,11 @@ const docTemplate = `{
         },
         "/v1/drugs/classes": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns a paginated list of pharmacological drug classes from DailyMed. Defaults to EPC (Established Pharmacologic Class) type. Supports filtering by type: epc, moa, pe, cs, or all.",
                 "produces": [
                     "application/json"
@@ -437,13 +485,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.PaginatedResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -451,6 +499,11 @@ const docTemplate = `{
         },
         "/v1/drugs/classes/drugs": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns a paginated list of drugs belonging to a specific pharmacological class, resolved via FDA NDC data. Returns empty data (not 404) for unknown classes.",
                 "produces": [
                     "application/json"
@@ -484,19 +537,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.PaginatedResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse"
                         }
                     },
                     "400": {
                         "description": "Missing or empty class parameter",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -504,6 +557,11 @@ const docTemplate = `{
         },
         "/v1/drugs/info": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Look up a single drug by name or NDC and return SPL metadata plus parsed interaction sections. NDC is normalized and resolved to drug name internally.",
                 "produces": [
                     "application/json"
@@ -530,25 +588,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.DrugInfoResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugInfoResponse"
                         }
                     },
                     "400": {
                         "description": "Missing name or ndc",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "NDC not found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -556,6 +614,11 @@ const docTemplate = `{
         },
         "/v1/drugs/interactions": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Submit 2-10 drug identifiers (name or NDC) and get cross-referenced interaction warnings from FDA SPL labels. Each drug's Section 7 is searched for mentions of the other drugs.",
                 "consumes": [
                     "application/json"
@@ -574,7 +637,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.InteractionCheckRequest"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionCheckRequest"
                         }
                     }
                 ],
@@ -582,19 +645,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.InteractionCheckResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionCheckResponse"
                         }
                     },
                     "400": {
                         "description": "Too few/many drugs or invalid input",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -602,6 +665,11 @@ const docTemplate = `{
         },
         "/v1/drugs/names": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns a paginated list of drug names from the DailyMed dataset. Supports case-insensitive substring search and type filtering (generic/brand).",
                 "produces": [
                     "application/json"
@@ -645,13 +713,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.PaginatedResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -659,6 +727,11 @@ const docTemplate = `{
         },
         "/v1/drugs/ndc/{ndc}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Accepts a product NDC (dash-separated), queries cash-drugs upstream, and returns drug name, generic name, and therapeutic classes. Supports 5-4, 4-4, and 5-3 formats with automatic fallback to padded 5-4.",
                 "produces": [
                     "application/json"
@@ -680,25 +753,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.DrugDetailResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugDetailResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -706,6 +779,11 @@ const docTemplate = `{
         },
         "/v1/drugs/rxnorm/profile": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Resolves a drug name via approximate match, then assembles NDCs, generic equivalents, and related concepts into a single response.",
                 "produces": [
                     "application/json"
@@ -727,25 +805,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.RxNormProfile"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormProfile"
                         }
                     },
                     "400": {
                         "description": "Missing name parameter",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Drug not found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -753,6 +831,11 @@ const docTemplate = `{
         },
         "/v1/drugs/rxnorm/search": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Approximate match search via RxNorm. Returns up to 5 candidates ranked by score. Includes spelling suggestions when no matches are found.",
                 "produces": [
                     "application/json"
@@ -774,25 +857,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.RxNormSearchResult"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormSearchResult"
                         }
                     },
                     "400": {
                         "description": "Missing name parameter",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "No drugs found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -800,6 +883,11 @@ const docTemplate = `{
         },
         "/v1/drugs/rxnorm/{rxcui}/generics": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns generic product information for the given RxNorm concept identifier.",
                 "produces": [
                     "application/json"
@@ -821,19 +909,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.RxNormGenericResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormGenericResponse"
                         }
                     },
                     "404": {
                         "description": "RxCUI not found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -841,6 +929,11 @@ const docTemplate = `{
         },
         "/v1/drugs/rxnorm/{rxcui}/ndcs": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns NDC codes associated with the given RxNorm concept identifier.",
                 "produces": [
                     "application/json"
@@ -862,19 +955,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.RxNormNDCResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormNDCResponse"
                         }
                     },
                     "404": {
                         "description": "RxCUI not found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -882,6 +975,11 @@ const docTemplate = `{
         },
         "/v1/drugs/rxnorm/{rxcui}/related": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns all related concepts grouped by type (ingredients, brand names, dose forms, clinical drugs, branded drugs).",
                 "produces": [
                     "application/json"
@@ -903,19 +1001,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.RxNormRelatedResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse"
                         }
                     },
                     "404": {
                         "description": "RxCUI not found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -923,6 +1021,11 @@ const docTemplate = `{
         },
         "/v1/drugs/spls": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Search Structured Product Labels by drug name. Returns paginated SPL metadata from DailyMed.",
                 "produces": [
                     "application/json"
@@ -956,19 +1059,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.PaginatedResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse"
                         }
                     },
                     "400": {
                         "description": "Missing name parameter",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -976,6 +1079,11 @@ const docTemplate = `{
         },
         "/v1/drugs/spls/{setid}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Retrieve SPL metadata and parsed Drug Interactions (Section 7) from the SPL XML document.",
                 "produces": [
                     "application/json"
@@ -997,19 +1105,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.SPLDetail"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.SPLDetail"
                         }
                     },
                     "404": {
                         "description": "SPL not found",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Upstream service error",
                         "schema": {
-                            "$ref": "#/definitions/model.ErrorResponse"
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     }
                 }
@@ -1040,7 +1148,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "apikey.APIKey": {
+        "github_com_finish06_drug-gate_internal_apikey.APIKey": {
             "type": "object",
             "properties": {
                 "active": {
@@ -1069,57 +1177,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.cacheClearResult": {
-            "type": "object",
-            "properties": {
-                "keys_deleted": {
-                    "type": "integer"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.createKeyRequest": {
-            "type": "object",
-            "properties": {
-                "app_name": {
-                    "type": "string"
-                },
-                "origins": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "rate_limit": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handler.rotateKeyRequest": {
-            "type": "object",
-            "properties": {
-                "grace_period": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.rotateKeyResponse": {
-            "type": "object",
-            "properties": {
-                "new_key": {
-                    "type": "string"
-                },
-                "old_key": {
-                    "type": "string"
-                },
-                "old_key_expires_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.DrugCheckResult": {
+        "github_com_finish06_drug-gate_internal_model.DrugCheckResult": {
             "type": "object",
             "properties": {
                 "error": {
@@ -1142,7 +1200,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.DrugClass": {
+        "github_com_finish06_drug-gate_internal_model.DrugClass": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1153,7 +1211,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.DrugClassResponse": {
+        "github_com_finish06_drug-gate_internal_model.DrugClassResponse": {
             "type": "object",
             "properties": {
                 "brand_names": {
@@ -1165,7 +1223,7 @@ const docTemplate = `{
                 "classes": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.DrugClass"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugClass"
                     }
                 },
                 "generic_name": {
@@ -1176,7 +1234,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.DrugDetailResponse": {
+        "github_com_finish06_drug-gate_internal_model.DrugDetailResponse": {
             "type": "object",
             "properties": {
                 "classes": {
@@ -1196,7 +1254,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.DrugIdentifier": {
+        "github_com_finish06_drug-gate_internal_model.DrugIdentifier": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1207,19 +1265,19 @@ const docTemplate = `{
                 }
             }
         },
-        "model.DrugInfoResponse": {
+        "github_com_finish06_drug-gate_internal_model.DrugInfoResponse": {
             "type": "object",
             "properties": {
                 "adverse_reactions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.InteractionSection"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection"
                     }
                 },
                 "contraindications": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.InteractionSection"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection"
                     }
                 },
                 "drug_name": {
@@ -1234,21 +1292,21 @@ const docTemplate = `{
                 "interactions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.InteractionSection"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection"
                     }
                 },
                 "spl": {
-                    "$ref": "#/definitions/model.SPLSource"
+                    "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.SPLSource"
                 },
                 "warnings": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.InteractionSection"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection"
                     }
                 }
             }
         },
-        "model.DrugNameEntry": {
+        "github_com_finish06_drug-gate_internal_model.DrugNameEntry": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1259,7 +1317,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ErrorResponse": {
+        "github_com_finish06_drug-gate_internal_model.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -1270,18 +1328,18 @@ const docTemplate = `{
                 }
             }
         },
-        "model.InteractionCheckRequest": {
+        "github_com_finish06_drug-gate_internal_model.InteractionCheckRequest": {
             "type": "object",
             "properties": {
                 "drugs": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.DrugIdentifier"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugIdentifier"
                     }
                 }
             }
         },
-        "model.InteractionCheckResponse": {
+        "github_com_finish06_drug-gate_internal_model.InteractionCheckResponse": {
             "type": "object",
             "properties": {
                 "checked_pairs": {
@@ -1290,7 +1348,7 @@ const docTemplate = `{
                 "drugs": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.DrugCheckResult"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.DrugCheckResult"
                     }
                 },
                 "found_interactions": {
@@ -1299,12 +1357,12 @@ const docTemplate = `{
                 "interactions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.InteractionMatch"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionMatch"
                     }
                 }
             }
         },
-        "model.InteractionMatch": {
+        "github_com_finish06_drug-gate_internal_model.InteractionMatch": {
             "type": "object",
             "properties": {
                 "drug_a": {
@@ -1327,7 +1385,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.InteractionSection": {
+        "github_com_finish06_drug-gate_internal_model.InteractionSection": {
             "type": "object",
             "properties": {
                 "text": {
@@ -1338,16 +1396,16 @@ const docTemplate = `{
                 }
             }
         },
-        "model.PaginatedResponse": {
+        "github_com_finish06_drug-gate_internal_model.PaginatedResponse": {
             "type": "object",
             "properties": {
                 "data": {},
                 "pagination": {
-                    "$ref": "#/definitions/model.Pagination"
+                    "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.Pagination"
                 }
             }
         },
-        "model.Pagination": {
+        "github_com_finish06_drug-gate_internal_model.Pagination": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -1364,7 +1422,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RxNormCandidate": {
+        "github_com_finish06_drug-gate_internal_model.RxNormCandidate": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1378,7 +1436,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RxNormConcept": {
+        "github_com_finish06_drug-gate_internal_model.RxNormConcept": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1389,13 +1447,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RxNormGenericResponse": {
+        "github_com_finish06_drug-gate_internal_model.RxNormGenericResponse": {
             "type": "object",
             "properties": {
                 "generics": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.RxNormConcept"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
                     }
                 },
                 "rxcui": {
@@ -1403,7 +1461,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RxNormNDCResponse": {
+        "github_com_finish06_drug-gate_internal_model.RxNormNDCResponse": {
             "type": "object",
             "properties": {
                 "ndcs": {
@@ -1417,7 +1475,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RxNormProfile": {
+        "github_com_finish06_drug-gate_internal_model.RxNormProfile": {
             "type": "object",
             "properties": {
                 "brand_names": {
@@ -1427,7 +1485,7 @@ const docTemplate = `{
                     }
                 },
                 "generic": {
-                    "$ref": "#/definitions/model.RxNormConcept"
+                    "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
                 },
                 "name": {
                     "type": "string"
@@ -1442,44 +1500,44 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "related": {
-                    "$ref": "#/definitions/model.RxNormRelatedResponse"
+                    "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse"
                 },
                 "rxcui": {
                     "type": "string"
                 }
             }
         },
-        "model.RxNormRelatedResponse": {
+        "github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse": {
             "type": "object",
             "properties": {
                 "brand_names": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.RxNormConcept"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
                     }
                 },
                 "branded_drugs": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.RxNormConcept"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
                     }
                 },
                 "clinical_drugs": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.RxNormConcept"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
                     }
                 },
                 "dose_forms": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.RxNormConcept"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
                     }
                 },
                 "ingredients": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.RxNormConcept"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
                     }
                 },
                 "rxcui": {
@@ -1487,13 +1545,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RxNormSearchResult": {
+        "github_com_finish06_drug-gate_internal_model.RxNormSearchResult": {
             "type": "object",
             "properties": {
                 "candidates": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.RxNormCandidate"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormCandidate"
                     }
                 },
                 "query": {
@@ -1507,25 +1565,25 @@ const docTemplate = `{
                 }
             }
         },
-        "model.SPLDetail": {
+        "github_com_finish06_drug-gate_internal_model.SPLDetail": {
             "type": "object",
             "properties": {
                 "adverse_reactions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.InteractionSection"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection"
                     }
                 },
                 "contraindications": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.InteractionSection"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection"
                     }
                 },
                 "interactions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.InteractionSection"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection"
                     }
                 },
                 "published_date": {
@@ -1543,12 +1601,12 @@ const docTemplate = `{
                 "warnings": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.InteractionSection"
+                        "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection"
                     }
                 }
             }
         },
-        "model.SPLSource": {
+        "github_com_finish06_drug-gate_internal_model.SPLSource": {
             "type": "object",
             "properties": {
                 "published_date": {
@@ -1564,6 +1622,87 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "internal_handler.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "dependencies": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.cacheClearResult": {
+            "type": "object",
+            "properties": {
+                "keys_deleted": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.createKeyRequest": {
+            "type": "object",
+            "properties": {
+                "app_name": {
+                    "type": "string"
+                },
+                "origins": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rate_limit": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.rotateKeyRequest": {
+            "type": "object",
+            "properties": {
+                "grace_period": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.rotateKeyResponse": {
+            "type": "object",
+            "properties": {
+                "new_key": {
+                    "type": "string"
+                },
+                "old_key": {
+                    "type": "string"
+                },
+                "old_key_expires_at": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "AdminAuth": {
+            "description": "Bearer token for admin endpoints. Value: \"Bearer {ADMIN_SECRET}\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        },
+        "ApiKeyAuth": {
+            "description": "Publishable API key for accessing /v1/* endpoints. Create one via POST /admin/keys.",
+            "type": "apiKey",
+            "name": "X-API-Key",
+            "in": "header"
         }
     }
 }`

@@ -42,6 +42,7 @@ func NewRxNormHandler(svc RxNormDataService) *RxNormHandler {
 // @Failure      400  {object}  model.ErrorResponse  "Missing name parameter"
 // @Failure      404  {object}  model.ErrorResponse  "No drugs found"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/search [get]
 func (h *RxNormHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.URL.Query().Get("name"))
@@ -79,6 +80,7 @@ func (h *RxNormHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  model.RxNormNDCResponse
 // @Failure      404  {object}  model.ErrorResponse  "RxCUI not found"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/{rxcui}/ndcs [get]
 func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
 	rxcui := strings.TrimSpace(chi.URLParam(r, "rxcui"))
@@ -111,6 +113,7 @@ func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  model.RxNormGenericResponse
 // @Failure      404  {object}  model.ErrorResponse  "RxCUI not found"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/{rxcui}/generics [get]
 func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
 	rxcui := strings.TrimSpace(chi.URLParam(r, "rxcui"))
@@ -143,6 +146,7 @@ func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  model.RxNormRelatedResponse
 // @Failure      404  {object}  model.ErrorResponse  "RxCUI not found"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/{rxcui}/related [get]
 func (h *RxNormHandler) HandleRelated(w http.ResponseWriter, r *http.Request) {
 	rxcui := strings.TrimSpace(chi.URLParam(r, "rxcui"))
@@ -183,6 +187,7 @@ func (h *RxNormHandler) HandleRelated(w http.ResponseWriter, r *http.Request) {
 // @Failure      400  {object}  model.ErrorResponse  "Missing name parameter"
 // @Failure      404  {object}  model.ErrorResponse  "Drug not found"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/profile [get]
 func (h *RxNormHandler) HandleProfile(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.URL.Query().Get("name"))

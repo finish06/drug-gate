@@ -48,6 +48,7 @@ type rotateKeyResponse struct {
 // @Success      201  {object}  apikey.APIKey
 // @Failure      400  {object}  model.ErrorResponse  "Invalid request body or validation error"
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Security     AdminAuth
 // @Router       /admin/keys [post]
 func (h *AdminHandler) CreateKey(w http.ResponseWriter, r *http.Request) {
 	var req createKeyRequest
@@ -86,6 +87,7 @@ func (h *AdminHandler) CreateKey(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Success      200  {array}   apikey.APIKey
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Security     AdminAuth
 // @Router       /admin/keys [get]
 func (h *AdminHandler) ListKeys(w http.ResponseWriter, r *http.Request) {
 	keys, err := h.store.List(r.Context())
@@ -109,6 +111,7 @@ func (h *AdminHandler) ListKeys(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  apikey.APIKey
 // @Failure      404  {object}  model.ErrorResponse  "Key not found"
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Security     AdminAuth
 // @Router       /admin/keys/{key} [get]
 func (h *AdminHandler) GetKey(w http.ResponseWriter, r *http.Request) {
 	keyStr := chi.URLParam(r, "key")
@@ -137,6 +140,7 @@ func (h *AdminHandler) GetKey(w http.ResponseWriter, r *http.Request) {
 // @Param        key  path  string  true  "API key to deactivate"
 // @Success      200  {object}  map[string]string  "status: deactivated"
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Security     AdminAuth
 // @Router       /admin/keys/{key} [delete]
 func (h *AdminHandler) DeactivateKey(w http.ResponseWriter, r *http.Request) {
 	keyStr := chi.URLParam(r, "key")
@@ -165,6 +169,7 @@ func (h *AdminHandler) DeactivateKey(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  rotateKeyResponse
 // @Failure      400  {object}  model.ErrorResponse  "Invalid request or grace period"
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
+// @Security     AdminAuth
 // @Router       /admin/keys/{key}/rotate [post]
 func (h *AdminHandler) RotateKey(w http.ResponseWriter, r *http.Request) {
 	oldKeyStr := chi.URLParam(r, "key")

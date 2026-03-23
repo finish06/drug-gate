@@ -32,6 +32,7 @@ func NewDrugsByClassHandler(svc DataService) *DrugsByClassHandler {
 // @Success      200  {object}  model.PaginatedResponse
 // @Failure      400  {object}  model.ErrorResponse  "Missing or empty class parameter"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/classes/drugs [get]
 func (h *DrugsByClassHandler) HandleDrugsByClass(w http.ResponseWriter, r *http.Request) {
 	className := strings.TrimSpace(r.URL.Query().Get("class"))

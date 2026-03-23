@@ -38,6 +38,7 @@ func NewAutocompleteHandler(svc AutocompleteService) *AutocompleteHandler {
 // @Success      200  {object}  map[string][]model.DrugNameEntry
 // @Failure      400  {object}  model.ErrorResponse  "Missing or invalid q parameter"
 // @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Security     ApiKeyAuth
 // @Router       /v1/drugs/autocomplete [get]
 func (h *AutocompleteHandler) HandleAutocomplete(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
