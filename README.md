@@ -12,6 +12,11 @@ Public-facing Go microservice gateway that provides frontend applications with d
 - **RxNorm Drug Search** — Fuzzy drug name search via RxNorm approximate matching (top 5 candidates + spelling suggestions)
 - **RxNorm Drug Profile** — Unified drug profile: RxCUI, generic equivalents, NDCs, brand names, related concepts
 - **RxNorm Granular Lookups** — NDCs, generics, and related concepts by RxCUI
+- **Drug Autocomplete** — Sub-3ms prefix search across 104K+ names via in-memory sorted index
+- **SPL Search & Detail** — Search Structured Product Labels by drug name, retrieve parsed interaction sections
+- **Drug Info Card** — Unified drug info (by name or NDC) with interactions, contraindications, warnings, adverse reactions
+- **Drug Interaction Checker** — Submit 2–10 drugs and get cross-referenced interaction warnings from FDA SPL labels
+- **Circuit Breaker** — Upstream resilience with automatic circuit breaker (10 fails → 30s cooldown) and stale-cache fallback
 - **API Key Authentication** — Per-app API keys via `X-API-Key` header, stored in Redis
 - **Per-Key Rate Limiting** — Sliding window rate limiter (Redis sorted sets) with configurable limits per key
 - **CORS Origin Locking** — Per-key allowed origins list, or origin-free for server-to-server use
@@ -65,6 +70,11 @@ REDIS_URL=localhost:6379 ADMIN_SECRET=your-secret make run
 | GET | `/v1/drugs/names` | Paginated drug names (filter: `q`, `type`, `page`, `limit`) |
 | GET | `/v1/drugs/classes` | Paginated drug classes (filter: `type`, `page`, `limit`) |
 | GET | `/v1/drugs/classes/drugs?class={name}` | Drugs in a pharmacological class |
+| GET | `/v1/drugs/autocomplete?q={prefix}` | Drug name typeahead (min 2 chars, max 50 results) |
+| GET | `/v1/drugs/spls?name={name}` | Search SPL documents by drug name |
+| GET | `/v1/drugs/spls/{setid}` | SPL detail with parsed interaction sections |
+| GET | `/v1/drugs/info?name={name}` | Drug info card (also accepts `?ndc={ndc}`) |
+| POST | `/v1/drugs/interactions` | Check interactions between 2–10 drugs |
 | GET | `/v1/drugs/rxnorm/search?name={name}` | RxNorm fuzzy drug search (top 5 + suggestions) |
 | GET | `/v1/drugs/rxnorm/profile?name={name}` | Unified drug profile (RxCUI, generics, NDCs, related) |
 | GET | `/v1/drugs/rxnorm/{rxcui}/ndcs` | NDC codes for an RxCUI |
@@ -127,7 +137,9 @@ curl -X POST http://localhost:8081/admin/keys/pk_old_key/rotate \
 | `CASHDRUGS_URL` | `http://localhost:8083` | Upstream cash-drugs API URL |
 | `REDIS_URL` | `redis:6379` | Redis connection address |
 | `ADMIN_SECRET` | *(none)* | Bearer token for admin endpoints |
+| `CACHE_TTL` | `60m` | Base cache TTL for drug data. RxNorm TTLs scale proportionally (24x search, 168x lookups) |
 | `SYSTEM_METRICS_INTERVAL` | `15s` | System metrics collection interval (Linux only) |
+| `LANDING_URL` | *(none)* | When set, `GET /` redirects (302) to this URL. See [Landing Page Redirect](#landing-page-redirect) |
 
 ## Architecture
 
@@ -152,8 +164,10 @@ graph LR
 
 ```mermaid
 graph LR
-    Req([Request]) --> Log[RequestLogger]
-    Log --> Auth[APIKeyAuth]
+    Req([Request]) --> RID[RequestID]
+    RID --> Log[RequestLogger]
+    Log --> Met[MetricsMiddleware]
+    Met --> Auth[APIKeyAuth]
     Auth -->|valid key| CORS[PerKeyCORS]
     Auth -->|missing/invalid| R401[401 Unauthorized]
     CORS --> RL[RateLimit]
@@ -189,8 +203,10 @@ graph TD
     H --> |admin CRUD| AK
     H --> |listings| SVC[service/]
     H --> |class parsing| PH[pharma/]
+    H --> |SPL data| SPLSVC[spl/service]
 
     SVC --> CL
+    SPLSVC --> CL
     SVC --> Redis
 
     MW --> |auth| AK
@@ -202,6 +218,32 @@ graph TD
     CL --> CD[cash-drugs]
 ```
 
+## Landing Page Redirect
+
+When you deploy drug-gate, you can optionally redirect `GET /` to an external landing page. This is controlled by the `LANDING_URL` environment variable.
+
+**If you're self-hosting**, point it to your own page or leave it unset:
+
+```bash
+# Redirect root to your own landing page
+LANDING_URL=https://your-domain.com/drug-gate
+
+# Or disable the redirect entirely (default)
+# Just don't set LANDING_URL — GET / returns no route (404)
+```
+
+**In Docker Compose:**
+
+```yaml
+services:
+  drug-gate:
+    image: dockerhub.calebdunn.tech/finish06/drug-gate:latest
+    environment:
+      - LANDING_URL=https://your-landing-page.com  # or omit to disable
+```
+
+When `LANDING_URL` is not set, no redirect is registered — the API behaves exactly as if the feature doesn't exist. This is the default for anyone cloning the repo.
+
 ## Development
 
 ```bash
@@ -212,10 +254,15 @@ make vet                # go vet
 make build              # Build binary to bin/server
 
 # Integration tests (requires running Redis)
-go test -tags=integration ./...
+make test-integration
 
 # E2E tests (spins up full stack via docker-compose)
 make test-e2e
+
+# k6 performance tests (against staging)
+make k6-smoke              # Smoke test (36 checks)
+make k6-load               # Load test
+make k6-all                # All k6 scenarios
 ```
 
 ## License
