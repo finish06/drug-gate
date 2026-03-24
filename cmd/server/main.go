@@ -149,6 +149,14 @@ func main() {
 	r.Use(middleware.RequestLogger)
 	r.Use(middleware.MetricsMiddleware(m))
 
+	// Landing page redirect (config-driven)
+	if landingURL := os.Getenv("LANDING_URL"); landingURL != "" {
+		slog.Info("landing page redirect enabled", "url", landingURL)
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, landingURL, http.StatusFound)
+		})
+	}
+
 	// Public routes (no auth)
 	healthHandler := handler.NewHealthHandler(rdb, cashDrugsURL, upstreamBreaker)
 	r.Get("/health", healthHandler.Handle)

@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>drug-gate — Open-Source Drug Information Gateway</title>
+<meta name="description" content="A high-performance Go microservice gateway for drug information. NDC lookup, drug interactions, therapeutic classes, and RxNorm search — all through a clean REST API.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --bg-primary: #08090c;
+  --bg-secondary: #0d0f14;
+  --bg-card: #11141b;
+  --bg-card-hover: #161a24;
+  --border: rgba(255,255,255,0.06);
+  --border-hover: rgba(255,255,255,0.12);
+  --text-primary: #e8eaed;
+  --text-secondary: rgba(232,234,237,0.6);
+  --text-muted: rgba(232,234,237,0.35);
+  --accent: #3ecfb4;
+  --accent-dim: rgba(62,207,180,0.15);
+  --accent-glow: rgba(62,207,180,0.08);
+  --accent-secondary: #5b8cf7;
+  --accent-secondary-dim: rgba(91,140,247,0.12);
+  --warning: #f0b957;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'DM Mono', 'SF Mono', monospace;
+}
+
+html { scroll-behavior: smooth }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Hex Grid Background ── */
+.hex-grid {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.hex-grid svg { width: 100%; height: 100% }
+
+/* ── Grain Overlay ── */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Layout ── */
+.wrapper {
+  position: relative;
+  z-index: 2;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ── Nav ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 18px 24px;
+  background: rgba(8,9,12,0.7);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+}
+
+nav .nav-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+.nav-brand .pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bg-primary);
+}
+
+.nav-brand span {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-links a {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.nav-links a:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.05);
+}
+
+.nav-links .btn-primary {
+  color: var(--bg-primary);
+  background: var(--accent);
+  font-weight: 600;
+}
+
+.nav-links .btn-primary:hover {
+  background: #4de0c5;
+  color: var(--bg-primary);
+}
+
+/* ── Hero ── */
+.hero {
+  padding: 180px 0 120px;
+  text-align: center;
+  position: relative;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 6px 8px;
+  border-radius: 100px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(62,207,180,0.2);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  margin-bottom: 32px;
+  animation: fadeInUp 0.8s ease both;
+}
+
+.hero-badge .dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1) }
+  50% { opacity: 0.5; transform: scale(0.85) }
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(48px, 7vw, 82px);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 24px;
+  animation: fadeInUp 0.8s ease 0.1s both;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.hero .subtitle {
+  font-size: clamp(16px, 2vw, 19px);
+  color: var(--text-secondary);
+  max-width: 580px;
+  margin: 0 auto 44px;
+  line-height: 1.65;
+  font-weight: 300;
+  animation: fadeInUp 0.8s ease 0.2s both;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  animation: fadeInUp 0.8s ease 0.3s both;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 26px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  text-decoration: none;
+  transition: all 0.25s;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-hero-primary {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.btn-hero-primary:hover {
+  background: #4de0c5;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(62,207,180,0.25);
+}
+
+.btn-hero-secondary {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  border: 1px solid var(--border-hover);
+}
+
+.btn-hero-secondary:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+}
+
+/* ── Terminal Install ── */
+.install-bar {
+  margin: 48px auto 0;
+  max-width: 520px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  animation: fadeInUp 0.8s ease 0.4s both;
+}
+
+.install-bar code {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.install-bar code span { color: var(--accent) }
+
+.install-bar button {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.install-bar button:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary);
+}
+
+/* ── Metrics Strip ── */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 100px 0 0;
+  animation: fadeInUp 0.8s ease 0.5s both;
+}
+
+.metric {
+  background: var(--bg-secondary);
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.metric .value {
+  font-family: var(--font-display);
+  font-size: 36px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.metric .label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Section styling ── */
+section { padding: 100px 0 }
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 4vw, 46px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+  line-height: 1.15;
+}
+
+.section-subtitle {
+  font-size: 17px;
+  color: var(--text-secondary);
+  max-width: 560px;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+/* ── Endpoint Cards ── */
+.endpoints {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 56px;
+}
+
+.endpoint-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.endpoint-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.endpoint-card:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+
+.endpoint-card:hover::before { opacity: 1 }
+
+.endpoint-method {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.method-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.method-badge.get {
+  background: rgba(62,207,180,0.12);
+  color: var(--accent);
+}
+
+.method-badge.post {
+  background: var(--accent-secondary-dim);
+  color: var(--accent-secondary);
+}
+
+.endpoint-path {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.endpoint-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.endpoint-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-bottom: 18px;
+  font-weight: 300;
+}
+
+.endpoint-response {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+
+.endpoint-response code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre;
+}
+
+.endpoint-response code .key { color: var(--accent) }
+.endpoint-response code .str { color: var(--warning) }
+.endpoint-response code .num { color: var(--accent-secondary) }
+
+/* ── Features Row ── */
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 56px;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+  transition: all 0.3s;
+}
+
+.feature-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+}
+
+.feature-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  font-size: 18px;
+}
+
+.feature-icon.teal { background: var(--accent-dim) }
+.feature-icon.blue { background: var(--accent-secondary-dim) }
+.feature-icon.amber { background: rgba(240,185,87,0.12) }
+
+.feature-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.feature-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  font-weight: 300;
+}
+
+/* ── CTA Section ── */
+.cta-section {
+  text-align: center;
+  padding: 80px 0 120px;
+}
+
+.cta-box {
+  background: linear-gradient(135deg, rgba(62,207,180,0.06), rgba(91,140,247,0.06));
+  border: 1px solid rgba(62,207,180,0.15);
+  border-radius: 20px;
+  padding: 64px 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-box::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 20%; right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.cta-box h2 {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 400;
+  margin-bottom: 14px;
+  letter-spacing: -0.02em;
+}
+
+.cta-box p {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+  font-weight: 300;
+}
+
+.cta-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Footer ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 0;
+  text-align: center;
+}
+
+footer p {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+footer a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+footer a:hover { color: var(--accent) }
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .hero { padding: 140px 0 80px }
+
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+    margin-top: 64px;
+  }
+
+  .endpoints { grid-template-columns: 1fr }
+  .features { grid-template-columns: 1fr }
+
+  .nav-links a.hide-mobile { display: none }
+
+  .install-bar {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero h1 { font-size: 38px }
+  .metrics { grid-template-columns: 1fr }
+  .hero-actions { flex-direction: column; width: 100% }
+  .hero-actions .btn { width: 100%; justify-content: center }
+  .cta-actions { flex-direction: column }
+  .cta-actions .btn { width: 100%; justify-content: center }
+}
+</style>
+</head>
+<body>
+
+<!-- Hex Grid Background -->
+<div class="hex-grid">
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+  <defs>
+    <pattern id="hex" width="56" height="100" patternUnits="userSpaceOnUse" patternTransform="scale(1.5)">
+      <path d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" fill="none" stroke="rgba(62,207,180,0.04)" stroke-width="0.5"/>
+      <path d="M28 0L56 16L56 50L28 66L0 50L0 16Z" fill="none" stroke="rgba(62,207,180,0.04)" stroke-width="0.5"/>
+    </pattern>
+    <radialGradient id="fade" cx="50%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="white" stop-opacity="1"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="hexMask"><rect width="100%" height="100%" fill="url(#fade)"/></mask>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#hex)" mask="url(#hexMask)"/>
+</svg>
+</div>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-brand">
+      <span class="pill">dg</span>
+      <span>drug-gate</span>
+    </a>
+    <div class="nav-links">
+      <a href="#api" class="hide-mobile">API</a>
+      <a href="#features" class="hide-mobile">Features</a>
+      <a href="https://github.com/finish06/drug-gate" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://drug-gate.staging.calebdunn.tech/swagger/index.html" target="_blank" rel="noopener" class="btn-primary">Swagger UI</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Open Source &middot; Self-Hostable
+    </div>
+
+    <h1>Drug information,<br><em>one API call</em> away</h1>
+
+    <p class="subtitle">
+      A high-performance Go gateway for FDA drug data. NDC lookup, drug interactions, therapeutic classes, and RxNorm search &mdash; with built-in caching, rate limiting, and auth.
+    </p>
+
+    <div class="hero-actions">
+      <a href="https://drug-gate.staging.calebdunn.tech/swagger/index.html" target="_blank" rel="noopener" class="btn btn-hero-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Try the API
+      </a>
+      <a href="https://github.com/finish06/drug-gate" target="_blank" rel="noopener" class="btn btn-hero-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <div class="install-bar">
+      <code><span>$</span> docker compose up</code>
+      <button onclick="navigator.clipboard.writeText('docker compose up').then(()=>{this.textContent='Copied!';setTimeout(()=>{this.textContent='Copy'},1500)})">Copy</button>
+    </div>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="value">26</div>
+        <div class="label">API Endpoints</div>
+      </div>
+      <div class="metric">
+        <div class="value">&lt;3ms</div>
+        <div class="label">Autocomplete</div>
+      </div>
+      <div class="metric">
+        <div class="value">119K&times;</div>
+        <div class="label">Faster w/ Cache</div>
+      </div>
+      <div class="metric">
+        <div class="value">Go</div>
+        <div class="label">Single Binary</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- API Section -->
+  <section id="api" class="reveal">
+    <div class="section-label">API Overview</div>
+    <div class="section-title">Everything you need for<br>drug data integration</div>
+    <p class="section-subtitle">
+      Query FDA NDC data, search RxNorm, check drug interactions, and browse therapeutic classes. All responses are JSON with consistent error handling.
+    </p>
+
+    <div class="endpoints">
+      <div class="endpoint-card reveal">
+        <div class="endpoint-method">
+          <span class="method-badge get">GET</span>
+          <span class="endpoint-path">/v1/drugs/ndc/{ndc}</span>
+        </div>
+        <h3 class="endpoint-title">NDC Drug Lookup</h3>
+        <p class="endpoint-desc">Look up any drug by its National Drug Code. Supports 5-4, 4-4, and 5-3 formats with automatic fallback.</p>
+        <div class="endpoint-response">
+          <code>{
+  <span class="key">"ndc"</span>: <span class="str">"00069-3150"</span>,
+  <span class="key">"name"</span>: <span class="str">"Lipitor"</span>,
+  <span class="key">"generic_name"</span>: <span class="str">"ATORVASTATIN CALCIUM"</span>,
+  <span class="key">"classes"</span>: [<span class="str">"HMG-CoA Reductase Inhibitor"</span>]
+}</code>
+        </div>
+      </div>
+
+      <div class="endpoint-card reveal">
+        <div class="endpoint-method">
+          <span class="method-badge post">POST</span>
+          <span class="endpoint-path">/v1/drugs/interactions</span>
+        </div>
+        <h3 class="endpoint-title">Interaction Checker</h3>
+        <p class="endpoint-desc">Submit 2&ndash;10 drugs and get cross-referenced interaction warnings from FDA Structured Product Labels.</p>
+        <div class="endpoint-response">
+          <code>{
+  <span class="key">"pairs_checked"</span>: <span class="num">3</span>,
+  <span class="key">"total_matches"</span>: <span class="num">2</span>,
+  <span class="key">"drugs"</span>: [{ <span class="key">"name"</span>: <span class="str">"warfarin"</span>, ... }]
+}</code>
+        </div>
+      </div>
+
+      <div class="endpoint-card reveal">
+        <div class="endpoint-method">
+          <span class="method-badge get">GET</span>
+          <span class="endpoint-path">/v1/drugs/rxnorm/search</span>
+        </div>
+        <h3 class="endpoint-title">RxNorm Fuzzy Search</h3>
+        <p class="endpoint-desc">Approximate-match drug search via RxNorm. Returns ranked candidates with spelling suggestions for typos.</p>
+        <div class="endpoint-response">
+          <code>{
+  <span class="key">"query"</span>: <span class="str">"liptor"</span>,
+  <span class="key">"candidates"</span>: [{ <span class="key">"name"</span>: <span class="str">"Lipitor"</span>, <span class="key">"score"</span>: <span class="num">94</span> }],
+  <span class="key">"suggestions"</span>: [<span class="str">"lipitor"</span>]
+}</code>
+        </div>
+      </div>
+
+      <div class="endpoint-card reveal">
+        <div class="endpoint-method">
+          <span class="method-badge get">GET</span>
+          <span class="endpoint-path">/v1/drugs/autocomplete</span>
+        </div>
+        <h3 class="endpoint-title">Typeahead Autocomplete</h3>
+        <p class="endpoint-desc">Sub-3ms prefix search across 104K+ drug names. Built on an in-memory sorted index, 119,000&times; faster than Redis SCAN.</p>
+        <div class="endpoint-response">
+          <code>{
+  <span class="key">"data"</span>: [
+    { <span class="key">"name"</span>: <span class="str">"Lipitor"</span>, <span class="key">"type"</span>: <span class="str">"brand"</span> },
+    { <span class="key">"name"</span>: <span class="str">"lisinopril"</span>, <span class="key">"type"</span>: <span class="str">"generic"</span> }
+  ]
+}</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="reveal">
+    <div class="section-label">Built for Production</div>
+    <div class="section-title">Batteries included</div>
+    <p class="section-subtitle">
+      Everything you need to run a reliable drug data service. No assembly required.
+    </p>
+
+    <div class="features">
+      <div class="feature-card reveal">
+        <div class="feature-icon teal">&#x1f511;</div>
+        <h3>API Key Auth</h3>
+        <p>Per-key rate limiting, origin restrictions, key rotation with grace periods. Redis-backed CRUD for provisioning.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon blue">&#x26a1;</div>
+        <h3>Redis Caching</h3>
+        <p>Multi-tier cache with configurable TTLs. Stale-cache serving when upstream is down. Circuit breaker protection.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon amber">&#x1f4ca;</div>
+        <h3>Prometheus Metrics</h3>
+        <p>Request latency, cache hit rates, auth rejections, rate limit counters, Redis health, and container system metrics.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section reveal">
+    <div class="cta-box">
+      <h2>Start building with drug data</h2>
+      <p>Self-host in minutes. Explore the API on our staging instance. Star us on GitHub.</p>
+      <div class="cta-actions">
+        <a href="https://github.com/finish06/drug-gate" target="_blank" rel="noopener" class="btn btn-hero-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          Star on GitHub
+        </a>
+        <a href="https://drug-gate.staging.calebdunn.tech/swagger/index.html" target="_blank" rel="noopener" class="btn btn-hero-secondary">
+          Explore Swagger UI
+        </a>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="wrapper">
+    <p>
+      <a href="https://github.com/finish06/drug-gate" target="_blank" rel="noopener">drug-gate</a>
+      &nbsp;&middot;&nbsp; Open source under <a href="https://github.com/finish06/drug-gate/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+      &nbsp;&middot;&nbsp; Built with Go + Chi + Redis
+    </p>
+  </div>
+</footer>
+
+<script>
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Smooth scroll for nav links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+</script>
+
+</body>
+</html>
