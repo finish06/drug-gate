@@ -97,6 +97,7 @@ jobs:
           tags: dockerhub.calebdunn.tech/finish06/drug-gate:beta
 
       - name: Trigger staging deploy
+        id: deploy
         if: steps.version.outputs.is_release == 'false' && success()
         run: |
           BODY='{"app":"drug-gate","ref":"${{ github.ref }}","sha":"${{ github.sha }}","tag":"${{ steps.version.outputs.tag }}"}'
@@ -111,7 +112,18 @@ jobs:
           cat /tmp/deploy-response.json
           if [ "$HTTP_CODE" -ne 200 ]; then
             echo "::warning::Staging deploy returned HTTP $HTTP_CODE"
+            echo "deploy_ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_ok=true" >> "$GITHUB_OUTPUT"
           fi
+        continue-on-error: true
+
+      - name: k6 smoke test
+        if: steps.deploy.outputs.deploy_ok == 'true'
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: tests/k6/staging.js
+          flags: --env SCENARIO=smoke --env BASE_URL=https://drug-gate.staging.calebdunn.tech --env API_KEY=${{ secrets.STAGING_API_KEY }}
         continue-on-error: true
 
       - name: Build and push release
