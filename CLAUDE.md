@@ -69,7 +69,8 @@ internal/
   ndc/              — NDC normalization logic
   model/            — Request/response types
   pharma/           — Pharm class parsing, brand name deduplication
-  service/          — DrugDataService + RxNormService (Redis-cached data layer)
+  service/          — DrugDataService + RxNormService + SPLService (Redis-cached data layer)
+  spl/              — SPL interaction indexer and XML parser
   metrics/          — Prometheus metrics, Redis health collector, system metrics collector
   version/          — Build version (set via -ldflags)
 specs/               — Feature specifications
@@ -86,7 +87,7 @@ tests/
 ### Upstream API (cash-drugs)
 - Base URL: `http://host1.du.nn:8083`
 - Endpoints: `/api/cache/{slug}` with query params
-- Key slugs: `fda-ndc`, `drugnames`, `drugclasses`, `spls-by-name`, `spls-by-class`, `rxnorm-approximate-match`, `rxnorm-spelling-suggestions`, `rxnorm-ndcs`, `rxnorm-generic-product`, `rxnorm-all-related`
+- Key slugs: `fda-ndc`, `drugnames`, `drugclasses`, `spls-by-name`, `spls-by-class`, `spl-detail`, `spl-xml`, `rxnorm-approximate-match`, `rxnorm-spelling-suggestions`, `rxnorm-ndcs`, `rxnorm-generic-product`, `rxnorm-all-related`
 - OpenAPI spec: `/openapi.json`
 
 ### Environment Variables
@@ -103,7 +104,7 @@ tests/
 ### Environments
 
 - **Local:** docker-compose up (drug-gate on :8081, Redis on :6379)
-- **Staging:** 192.168.1.145:8082 (auto-deploys `:beta` via cron every 5m)
+- **Staging:** 192.168.1.145:8082 (deploys `:beta` via webhook from CI, cron fallback every 5m)
 - **Production:** Self-hosted, behind firewall, same network as cash-drugs
 
 ## Quality Gates
@@ -121,7 +122,7 @@ All gates defined in `.add/config.json`. Run `/add:verify` to check.
 - **Branching:** Feature branches off `main`
 - **Commits:** Conventional commits (feat:, fix:, test:, refactor:, docs:)
 - **CI/CD:** GitHub Actions (.github/workflows/ci.yml)
-- **Deploy:** Push to main → `:beta`, git tags → `:vX.Y.Z` + `:latest`
+- **Deploy:** Push to main → `:beta` → webhook deploy + k6 smoke, git tags → `:vX.Y.Z` + `:latest`
 
 ## Deploy Expectations
 

@@ -352,7 +352,6 @@ definitions:
       old_key_expires_at:
         type: string
     type: object
-host: localhost:8081
 info:
   contact: {}
   description: Drug information gateway — NDC lookup, therapeutic classes, and more.

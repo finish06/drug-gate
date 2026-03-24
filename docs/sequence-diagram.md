@@ -2,21 +2,23 @@
 
 ## Middleware Chain Overview
 
-All `/v1/*` routes pass through the following middleware chain in order:
+All routes pass through these global middleware (in order):
 
-1. **RequestLogger** -- logs method, path, status, duration
-2. **MetricsMiddleware** -- records `druggate_http_requests_total` and `druggate_http_request_duration_seconds` per route/method/status
-3. **APIKeyAuth** -- validates X-API-Key header against Redis store; increments `druggate_auth_rejections_total` on failure
-4. **PerKeyCORS** -- sets CORS headers based on the key's allowed origins
-5. **RateLimit** -- enforces per-key rate limits via Redis sliding window; increments `druggate_ratelimit_rejections_total` on 429
+1. **RequestID** -- reads `X-Request-ID` header or generates UUID v4; sets response header and context
+2. **RequestLogger** -- logs method, path, status, duration with request ID
+3. **MetricsMiddleware** -- records `druggate_http_requests_total` and `druggate_http_request_duration_seconds` per route/method/status
 
-Admin `/admin/*` routes use a separate chain:
+`/v1/*` routes additionally pass through:
 
-1. **RequestLogger** -- same global logger
-2. **MetricsMiddleware** -- same global metrics recorder
-3. **AdminAuth** -- validates Bearer token against ADMIN_SECRET env var
+4. **APIKeyAuth** -- validates X-API-Key header against Redis store; increments `druggate_auth_rejections_total` on failure
+5. **PerKeyCORS** -- sets CORS headers based on the key's allowed origins
+6. **RateLimit** -- enforces per-key rate limits via Redis sliding window; increments `druggate_ratelimit_rejections_total` on 429
 
-Public routes (`/health`, `/metrics`, `/swagger/*`, `/openapi.json`) pass through **RequestLogger** and **MetricsMiddleware**.
+Admin `/admin/*` routes additionally pass through:
+
+4. **AdminAuth** -- validates Bearer token against ADMIN_SECRET env var
+
+Public routes (`/health`, `/version`, `/metrics`, `/swagger/*`, `/openapi.json`) use the global chain only (RequestID + RequestLogger + MetricsMiddleware).
 
 ---
 
@@ -727,6 +729,263 @@ sequenceDiagram
 
 ---
 
+## Drug Autocomplete (GET /v1/drugs/autocomplete?q=)
+
+```mermaid
+sequenceDiagram
+    actor Client as Frontend Client
+    participant MW as Middleware Chain<br/>(ReqID→Logger→Metrics→Auth→CORS→RateLimit)
+    participant ACH as AutocompleteHandler
+    participant SVC as DrugDataService
+    participant IDX as In-Memory Index
+    participant RDS as Redis<br/>(Data Cache)
+    participant DC as HTTPDrugClient
+    participant CD as cash-drugs<br/>:8083
+
+    Client->>MW: GET /v1/drugs/autocomplete?q=lip&limit=10<br/>X-API-Key: pk_...
+    MW->>MW: RequestID + Logger + Metrics + Auth + CORS + RateLimit
+    MW->>ACH: HandleAutocomplete(w, r)
+
+    alt q < 2 chars
+        ACH-->>Client: 400 {"error": "bad_request", "message": "q must be at least 2 characters"}
+    end
+
+    ACH->>SVC: AutocompleteDrugs(ctx, "lip", 10)
+    SVC->>IDX: isStale()
+
+    alt Index fresh
+        IDX-->>SVC: false
+        SVC->>IDX: Search("lip", 10) — O(log n) binary search
+        IDX-->>SVC: []DrugNameEntry
+    end
+
+    alt Index stale — rebuild from cache
+        IDX-->>SVC: true
+        SVC->>SVC: GetDrugNames(ctx) — cache or upstream
+        SVC->>IDX: Rebuild sorted index
+        SVC->>IDX: Search("lip", 10)
+        IDX-->>SVC: []DrugNameEntry
+    end
+
+    SVC-->>ACH: []DrugNameEntry
+    ACH-->>Client: 200 {"data": [{name, type}, ...]}
+```
+
+---
+
+## SPL Search (GET /v1/drugs/spls?name=)
+
+```mermaid
+sequenceDiagram
+    actor Client as Frontend Client
+    participant MW as Middleware Chain<br/>(ReqID→Logger→Metrics→Auth→CORS→RateLimit)
+    participant SH as SPLHandler
+    participant SVC as SPLService
+    participant RDS as Redis<br/>(Data Cache)
+    participant SC as HTTPSPLClient
+    participant CD as cash-drugs<br/>:8083
+
+    Client->>MW: GET /v1/drugs/spls?name=metformin&page=1&limit=20<br/>X-API-Key: pk_...
+    MW->>SH: HandleSearchSPLs(w, r)
+
+    alt Missing name param
+        SH-->>Client: 400 {"error": "bad_request"}
+    end
+
+    SH->>SVC: SearchSPLs(ctx, "metformin", 20, 0)
+    SVC->>RDS: GET cache:spls:name:metformin
+
+    alt Cache hit
+        RDS-->>SVC: cached JSON
+        SVC-->>SH: []SPLEntry, total
+    end
+
+    alt Cache miss
+        RDS-->>SVC: nil
+        SVC->>SC: FetchSPLsByName(ctx, "metformin")
+        SC->>CD: GET /api/cache/spls-by-name?DRUGNAME=metformin
+        CD-->>SC: 200 {"data": [...]}
+        SC-->>SVC: []SPLEntry
+        SVC->>SVC: Sort by PublishedDate desc
+        SVC->>RDS: SET cache:spls:name:metformin {json} EX 60m
+        SVC-->>SH: []SPLEntry, total
+    end
+
+    SH->>SH: Paginate results
+    SH-->>Client: 200 {"data": [...], "pagination": {page, limit, total, total_pages}}
+```
+
+---
+
+## SPL Detail with Interactions (GET /v1/drugs/spls/{setid})
+
+```mermaid
+sequenceDiagram
+    actor Client as Frontend Client
+    participant MW as Middleware Chain
+    participant SH as SPLHandler
+    participant SVC as SPLService
+    participant RDS as Redis<br/>(Data Cache)
+    participant SC as HTTPSPLClient
+    participant CD as cash-drugs<br/>:8083
+
+    Client->>MW: GET /v1/drugs/spls/{setid}<br/>X-API-Key: pk_...
+    MW->>SH: HandleSPLDetail(w, r)
+
+    SH->>SVC: GetSPLDetail(ctx, setID)
+    SVC->>RDS: GET cache:spl:detail:{setID}
+
+    alt Cache hit
+        RDS-->>SVC: cached SPLDetail
+        SVC-->>SH: *SPLDetail
+    end
+
+    alt Cache miss
+        SVC->>SC: FetchSPLDetail(ctx, setID)
+        SC->>CD: GET /api/cache/spl-detail?SETID={setID}
+        CD-->>SC: SPL metadata
+        SVC->>SC: FetchSPLXML(ctx, setID)
+        SC->>CD: GET /api/cache/spl-xml?SETID={setID}
+
+        alt XML fetch succeeds
+            CD-->>SC: SPL XML document
+            SVC->>SVC: Parse sections 4-7 (interactions, contraindications, warnings, adverse reactions)
+        end
+
+        alt XML fetch fails (graceful degradation)
+            CD-->>SC: error
+            SVC->>SVC: Log warning, return metadata only
+        end
+
+        SVC->>RDS: SET cache:spl:detail:{setID} {json} EX 60m
+        SVC-->>SH: *SPLDetail
+    end
+
+    alt Not found
+        SH-->>Client: 404 {"error": "not_found"}
+    end
+
+    SH-->>Client: 200 SPLDetail{title, set_id, interactions, contraindications, warnings, adverse_reactions}
+```
+
+---
+
+## Drug Info Card (GET /v1/drugs/info?name= or ?ndc=)
+
+```mermaid
+sequenceDiagram
+    actor Client as Frontend Client
+    participant MW as Middleware Chain
+    participant SH as SPLHandler
+    participant SVC as SPLService
+    participant DC as HTTPDrugClient
+    participant CD as cash-drugs<br/>:8083
+
+    Client->>MW: GET /v1/drugs/info?name=metformin<br/>X-API-Key: pk_...
+    MW->>SH: HandleDrugInfo(w, r)
+
+    alt Neither name nor ndc provided
+        SH-->>Client: 400 {"error": "bad_request"}
+    end
+
+    alt NDC provided (takes precedence)
+        SH->>SVC: ResolveDrugNameFromNDC(ctx, ndc)
+        SVC->>DC: LookupByNDC(ctx, ndc)
+        DC->>CD: GET /api/cache/fda-ndc?NDC={ndc}
+        CD-->>DC: DrugResult
+        DC-->>SVC: generic_name
+        alt NDC not found
+            SH-->>Client: 404 {"error": "not_found"}
+        end
+    end
+
+    SH->>SVC: GetInteractionsForDrug(ctx, drugName)
+    Note over SVC,CD: Cache check → fetch most recent SPL → parse XML sections 4-7
+
+    SH-->>Client: 200 DrugInfoResponse{drug_name, spl, interactions, contraindications, warnings, adverse_reactions}
+```
+
+---
+
+## Drug Interaction Checker (POST /v1/drugs/interactions)
+
+```mermaid
+sequenceDiagram
+    actor Client as Frontend Client
+    participant MW as Middleware Chain
+    participant SH as SPLHandler
+    participant SVC as SPLService
+    participant RDS as Redis<br/>(Data Cache)
+    participant CD as cash-drugs<br/>:8083
+
+    Client->>MW: POST /v1/drugs/interactions<br/>X-API-Key: pk_...<br/>{"drugs": [{"name": "metformin"}, {"name": "glipizide"}]}
+    MW->>SH: HandleCheckInteractions(w, r)
+
+    alt < 2 or > 10 drugs
+        SH-->>Client: 400 {"error": "bad_request"}
+    end
+
+    SH->>SVC: CheckInteractions(ctx, drugs)
+
+    Note over SVC: Phase 1: Resolve all drugs (parallel, max 5 concurrent)
+
+    par For each drug
+        SVC->>SVC: If NDC → ResolveDrugNameFromNDC()
+        SVC->>SVC: GetInteractionsForDrug(ctx, name)
+        Note over SVC,RDS: Uses cache:spl:interactions:{drug} or fetches upstream
+    end
+
+    Note over SVC: Phase 2: Cross-reference all pairs
+
+    SVC->>SVC: For each pair, search each drug's Section 7 for mentions of the other
+    SVC->>SVC: Deduplicate matches
+
+    SVC-->>SH: *InteractionCheckResponse
+    SH-->>Client: 200 {drugs: [{name, status, interactions}], pairs_checked, total_matches}
+```
+
+---
+
+## SPL Background Indexer (Startup Process)
+
+```mermaid
+sequenceDiagram
+    participant IDX as SPL Indexer<br/>(goroutine)
+    participant RDS as Redis
+    participant SC as HTTPSPLClient
+    participant CD as cash-drugs<br/>:8083
+
+    Note over IDX: Starts on boot, runs once then on configurable interval
+
+    IDX->>RDS: GET cache:drugnames
+    RDS-->>IDX: []DrugNameEntry (or nil)
+
+    alt No drug names cached
+        Note over IDX: Skip indexing, wait for next interval
+    end
+
+    loop For each drug name (up to maxDrugs=200)
+        IDX->>RDS: GET cache:spl:interactions:{drug}
+
+        alt Already cached
+            Note over IDX: Skip (already indexed)
+        end
+
+        alt Not cached
+            IDX->>SC: FetchSPLsByName(ctx, drug)
+            SC->>CD: GET /api/cache/spls-by-name?DRUGNAME={drug}
+            IDX->>SC: FetchSPLXML(ctx, setID)
+            SC->>CD: GET /api/cache/spl-xml?SETID={setID}
+            IDX->>IDX: ParseInteractions(xml)
+            IDX->>RDS: SET cache:spl:interactions:{drug} EX IndexerCacheTTL
+        end
+    end
+
+    Note over IDX: Stopped gracefully on SIGINT/SIGTERM
+```
+
+---
+
 ## Route Table
 
 | Method | Path | Auth | Handler | Description |
@@ -741,6 +1000,11 @@ sequenceDiagram
 | GET | `/v1/drugs/names` | API Key | `DrugNamesHandler.HandleDrugNames` | Paginated drug names listing |
 | GET | `/v1/drugs/classes` | API Key | `DrugClassesHandler.HandleDrugClasses` | Paginated drug classes listing |
 | GET | `/v1/drugs/classes/drugs` | API Key | `DrugsByClassHandler.HandleDrugsByClass` | Paginated drugs-by-class listing |
+| GET | `/v1/drugs/autocomplete` | API Key | `AutocompleteHandler.HandleAutocomplete` | Prefix search typeahead (in-memory index) |
+| GET | `/v1/drugs/spls` | API Key | `SPLHandler.HandleSearchSPLs` | Search SPL documents by drug name |
+| GET | `/v1/drugs/spls/{setid}` | API Key | `SPLHandler.HandleSPLDetail` | SPL detail with parsed interaction sections |
+| GET | `/v1/drugs/info` | API Key | `SPLHandler.HandleDrugInfo` | Drug info card (by name or NDC) |
+| POST | `/v1/drugs/interactions` | API Key | `SPLHandler.HandleCheckInteractions` | Cross-reference drug interactions (2-10 drugs) |
 | GET | `/v1/drugs/rxnorm/search` | API Key | `RxNormHandler.HandleSearch` | RxNorm fuzzy drug search |
 | GET | `/v1/drugs/rxnorm/profile` | API Key | `RxNormHandler.HandleProfile` | Unified drug profile |
 | GET | `/v1/drugs/rxnorm/{rxcui}/ndcs` | API Key | `RxNormHandler.HandleNDCs` | NDCs for an RxCUI |

@@ -31,7 +31,6 @@ import (
 // @version     0.1.0
 // @description Drug information gateway — NDC lookup, therapeutic classes, and more.
 
-// @host     localhost:8081
 // @BasePath /
 
 // @securityDefinitions.apikey ApiKeyAuth
