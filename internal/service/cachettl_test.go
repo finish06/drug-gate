@@ -6,13 +6,12 @@ import (
 )
 
 func TestSetCacheTTL_OverridesDefault(t *testing.T) {
-	// Save and restore original
-	original := CacheTTL
-	defer func() { CacheTTL = original }()
+	original := CacheTTLValue()
+	defer SetCacheTTL(original)
 
 	SetCacheTTL(30 * time.Minute)
-	if CacheTTL != 30*time.Minute {
-		t.Errorf("expected 30m, got %v", CacheTTL)
+	if CacheTTLValue() != 30*time.Minute {
+		t.Errorf("expected 30m, got %v", CacheTTLValue())
 	}
 }
 
@@ -23,11 +22,11 @@ func TestDefaultCacheTTL_Is60Minutes(t *testing.T) {
 }
 
 func TestRxNormTTL_ScalesFromBase(t *testing.T) {
-	original := CacheTTL
-	defer func() { CacheTTL = original }()
+	original := CacheTTLValue()
+	defer SetCacheTTL(original)
 
 	// Default base: 60m → search=24h, lookup=7d
-	CacheTTL = 60 * time.Minute
+	SetCacheTTL(60 * time.Minute)
 	if rxnormSearchTTL() != 24*time.Hour {
 		t.Errorf("search TTL at 60m base: expected 24h, got %v", rxnormSearchTTL())
 	}
@@ -36,7 +35,7 @@ func TestRxNormTTL_ScalesFromBase(t *testing.T) {
 	}
 
 	// Halved base: 30m → search=12h, lookup=3.5d
-	CacheTTL = 30 * time.Minute
+	SetCacheTTL(30 * time.Minute)
 	if rxnormSearchTTL() != 12*time.Hour {
 		t.Errorf("search TTL at 30m base: expected 12h, got %v", rxnormSearchTTL())
 	}
@@ -46,12 +45,11 @@ func TestRxNormTTL_ScalesFromBase(t *testing.T) {
 }
 
 func TestCacheTTL_UsedByServices(t *testing.T) {
-	original := CacheTTL
-	defer func() { CacheTTL = original }()
+	original := CacheTTLValue()
+	defer SetCacheTTL(original)
 
-	// Verify CacheTTL is the variable used (not a const)
 	SetCacheTTL(15 * time.Minute)
-	if CacheTTL != 15*time.Minute {
-		t.Errorf("SetCacheTTL did not update CacheTTL: got %v", CacheTTL)
+	if CacheTTLValue() != 15*time.Minute {
+		t.Errorf("SetCacheTTL did not update CacheTTLValue: got %v", CacheTTLValue())
 	}
 }

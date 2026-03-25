@@ -36,7 +36,7 @@ func NewSPLService(sc client.SPLClient, dc client.DrugClient, rdb *redis.Client,
 // SearchSPLs returns SPL entries matching a drug name, with pagination.
 func (s *SPLService) SearchSPLs(ctx context.Context, drugName string, limit, offset int) ([]model.SPLEntry, int, error) {
 	cacheKey := "cache:spls:name:" + strings.ToLower(drugName)
-	ca := cache.New[[]model.SPLEntry](s.rdb, s.metrics, cacheKey, CacheTTL, "spls-by-name")
+	ca := cache.New[[]model.SPLEntry](s.rdb, s.metrics, cacheKey, CacheTTLValue(), "spls-by-name")
 	entries, err := ca.Get(ctx, func(ctx context.Context) ([]model.SPLEntry, error) {
 		raw, err := s.splClient.FetchSPLsByName(ctx, drugName)
 		if err != nil {
@@ -65,7 +65,7 @@ func (s *SPLService) SearchSPLs(ctx context.Context, drugName string, limit, off
 // GetSPLDetail returns SPL detail with parsed interaction sections.
 func (s *SPLService) GetSPLDetail(ctx context.Context, setID string) (*model.SPLDetail, error) {
 	cacheKey := "cache:spl:detail:" + setID
-	ca := cache.New[model.SPLDetail](s.rdb, s.metrics, cacheKey, CacheTTL, "spl-detail")
+	ca := cache.New[model.SPLDetail](s.rdb, s.metrics, cacheKey, CacheTTLValue(), "spl-detail")
 	result, err := ca.Get(ctx, func(ctx context.Context) (model.SPLDetail, error) {
 		meta, err := s.splClient.FetchSPLDetail(ctx, setID)
 		if err != nil {
@@ -110,7 +110,7 @@ func (s *SPLService) GetSPLDetail(ctx context.Context, setID string) (*model.SPL
 // Uses the most recently published SPL.
 func (s *SPLService) GetInteractionsForDrug(ctx context.Context, drugName string) (*model.SPLDetail, error) {
 	cacheKey := "cache:spl:interactions:" + strings.ToLower(drugName)
-	ca := cache.New[model.SPLDetail](s.rdb, s.metrics, cacheKey, CacheTTL, "spl-interactions")
+	ca := cache.New[model.SPLDetail](s.rdb, s.metrics, cacheKey, CacheTTLValue(), "spl-interactions")
 	result, err := ca.Get(ctx, func(ctx context.Context) (model.SPLDetail, error) {
 		raw, err := s.splClient.FetchSPLsByName(ctx, drugName)
 		if err != nil {
@@ -240,7 +240,9 @@ func (s *SPLService) CheckInteractions(ctx context.Context, drugs []model.DrugId
 	wg.Wait()
 
 	// Phase 2: Cross-reference all pairs
-	var matches []model.InteractionMatch
+	// Pre-allocate with estimated capacity: n*(n-1)/2 pairs, ~4 matches per pair
+	numPairs := len(resolved) * (len(resolved) - 1) / 2
+	matches := make([]model.InteractionMatch, 0, numPairs*4)
 	checkedPairs := 0
 
 	for i := 0; i < len(resolved); i++ {

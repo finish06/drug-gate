@@ -52,7 +52,7 @@ func (h *DrugClassesHandler) HandleDrugClasses(w http.ResponseWriter, r *http.Re
 	if typeFilter != "all" {
 		filtered := make([]model.DrugClassEntry, 0, len(classes)/4)
 		for _, c := range classes {
-			if strings.ToLower(c.Type) == typeFilter {
+			if c.Type == typeFilter {
 				filtered = append(filtered, c)
 			}
 		}

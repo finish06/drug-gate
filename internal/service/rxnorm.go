@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/finish06/drug-gate/internal/cache"
@@ -20,13 +21,13 @@ const maxCandidates = 5
 // rxnormSearchTTL returns the RxNorm search/profile TTL, scaled from CacheTTL.
 // Default: 24h (when CacheTTL is 60m, ratio is 24x).
 func rxnormSearchTTL() time.Duration {
-	return CacheTTL * 24 // 60m * 24 = 24h default
+	return CacheTTLValue() * 24 // 60m * 24 = 24h default
 }
 
 // rxnormLookupTTL returns the RxNorm lookup TTL (NDCs, generics, related), scaled from CacheTTL.
 // Default: 7d (when CacheTTL is 60m, ratio is 168x).
 func rxnormLookupTTL() time.Duration {
-	return CacheTTL * 168 // 60m * 168 = 7d default
+	return CacheTTLValue() * 168 // 60m * 168 = 7d default
 }
 
 // RxNormService provides RxNorm data with lazy Redis caching.
@@ -205,19 +206,40 @@ func (s *RxNormService) GetProfile(ctx context.Context, name string) (*model.RxN
 
 		best := searchResult.Candidates[0]
 
-		ndcResp, err := s.GetNDCs(ctx, best.RxCUI)
-		if err != nil {
-			return model.RxNormProfile{}, err
-		}
+		// Fetch NDCs, generics, and related in parallel
+		var (
+			ndcResp *model.RxNormNDCResponse
+			genResp *model.RxNormGenericResponse
+			relResp *model.RxNormRelatedResponse
+			ndcErr  error
+			genErr  error
+			relErr  error
+			wg      sync.WaitGroup
+		)
 
-		genResp, err := s.GetGenerics(ctx, best.RxCUI)
-		if err != nil {
-			return model.RxNormProfile{}, err
-		}
+		wg.Add(3)
+		go func() {
+			defer wg.Done()
+			ndcResp, ndcErr = s.GetNDCs(ctx, best.RxCUI)
+		}()
+		go func() {
+			defer wg.Done()
+			genResp, genErr = s.GetGenerics(ctx, best.RxCUI)
+		}()
+		go func() {
+			defer wg.Done()
+			relResp, relErr = s.GetRelated(ctx, best.RxCUI)
+		}()
+		wg.Wait()
 
-		relResp, err := s.GetRelated(ctx, best.RxCUI)
-		if err != nil {
-			return model.RxNormProfile{}, err
+		if ndcErr != nil {
+			return model.RxNormProfile{}, ndcErr
+		}
+		if genErr != nil {
+			return model.RxNormProfile{}, genErr
+		}
+		if relErr != nil {
+			return model.RxNormProfile{}, relErr
 		}
 
 		brandNames := make([]string, len(relResp.BrandNames))

@@ -70,7 +70,11 @@ func (h *DrugNamesHandler) HandleDrugNames(w http.ResponseWriter, r *http.Reques
 	if q != "" {
 		filtered := make([]model.DrugNameEntry, 0, len(names)/4)
 		for _, n := range names {
-			if strings.Contains(strings.ToLower(n.Name), q) {
+			nameLower := n.NameLower
+			if nameLower == "" {
+				nameLower = strings.ToLower(n.Name)
+			}
+			if strings.Contains(nameLower, q) {
 				filtered = append(filtered, n)
 			}
 		}

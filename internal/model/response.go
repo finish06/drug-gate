@@ -30,8 +30,9 @@ type DrugClass struct {
 
 // DrugNameEntry represents a single drug name in the listing.
 type DrugNameEntry struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	NameLower string `json:"-"` // pre-lowercased for search filtering, not serialized
 }
 
 // DrugClassEntry represents a single drug class in the listing.

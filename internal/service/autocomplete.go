@@ -12,11 +12,14 @@ import (
 // drugNameIndex is a pre-sorted, pre-lowercased index of drug names
 // for fast prefix matching. Loaded once from GetDrugNames and refreshed
 // periodically to avoid 7.4MB JSON deserialization on every autocomplete request.
+// Uses a loading flag to prevent cache stampede — only one goroutine rebuilds
+// the index while others serve stale data.
 type drugNameIndex struct {
 	mu       sync.RWMutex
 	entries  []indexedEntry
 	loadedAt time.Time
 	maxAge   time.Duration
+	loading  sync.Mutex // serializes rebuild attempts
 }
 
 type indexedEntry struct {
@@ -53,6 +56,13 @@ func (idx *drugNameIndex) isStale() bool {
 	idx.mu.RLock()
 	defer idx.mu.RUnlock()
 	return len(idx.entries) == 0 || time.Since(idx.loadedAt) > idx.maxAge
+}
+
+// isEmpty returns true if the index has no data at all.
+func (idx *drugNameIndex) isEmpty() bool {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
+	return len(idx.entries) == 0
 }
 
 // search returns entries matching the prefix, capped at limit.
