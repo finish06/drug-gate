@@ -32,9 +32,14 @@ staging-key.pub
 # Compiled binary
 /server
 
+# Claude Code
+.claude/projects/
+
 # ADD — ephemeral artifacts (don't commit)
 .add/away-logs/
+.swarm/
 tests/screenshots/errors/
+coverage.html
 
 # ADD — these SHOULD be committed (don't ignore)
 # .add/config.json

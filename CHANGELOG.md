@@ -7,6 +7,27 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added
+- Landing page at dg.calebdunn.tech — marketing page with hero, API overview, and links (GitHub Pages)
+- `LANDING_URL` env var — config-driven 302 redirect from `GET /` to external landing page (no-op when unset)
+- Custom domain support for GitHub Pages (CNAME)
+- Umami analytics on landing page
+- Swagger security definitions — `ApiKeyAuth` (X-API-Key) and `AdminAuth` (Bearer) visible in Swagger UI with Authorize button
+- CI staging deploy webhook — HMAC-signed POST triggers deploy-hook after beta image push
+- CI k6 smoke tests — 36-check smoke suite runs against staging after deploy webhook confirms healthy
+
+### Changed
+- **RACE-1 fix:** CacheTTL global variable replaced with `atomic.Int64` for thread-safe concurrent access
+- **Stampede fix:** Autocomplete index rebuild serialized via `TryLock` — only one goroutine rebuilds while others serve stale data
+- **ToLower fix:** Drug name search pre-computes `NameLower` at data load, eliminating 100K `strings.ToLower` allocations per search request
+- **RxNorm profile:** NDCs, generics, and related lookups now run in parallel goroutines (~3x faster on cache miss)
+- **Interactions:** Pre-allocated matches slice in O(n²) cross-reference loop
+- Swagger host removed (was hardcoded `localhost:8081`) — UI now uses current page URL automatically
+
+### Fixed
+- GitHub Pages workflow uses `enablement: true` for auto-setup
+- GitHub Pages workflow triggers on self-path changes and supports `workflow_dispatch`
+
 ## [0.8.1] - 2026-03-22
 
 ### Changed
