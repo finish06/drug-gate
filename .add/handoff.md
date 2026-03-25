@@ -1,31 +1,36 @@
 # Session Handoff
-**Written:** 2026-03-21
+**Written:** 2026-03-25
 
 ## In Progress
-- Nothing active. All milestones through M9 complete.
+- Nothing active. M10.5 landing page complete.
 
 ## Completed This Session
-- M7 Operational Hardening: request ID, autocomplete, Redis persistence, Prometheus alerts (PR #15)
-- M8 Cache Architecture: CacheAside[T] (-211 lines), SPL sections 4-6, configurable TTL (PRs #16, #17)
-- M8.5 Bugathon: 13 security/correctness/DX fixes from 3-agent swarm audit (PRs #18, #19)
-- M9 Upstream Resilience: circuit breaker (10 fails, 30s cooldown), stale-cache, parallel interactions, MaxBytesReader (PR #20)
-- CI updated: GHCR publishing alongside private registry on release tags
-- k6 performance harness built with baseline comparison
-- 2 retros completed, 20 learning entries
-- Tagged v0.7.0, v0.7.1, v0.8.0
+- Swagger security annotations: ApiKeyAuth + AdminAuth visible in Swagger UI (998f5e1)
+- CI deploy webhook: HMAC-signed POST triggers staging deploy after beta push (cf5d899)
+- CI k6 smoke tests: 36-check suite runs after deploy webhook (2a1f0ed)
+- Swagger host fix: removed hardcoded localhost, UI uses current page URL (0d22f83)
+- Documentation refresh: 7 new sequence diagrams, middleware chain updated, CLAUDE.md synced (0d22f83)
+- M10.5 Landing Page: marketing page at dg.calebdunn.tech (GitHub Pages + custom domain)
+- LANDING_URL redirect: config-driven 302 from GET /, documented for self-hosters
+- Umami analytics on landing page
+- Retroactive spec for landing page (specs/landing-page.md)
+- 5 performance fixes: CacheTTL atomic, stampede prevention, ToLower elimination, RxNorm parallel, interaction pre-alloc (144f001)
+- README synced with all current features, endpoints, env vars
+- Changelog updated with 15 [Unreleased] entries
+- GitHub secrets configured: WEBHOOK_SECRET, STAGING_WEBHOOK_URL, STAGING_API_KEY
 
 ## Decisions Made
-- Circuit breaker threshold: 10 consecutive failures (not 5 per original PRD)
-- CORS: empty origins = deny, explicit "*" required for wildcard
-- MaxBytesReader: 10MB (drugnames is 7.4MB, 5MB was too low)
-- Stale-cache: dual-key strategy (fresh key with TTL + stale backup with no TTL)
-- Autocomplete: no pagination wrapper (intentional design, documented in spec)
-- Deploy automation split to M9.5 (resilience shipped first)
+- Landing page hosted on GitHub Pages (not embedded in Go binary)
+- Custom domain: dg.calebdunn.tech via CNAME
+- LANDING_URL is config-driven — unset = no redirect (self-hoster friendly)
+- CacheTTL changed from package var to atomic.Int64
+- Autocomplete stampede uses TryLock + stale serving
 
 ## Blockers
 - None
 
 ## Next Steps
-1. Decide: M9.5 (production deploy automation) or Tier 3 bugathon bugs
-2. Consider Tier 3 items: RACE-1 (CacheTTL memory barrier), PERF-2 (autocomplete 104K deserialization)
-3. GA promotion requires: M9.5 deploy automation + M10 admin auth + 30 days stability
+1. Tag v0.9.0 release with all [Unreleased] changes
+2. M10: Admin Auth Hardening (HMAC tokens, rotation, audit log)
+3. GA promotion requires: M10 + 30 days stability
+4. Consider Tier 3 items: PERF-2 (autocomplete 104K deserialization — partially addressed by stampede fix)

@@ -7,6 +7,8 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-03-25
+
 ### Added
 - Landing page at dg.calebdunn.tech — marketing page with hero, API overview, and links (GitHub Pages)
 - `LANDING_URL` env var — config-driven 302 redirect from `GET /` to external landing page (no-op when unset)

@@ -2,9 +2,9 @@
 
 **Milestone:** M10.5 — Landing Page
 **Maturity:** beta
-**Status:** PLANNED
-**Started:** TBD
-**Completed:** TBD
+**Status:** COMPLETE
+**Started:** 2026-03-24
+**Completed:** 2026-03-25
 **Duration Budget:** 2-3 days
 
 ## Work Items
@@ -47,11 +47,11 @@ Redirect can be built in parallel with the landing page HTML.
 - **CI:** Push to main auto-deploys landing page to GitHub Pages
 
 ### Cycle Success Criteria
-- [ ] Landing page live on GitHub Pages
-- [ ] Production & staging configured with LANDING_URL redirect
-- [ ] Self-hosters get no redirect by default (LANDING_URL unset)
-- [ ] CLAUDE.md updated with LANDING_URL env var
-- [ ] Sequence diagram updated if new route added
+- [x] Landing page live on GitHub Pages (dg.calebdunn.tech)
+- [x] Staging configured with LANDING_URL redirect (verified 302)
+- [x] Self-hosters get no redirect by default (LANDING_URL unset)
+- [x] CLAUDE.md updated with LANDING_URL env var
+- [x] Docs updated (sequence diagrams, README, manifest, spec)
 
 ## Agent Autonomy & Checkpoints
 
