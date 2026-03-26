@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
@@ -151,10 +152,15 @@ func main() {
 
 	// Landing page redirect (config-driven)
 	if landingURL := os.Getenv("LANDING_URL"); landingURL != "" {
-		slog.Info("landing page redirect enabled", "url", landingURL)
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, landingURL, http.StatusFound)
-		})
+		parsed, err := url.Parse(landingURL)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			slog.Warn("LANDING_URL ignored (must be an http or https URL)", "value", landingURL)
+		} else {
+			slog.Info("landing page redirect enabled", "url", landingURL)
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, landingURL, http.StatusFound)
+			})
+		}
 	}
 
 	// Public routes (no auth)

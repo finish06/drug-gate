@@ -27,6 +27,14 @@ func redisKey(key string) string {
 	return "apikey:" + key
 }
 
+// redactKey returns a truncated key for safe logging (e.g., "pk_164cf7a380...").
+func redactKey(key string) string {
+	if len(key) > 12 {
+		return key[:12] + "..."
+	}
+	return key
+}
+
 // Create generates a new API key and stores it in Redis.
 func (s *RedisStore) Create(ctx context.Context, appName string, origins []string, rateLimit int) (*APIKey, error) {
 	keyStr, err := GenerateKey()
@@ -52,7 +60,7 @@ func (s *RedisStore) Create(ctx context.Context, appName string, origins []strin
 		return nil, fmt.Errorf("redis set: %w", err)
 	}
 
-	slog.Info("api key stored", "key", keyStr, "app_name", appName)
+	slog.Info("api key stored", "key", redactKey(keyStr), "app_name", appName)
 	return ak, nil
 }
 
@@ -132,7 +140,7 @@ func (s *RedisStore) Deactivate(ctx context.Context, key string) error {
 		return fmt.Errorf("redis set: %w", err)
 	}
 
-	slog.Info("api key deactivated", "key", key)
+	slog.Info("api key deactivated", "key", redactKey(key))
 	return nil
 }
 
@@ -165,6 +173,6 @@ func (s *RedisStore) Rotate(ctx context.Context, oldKey string, gracePeriod time
 		return nil, fmt.Errorf("create rotated key: %w", err)
 	}
 
-	slog.Info("api key rotated", "old_key", oldKey, "new_key", newAK.Key)
+	slog.Info("api key rotated", "old_key", redactKey(oldKey), "new_key", redactKey(newAK.Key))
 	return newAK, nil
 }

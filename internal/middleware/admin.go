@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -26,7 +27,7 @@ func AdminAuth(secret string) func(http.Handler) http.Handler {
 			}
 
 			token := strings.TrimPrefix(auth, "Bearer ")
-			if token != secret {
+			if subtle.ConstantTimeCompare([]byte(token), []byte(secret)) != 1 {
 				writeAdminError(w, "Invalid admin secret")
 				return
 			}

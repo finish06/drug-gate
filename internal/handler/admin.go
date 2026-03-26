@@ -73,7 +73,11 @@ func (h *AdminHandler) CreateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("api key created", "key", ak.Key, "app_name", ak.AppName)
+	keyLabel := ak.Key
+	if len(keyLabel) > 12 {
+		keyLabel = keyLabel[:12] + "..."
+	}
+	slog.Info("api key created", "key", keyLabel, "app_name", ak.AppName)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(ak)
@@ -151,7 +155,11 @@ func (h *AdminHandler) DeactivateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("api key deactivated", "key", keyStr)
+	redacted := keyStr
+	if len(redacted) > 12 {
+		redacted = redacted[:12] + "..."
+	}
+	slog.Info("api key deactivated", "key", redacted)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "deactivated"})
@@ -200,7 +208,15 @@ func (h *AdminHandler) RotateKey(w http.ResponseWriter, r *http.Request) {
 		expiresAt = *oldKey.ExpiresAt
 	}
 
-	slog.Info("api key rotated", "old_key", oldKeyStr, "new_key", newKey.Key)
+	oldRedacted := oldKeyStr
+	if len(oldRedacted) > 12 {
+		oldRedacted = oldRedacted[:12] + "..."
+	}
+	newRedacted := newKey.Key
+	if len(newRedacted) > 12 {
+		newRedacted = newRedacted[:12] + "..."
+	}
+	slog.Info("api key rotated", "old_key", oldRedacted, "new_key", newRedacted)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(rotateKeyResponse{
 		OldKey:          oldKeyStr,
