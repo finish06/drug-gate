@@ -11,8 +11,8 @@ import (
 // VersionInfo handles GET /version.
 //
 // @Summary      Build version info
-// @Description  Returns build version, git commit, git branch, and Go runtime version.
-// @Tags         public
+// @Description  Returns build metadata including the semantic version, git commit hash, git branch, and Go runtime version. Use this endpoint to verify which version of the API is deployed in a given environment.
+// @Tags         system
 // @Produce      json
 // @Success      200  {object}  map[string]string
 // @Router       /version [get]

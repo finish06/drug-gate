@@ -28,11 +28,12 @@ type cacheClearResult struct {
 // ClearCache handles DELETE /admin/cache.
 //
 // @Summary      Clear Redis cache
-// @Description  Deletes all cache keys matching cache:*, or a subset matching cache:{prefix}* if the prefix query parameter is provided. Does not affect API key or rate limit data.
+// @Description  Deletes all cache keys matching cache:*, or a subset matching cache:{prefix}* if the prefix query parameter is provided. Uses SCAN to iterate keys safely without blocking Redis. Does not affect API key or rate limit data stored under other key namespaces.
 // @Tags         admin
 // @Produce      json
-// @Param        prefix  query  string  false  "Key prefix filter (e.g. rxnorm, drugnames)"
+// @Param        prefix  query  string  false  "Key prefix filter (e.g. rxnorm, drugnames)"  example(rxnorm)
 // @Success      200  {object}  cacheClearResult
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid admin bearer token"
 // @Failure      502  {object}  model.ErrorResponse  "Redis unavailable"
 // @Security     AdminAuth
 // @Router       /admin/cache [delete]

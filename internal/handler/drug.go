@@ -24,14 +24,16 @@ func NewDrugHandler(c client.DrugClient) *DrugHandler {
 // HandleNDCLookup handles GET /v1/drugs/ndc/{ndc}.
 //
 // @Summary      Look up drug by NDC
-// @Description  Accepts a product NDC (dash-separated), queries cash-drugs upstream, and returns drug name, generic name, and therapeutic classes. Supports 5-4, 4-4, and 5-3 formats with automatic fallback to padded 5-4.
+// @Description  Accepts a product NDC (dash-separated) and returns drug name, generic name, and therapeutic classes from the FDA NDC Directory. Supports 5-4, 4-4, and 5-3 formats with automatic fallback to zero-padded 5-4 form. Use this endpoint when you have an NDC and need to identify the drug.
 // @Tags         drugs
 // @Produce      json
-// @Param        ndc  path  string  true  "Product NDC with dash (e.g. 58151-158, 0069-3150, 00069-315)"
+// @Param        ndc  path  string  true  "Product NDC with dash"  example(00069-3150)
 // @Success      200  {object}  model.DrugDetailResponse
-// @Failure      400  {object}  model.ErrorResponse
-// @Failure      404  {object}  model.ErrorResponse
-// @Failure      502  {object}  model.ErrorResponse
+// @Failure      400  {object}  model.ErrorResponse  "Invalid NDC format"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
+// @Failure      404  {object}  model.ErrorResponse  "No drug found for this NDC"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/ndc/{ndc} [get]
 func (h *DrugHandler) HandleNDCLookup(w http.ResponseWriter, r *http.Request) {

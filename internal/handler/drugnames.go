@@ -31,15 +31,17 @@ func NewDrugNamesHandler(svc DataService) *DrugNamesHandler {
 // HandleDrugNames handles GET /v1/drugs/names.
 //
 // @Summary      List drug names
-// @Description  Returns a paginated list of drug names from the DailyMed dataset. Supports case-insensitive substring search and type filtering (generic/brand).
+// @Description  Returns a paginated list of drug names from the DailyMed dataset. Supports case-insensitive substring search via the q parameter and type filtering by generic or brand. Results are cached from the upstream drug names index. Use this endpoint to browse or search the full drug name catalogue.
 // @Tags         drugs
 // @Produce      json
-// @Param        q      query  string  false  "Search substring filter (case-insensitive)"
+// @Param        q      query  string  false  "Search substring filter (case-insensitive)"  example(atorva)
 // @Param        type   query  string  false  "Filter by type: generic, brand, or all"  Enums(generic, brand, all)
-// @Param        page   query  int     false  "Page number (default: 1)"
-// @Param        limit  query  int     false  "Results per page (default: 50, max: 100)"
+// @Param        page   query  int     false  "Page number (default: 1)"  example(1)
+// @Param        limit  query  int     false  "Results per page (default: 50, max: 100)"  example(50)
 // @Success      200  {object}  model.PaginatedResponse
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/names [get]
 func (h *DrugNamesHandler) HandleDrugNames(w http.ResponseWriter, r *http.Request) {

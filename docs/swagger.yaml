@@ -24,26 +24,35 @@ definitions:
       error:
         type: string
       has_interactions:
+        example: true
         type: boolean
       input_name:
+        example: warfarin
         type: string
       input_type:
+        example: name
         type: string
       resolved_name:
+        example: WARFARIN SODIUM
         type: string
       spl_setid:
+        example: b76006e5-1005-4a64-97a1-7cc20c0e6a1a
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.DrugClass:
     properties:
       name:
+        example: HMG-CoA Reductase Inhibitor
         type: string
       type:
+        example: EPC
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.DrugClassResponse:
     properties:
       brand_names:
+        example:
+        - Zocor
         items:
           type: string
         type: array
@@ -52,28 +61,37 @@ definitions:
           $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.DrugClass'
         type: array
       generic_name:
+        example: SIMVASTATIN
         type: string
       query_name:
+        example: simvastatin
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.DrugDetailResponse:
     properties:
       classes:
+        example:
+        - HMG-CoA Reductase Inhibitor
         items:
           type: string
         type: array
       generic_name:
+        example: ATORVASTATIN CALCIUM
         type: string
       name:
+        example: Lipitor
         type: string
       ndc:
+        example: 00069-3150
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.DrugIdentifier:
     properties:
       name:
+        example: warfarin
         type: string
       ndc:
+        example: 00069-3150
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.DrugInfoResponse:
@@ -87,10 +105,13 @@ definitions:
           $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection'
         type: array
       drug_name:
+        example: warfarin
         type: string
       input_type:
+        example: name
         type: string
       input_value:
+        example: warfarin
         type: string
       interactions:
         items:
@@ -106,15 +127,19 @@ definitions:
   github_com_finish06_drug-gate_internal_model.DrugNameEntry:
     properties:
       name:
+        example: Lipitor
         type: string
       type:
+        example: brand
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.ErrorResponse:
     properties:
       error:
+        example: not_found
         type: string
       message:
+        example: No drug found for NDC 99999-9999
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.InteractionCheckRequest:
@@ -127,12 +152,14 @@ definitions:
   github_com_finish06_drug-gate_internal_model.InteractionCheckResponse:
     properties:
       checked_pairs:
+        example: 3
         type: integer
       drugs:
         items:
           $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.DrugCheckResult'
         type: array
       found_interactions:
+        example: 2
         type: integer
       interactions:
         items:
@@ -142,23 +169,31 @@ definitions:
   github_com_finish06_drug-gate_internal_model.InteractionMatch:
     properties:
       drug_a:
+        example: warfarin
         type: string
       drug_b:
+        example: aspirin
         type: string
       section_title:
+        example: Drug Interactions
         type: string
       source:
+        example: warfarin
         type: string
       spl_setid:
+        example: b76006e5-1005-4a64-97a1-7cc20c0e6a1a
         type: string
       text:
+        example: Aspirin can increase the anticoagulant effect of warfarin.
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.InteractionSection:
     properties:
       text:
+        example: Concomitant use of warfarin and aspirin increases the risk of bleeding.
         type: string
       title:
+        example: Drug Interactions
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.PaginatedResponse:
@@ -170,28 +205,37 @@ definitions:
   github_com_finish06_drug-gate_internal_model.Pagination:
     properties:
       limit:
+        example: 50
         type: integer
       page:
+        example: 1
         type: integer
       total:
+        example: 1234
         type: integer
       total_pages:
+        example: 25
         type: integer
     type: object
   github_com_finish06_drug-gate_internal_model.RxNormCandidate:
     properties:
       name:
+        example: atorvastatin
         type: string
       rxcui:
+        example: "153165"
         type: string
       score:
+        example: 94
         type: integer
     type: object
   github_com_finish06_drug-gate_internal_model.RxNormConcept:
     properties:
       name:
+        example: atorvastatin calcium 10 MG Oral Tablet
         type: string
       rxcui:
+        example: "314076"
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.RxNormGenericResponse:
@@ -201,36 +245,47 @@ definitions:
           $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
         type: array
       rxcui:
+        example: "314076"
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.RxNormNDCResponse:
     properties:
       ndcs:
+        example:
+        - 00069-3150-30
         items:
           type: string
         type: array
       rxcui:
+        example: "314076"
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.RxNormProfile:
     properties:
       brand_names:
+        example:
+        - Glucophage
         items:
           type: string
         type: array
       generic:
         $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
       name:
+        example: metformin
         type: string
       ndcs:
+        example:
+        - 00087-6060-05
         items:
           type: string
         type: array
       query:
+        example: metformin
         type: string
       related:
         $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse'
       rxcui:
+        example: "6809"
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse:
@@ -256,6 +311,7 @@ definitions:
           $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept'
         type: array
       rxcui:
+        example: "314076"
         type: string
     type: object
   github_com_finish06_drug-gate_internal_model.RxNormSearchResult:
@@ -265,8 +321,11 @@ definitions:
           $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormCandidate'
         type: array
       query:
+        example: lipitor
         type: string
       suggestions:
+        example:
+        - lipitor
         items:
           type: string
         type: array
@@ -286,12 +345,16 @@ definitions:
           $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.InteractionSection'
         type: array
       published_date:
+        example: "2024-03-15"
         type: string
       setid:
+        example: b76006e5-1005-4a64-97a1-7cc20c0e6a1a
         type: string
       spl_version:
+        example: 12
         type: integer
       title:
+        example: WARFARIN SODIUM tablet
         type: string
       warnings:
         items:
@@ -301,12 +364,16 @@ definitions:
   github_com_finish06_drug-gate_internal_model.SPLSource:
     properties:
       published_date:
+        example: "2024-03-15"
         type: string
       setid:
+        example: b76006e5-1005-4a64-97a1-7cc20c0e6a1a
         type: string
       spl_version:
+        example: 12
         type: integer
       title:
+        example: WARFARIN SODIUM tablet
         type: string
     type: object
   internal_handler.HealthResponse:
@@ -353,18 +420,33 @@ definitions:
         type: string
     type: object
 info:
-  contact: {}
-  description: Drug information gateway — NDC lookup, therapeutic classes, and more.
+  contact:
+    name: drug-gate on GitHub
+    url: https://github.com/finish06/drug-gate
+  description: |-
+    Open-source drug information gateway. Provides NDC lookup, therapeutic class search, drug interactions, RxNorm fuzzy search, and structured product label data — all through a clean REST API with Redis caching, per-key rate limiting, and circuit breaker protection.
+
+    ## Getting Started
+    1. **Create an API key:** `POST /admin/keys` with `Authorization: Bearer {ADMIN_SECRET}` and body `{"app_name": "my-app", "origins": ["*"], "rate_limit": 1000}`
+    2. **Search for a drug:** `GET /v1/drugs/autocomplete?q=lipit` with header `X-API-Key: {your_key}` — returns matching drug names
+    3. **Look up details:** `GET /v1/drugs/class?name=atorvastatin` — returns therapeutic classes and brand names
+    4. **Get interactions:** `GET /v1/drugs/info?name=warfarin` — returns FDA label interaction warnings
+    5. **Check multi-drug interactions:** `POST /v1/drugs/interactions` with `{"drugs": [{"name": "warfarin"}, {"name": "aspirin"}]}`
+  license:
+    name: MIT
+    url: https://github.com/finish06/drug-gate/blob/main/LICENSE
   title: drug-gate API
-  version: 0.1.0
+  version: 0.9.0
 paths:
   /admin/cache:
     delete:
       description: Deletes all cache keys matching cache:*, or a subset matching cache:{prefix}*
-        if the prefix query parameter is provided. Does not affect API key or rate
-        limit data.
+        if the prefix query parameter is provided. Uses SCAN to iterate keys safely
+        without blocking Redis. Does not affect API key or rate limit data stored
+        under other key namespaces.
       parameters:
       - description: Key prefix filter (e.g. rxnorm, drugnames)
+        example: rxnorm
         in: query
         name: prefix
         type: string
@@ -375,6 +457,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_handler.cacheClearResult'
+        "401":
+          description: Missing or invalid admin bearer token
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
           description: Redis unavailable
           schema:
@@ -386,7 +472,9 @@ paths:
       - admin
   /admin/keys:
     get:
-      description: Returns all provisioned API keys with metadata.
+      description: Returns all provisioned API keys with their metadata including
+        app name, allowed origins, rate limit, active status, and creation timestamp.
+        Use this to audit which keys are active and their configurations.
       produces:
       - application/json
       responses:
@@ -396,6 +484,10 @@ paths:
             items:
               $ref: '#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey'
             type: array
+        "401":
+          description: Missing or invalid admin bearer token
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "500":
           description: Internal error
           schema:
@@ -408,8 +500,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Provisions a new publishable API key with app name, allowed origins,
-        and rate limit.
+      description: Provisions a new publishable API key (pk_*) with the specified
+        app name, allowed CORS origins, and per-minute rate limit. The full key value
+        is only returned in this response and cannot be retrieved later. Store it
+        securely.
       parameters:
       - description: Key creation parameters
         in: body
@@ -428,6 +522,10 @@ paths:
           description: Invalid request body or validation error
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid admin bearer token
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "500":
           description: Internal error
           schema:
@@ -439,10 +537,12 @@ paths:
       - admin
   /admin/keys/{key}:
     delete:
-      description: Marks an API key as inactive. The key remains retrievable but will
-        be rejected by auth middleware.
+      description: Marks an API key as inactive. The key record remains retrievable
+        via GET for auditing purposes, but all requests using this key will be rejected
+        by the auth middleware with a 401 response.
       parameters:
       - description: API key to deactivate
+        example: pk_abc123def456
         in: path
         name: key
         required: true
@@ -456,6 +556,10 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "401":
+          description: Missing or invalid admin bearer token
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "500":
           description: Internal error
           schema:
@@ -466,9 +570,12 @@ paths:
       tags:
       - admin
     get:
-      description: Returns metadata for a specific API key.
+      description: Returns metadata for a specific API key including app name, allowed
+        origins, rate limit, active status, and expiration. Use this to inspect a
+        single key's configuration.
       parameters:
-      - description: API key (e.g. pk_abc123)
+      - description: API key
+        example: pk_abc123def456
         in: path
         name: key
         required: true
@@ -480,6 +587,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey'
+        "401":
+          description: Missing or invalid admin bearer token
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
           description: Key not found
           schema:
@@ -497,15 +608,19 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a new key with the same metadata and sets a grace period
-        expiration on the old key. Both keys are valid during the grace period.
+      description: Creates a new API key with the same app name, origins, and rate
+        limit as the old key, then sets a grace period expiration on the old key.
+        Both old and new keys are valid during the grace period, allowing clients
+        to migrate without downtime. After the grace period expires, the old key is
+        automatically rejected.
       parameters:
       - description: API key to rotate
+        example: pk_abc123def456
         in: path
         name: key
         required: true
         type: string
-      - description: Grace period for old key
+      - description: Grace period for old key (Go duration, e.g. 24h, 72h)
         in: body
         name: body
         required: true
@@ -522,6 +637,10 @@ paths:
           description: Invalid request or grace period
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid admin bearer token
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "500":
           description: Internal error
           schema:
@@ -534,16 +653,18 @@ paths:
   /health:
     get:
       description: Returns service health status, build version, and dependency health
-        (Redis, upstream).
+        for Redis, the upstream cash-drugs API, and the circuit breaker. Returns 200
+        when all dependencies are healthy and 503 when any dependency is degraded.
+        Use this endpoint for load balancer health probes and monitoring dashboards.
       produces:
       - application/json
       responses:
         "200":
-          description: healthy
+          description: All dependencies healthy
           schema:
             $ref: '#/definitions/internal_handler.HealthResponse'
         "503":
-          description: degraded — one or more dependencies unhealthy
+          description: One or more dependencies unhealthy
           schema:
             $ref: '#/definitions/internal_handler.HealthResponse'
       summary: Health check
@@ -551,7 +672,9 @@ paths:
       - system
   /openapi.json:
     get:
-      description: Returns the generated OpenAPI specification as JSON.
+      description: Returns the generated OpenAPI 2.0 (Swagger) specification as JSON.
+        This is the machine-readable API contract used by Swagger UI and client code
+        generators. The spec is embedded at build time via swaggo.
       produces:
       - application/json
       responses:
@@ -565,15 +688,19 @@ paths:
       - system
   /v1/drugs/autocomplete:
     get:
-      description: Returns drug names matching the given prefix. Fast typeahead endpoint
-        for building search UIs.
+      description: Returns drug names matching the given prefix, optimized for typeahead
+        search UIs. Uses an in-memory prefix index for sub-millisecond response times.
+        The prefix must be at least 2 characters. Results include both generic and
+        brand names with their type labels.
       parameters:
       - description: Prefix to match (min 2 chars)
+        example: ator
         in: query
         name: q
         required: true
         type: string
       - description: 'Max results (default: 10, max: 50)'
+        example: 10
         in: query
         name: limit
         type: integer
@@ -589,11 +716,19 @@ paths:
               type: array
             type: object
         "400":
-          description: Missing or invalid q parameter
+          description: Missing or too-short q parameter
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -604,10 +739,12 @@ paths:
   /v1/drugs/class:
     get:
       description: Looks up a drug by generic or brand name and returns its pharmacological
-        classes, brand names, and generic name. Tries generic name first, falls back
-        to brand name.
+        classes (EPC, MoA, PE, CS), deduplicated brand names, and generic name. Tries
+        generic name first and falls back to brand name search. Use this endpoint
+        to discover what class a drug belongs to.
       parameters:
-      - description: Drug name (generic or brand, e.g. simvastatin, Zocor)
+      - description: Drug name (generic or brand)
+        example: simvastatin
         in: query
         name: name
         required: true
@@ -623,12 +760,20 @@ paths:
           description: Missing or empty name parameter
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
           description: Drug not found
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -640,7 +785,9 @@ paths:
     get:
       description: 'Returns a paginated list of pharmacological drug classes from
         DailyMed. Defaults to EPC (Established Pharmacologic Class) type. Supports
-        filtering by type: epc, moa, pe, cs, or all.'
+        filtering by class type: epc (pharmacologic class), moa (mechanism of action),
+        pe (physiologic effect), cs (chemical structure), or all. Use this endpoint
+        to discover available drug classes for browsing or filtering.'
       parameters:
       - description: 'Filter by class type (default: epc)'
         enum:
@@ -653,10 +800,12 @@ paths:
         name: type
         type: string
       - description: 'Page number (default: 1)'
+        example: 1
         in: query
         name: page
         type: integer
       - description: 'Results per page (default: 50, max: 100)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -667,8 +816,16 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -680,18 +837,22 @@ paths:
     get:
       description: Returns a paginated list of drugs belonging to a specific pharmacological
         class, resolved via FDA NDC data. Returns empty data (not 404) for unknown
-        classes.
+        classes. Use this endpoint to find all drugs in a therapeutic category such
+        as "HMG-CoA Reductase Inhibitor" or "Proton Pump Inhibitor".
       parameters:
-      - description: Pharmacological class name (e.g. HMG-CoA Reductase Inhibitor)
+      - description: Pharmacological class name
+        example: HMG-CoA Reductase Inhibitor
         in: query
         name: class
         required: true
         type: string
       - description: 'Page number (default: 1)'
+        example: 1
         in: query
         name: page
         type: integer
       - description: 'Results per page (default: 100, max: 500)'
+        example: 100
         in: query
         name: limit
         type: integer
@@ -706,8 +867,16 @@ paths:
           description: Missing or empty class parameter
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -717,14 +886,19 @@ paths:
       - drugs
   /v1/drugs/info:
     get:
-      description: Look up a single drug by name or NDC and return SPL metadata plus
-        parsed interaction sections. NDC is normalized and resolved to drug name internally.
+      description: Look up a single drug by name or NDC and return a consolidated
+        info card with SPL metadata, drug interactions, contraindications, warnings,
+        and adverse reactions. When an NDC is provided, it is normalized and resolved
+        to a drug name internally. Provide either name or ndc; if both are given,
+        ndc takes precedence.
       parameters:
       - description: Drug name
+        example: warfarin
         in: query
         name: name
         type: string
       - description: NDC code (any format)
+        example: 00069-3150
         in: query
         name: ndc
         type: string
@@ -739,12 +913,20 @@ paths:
           description: Missing name or ndc
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
-          description: NDC not found
+          description: NDC not found or no SPL data
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -756,9 +938,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: Submit 2-10 drug identifiers (name or NDC) and get cross-referenced
-        interaction warnings from FDA SPL labels. Each drug's Section 7 is searched
-        for mentions of the other drugs.
+      description: Submit 2 to 10 drug identifiers (by name or NDC) and receive cross-referenced
+        interaction warnings from FDA SPL labels. Each drug's Section 7 (Drug Interactions)
+        is searched for mentions of the other submitted drugs. NDC identifiers are
+        resolved to drug names automatically. Use this endpoint to check a patient's
+        medication list for potential interactions.
       parameters:
       - description: Drug identifiers to check
         in: body
@@ -777,8 +961,16 @@ paths:
           description: Too few/many drugs or invalid input
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -789,9 +981,12 @@ paths:
   /v1/drugs/names:
     get:
       description: Returns a paginated list of drug names from the DailyMed dataset.
-        Supports case-insensitive substring search and type filtering (generic/brand).
+        Supports case-insensitive substring search via the q parameter and type filtering
+        by generic or brand. Results are cached from the upstream drug names index.
+        Use this endpoint to browse or search the full drug name catalogue.
       parameters:
       - description: Search substring filter (case-insensitive)
+        example: atorva
         in: query
         name: q
         type: string
@@ -804,10 +999,12 @@ paths:
         name: type
         type: string
       - description: 'Page number (default: 1)'
+        example: 1
         in: query
         name: page
         type: integer
       - description: 'Results per page (default: 50, max: 100)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -818,8 +1015,16 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -829,11 +1034,13 @@ paths:
       - drugs
   /v1/drugs/ndc/{ndc}:
     get:
-      description: Accepts a product NDC (dash-separated), queries cash-drugs upstream,
-        and returns drug name, generic name, and therapeutic classes. Supports 5-4,
-        4-4, and 5-3 formats with automatic fallback to padded 5-4.
+      description: Accepts a product NDC (dash-separated) and returns drug name, generic
+        name, and therapeutic classes from the FDA NDC Directory. Supports 5-4, 4-4,
+        and 5-3 formats with automatic fallback to zero-padded 5-4 form. Use this
+        endpoint when you have an NDC and need to identify the drug.
       parameters:
-      - description: Product NDC with dash (e.g. 58151-158, 0069-3150, 00069-315)
+      - description: Product NDC with dash
+        example: 00069-3150
         in: path
         name: ndc
         required: true
@@ -846,15 +1053,23 @@ paths:
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.DrugDetailResponse'
         "400":
-          description: Bad Request
+          description: Invalid NDC format
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid API key
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
-          description: Not Found
+          description: No drug found for this NDC
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Bad Gateway
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -865,9 +1080,12 @@ paths:
   /v1/drugs/rxnorm/{rxcui}/generics:
     get:
       description: Returns generic product information for the given RxNorm concept
-        identifier.
+        identifier, including ingredient names and dose form groups. Use this endpoint
+        to find generic equivalents of a branded drug after resolving its RxCUI via
+        the search endpoint.
       parameters:
       - description: RxNorm concept unique identifier
+        example: "314076"
         in: path
         name: rxcui
         required: true
@@ -879,12 +1097,20 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormGenericResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
           description: RxCUI not found
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -894,9 +1120,13 @@ paths:
       - rxnorm
   /v1/drugs/rxnorm/{rxcui}/ndcs:
     get:
-      description: Returns NDC codes associated with the given RxNorm concept identifier.
+      description: Returns all National Drug Code (NDC) identifiers associated with
+        the given RxNorm concept. Use this to map an RxCUI obtained from the search
+        endpoint to specific packaged products. Results are cached with a long TTL
+        since NDC-to-RxCUI mappings change infrequently.
       parameters:
       - description: RxNorm concept unique identifier
+        example: "314076"
         in: path
         name: rxcui
         required: true
@@ -908,12 +1138,20 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormNDCResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
           description: RxCUI not found
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -923,10 +1161,13 @@ paths:
       - rxnorm
   /v1/drugs/rxnorm/{rxcui}/related:
     get:
-      description: Returns all related concepts grouped by type (ingredients, brand
-        names, dose forms, clinical drugs, branded drugs).
+      description: 'Returns all related RxNorm concepts grouped by relationship type:
+        ingredients, brand names, dose forms, clinical drugs, and branded drugs. Returns
+        404 only when all groups are empty, indicating an unknown RxCUI. Individual
+        empty groups within a valid response are normal.'
       parameters:
       - description: RxNorm concept unique identifier
+        example: "314076"
         in: path
         name: rxcui
         required: true
@@ -938,12 +1179,20 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
-          description: RxCUI not found
+          description: RxCUI not found or has no related concepts
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -953,10 +1202,14 @@ paths:
       - rxnorm
   /v1/drugs/rxnorm/profile:
     get:
-      description: Resolves a drug name via approximate match, then assembles NDCs,
-        generic equivalents, and related concepts into a single response.
+      description: Resolves a drug name via RxNorm approximate match, then assembles
+        NDCs, generic equivalents, and all related concepts into a single unified
+        response. This is a convenience endpoint that combines the results of search,
+        NDCs, generics, and related into one call. Use this when you need a complete
+        drug profile from a single request.
       parameters:
       - description: Drug name (generic or brand)
+        example: metformin
         in: query
         name: name
         required: true
@@ -972,12 +1225,20 @@ paths:
           description: Missing name parameter
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
           description: Drug not found
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -987,10 +1248,14 @@ paths:
       - rxnorm
   /v1/drugs/rxnorm/search:
     get:
-      description: Approximate match search via RxNorm. Returns up to 5 candidates
-        ranked by score. Includes spelling suggestions when no matches are found.
+      description: Performs an approximate-match search via the RxNorm API and returns
+        up to 5 candidates ranked by score, each with an RxCUI. When no exact matches
+        are found, spelling suggestions are included to help correct the query. Use
+        this as the entry point for RxNorm workflows before calling NDC, generic,
+        or related endpoints.
       parameters:
       - description: Drug name to search for
+        example: lisinopril
         in: query
         name: name
         required: true
@@ -1006,12 +1271,20 @@ paths:
           description: Missing name parameter
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
           description: No drugs found
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -1021,19 +1294,24 @@ paths:
       - rxnorm
   /v1/drugs/spls:
     get:
-      description: Search Structured Product Labels by drug name. Returns paginated
-        SPL metadata from DailyMed.
+      description: Searches Structured Product Labels (SPLs) by drug name and returns
+        paginated metadata from DailyMed. Each result includes the SPL title, set
+        ID, published date, and version. Use the set ID from results to fetch full
+        SPL detail with parsed interaction sections.
       parameters:
       - description: Drug name to search
+        example: metformin
         in: query
         name: name
         required: true
         type: string
       - description: 'Page number (default: 1)'
+        example: 1
         in: query
         name: page
         type: integer
       - description: 'Results per page (default: 20, max: 100)'
+        example: 20
         in: query
         name: limit
         type: integer
@@ -1048,8 +1326,16 @@ paths:
           description: Missing name parameter
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -1059,10 +1345,13 @@ paths:
       - spl
   /v1/drugs/spls/{setid}:
     get:
-      description: Retrieve SPL metadata and parsed Drug Interactions (Section 7)
-        from the SPL XML document.
+      description: Retrieves full SPL metadata and parsed safety sections from the
+        SPL XML document, including Drug Interactions (Section 7), Contraindications,
+        Warnings, and Adverse Reactions. Use this endpoint when you have a set ID
+        from the SPL search results and need the complete label content.
       parameters:
       - description: SPL set ID (UUID format)
+        example: 2c6ca939-8494-4b3b-8930-81c6c09b0125
         in: path
         name: setid
         required: true
@@ -1074,12 +1363,20 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.SPLDetail'
+        "401":
+          description: Missing or invalid API key
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "404":
           description: SPL not found
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
         "502":
-          description: Upstream service error
+          description: Upstream service unavailable
           schema:
             $ref: '#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse'
       security:
@@ -1089,7 +1386,9 @@ paths:
       - spl
   /version:
     get:
-      description: Returns build version, git commit, git branch, and Go runtime version.
+      description: Returns build metadata including the semantic version, git commit
+        hash, git branch, and Go runtime version. Use this endpoint to verify which
+        version of the API is deployed in a given environment.
       produces:
       - application/json
       responses:
@@ -1101,17 +1400,34 @@ paths:
             type: object
       summary: Build version info
       tags:
-      - public
+      - system
 securityDefinitions:
   AdminAuth:
-    description: 'Bearer token for admin endpoints. Value: "Bearer {ADMIN_SECRET}"'
+    description: 'Admin bearer token set via `ADMIN_SECRET` environment variable.
+      Format: `Bearer {secret}`. Required for all `/admin/*` endpoints.'
     in: header
     name: Authorization
     type: apiKey
   ApiKeyAuth:
-    description: Publishable API key for accessing /v1/* endpoints. Create one via
-      POST /admin/keys.
+    description: Publishable API key for frontend applications. Create one via `POST
+      /admin/keys`. Include in all `/v1/*` requests.
     in: header
     name: X-API-Key
     type: apiKey
 swagger: "2.0"
+tags:
+- description: Health, version, metrics, and documentation endpoints. No authentication
+    required.
+  name: system
+- description: Drug lookup by NDC, name, and class — core data from FDA/DailyMed.
+    Requires API key.
+  name: drugs
+- description: RxNorm drug search, profiles, NDCs, generics, and related concepts.
+    Requires API key.
+  name: rxnorm
+- description: Structured Product Labels — drug interaction and safety data from FDA
+    labels. Requires API key.
+  name: spl
+- description: API key management and cache administration. Requires admin bearer
+    token.
+  name: admin

@@ -29,20 +29,43 @@ import (
 )
 
 // @title       drug-gate API
-// @version     0.1.0
-// @description Drug information gateway — NDC lookup, therapeutic classes, and more.
+// @version     0.9.0
+// @description Open-source drug information gateway. Provides NDC lookup, therapeutic class search, drug interactions, RxNorm fuzzy search, and structured product label data — all through a clean REST API with Redis caching, per-key rate limiting, and circuit breaker protection.
+// @description
+// @description ## Getting Started
+// @description 1. **Create an API key:** `POST /admin/keys` with `Authorization: Bearer {ADMIN_SECRET}` and body `{"app_name": "my-app", "origins": ["*"], "rate_limit": 1000}`
+// @description 2. **Search for a drug:** `GET /v1/drugs/autocomplete?q=lipit` with header `X-API-Key: {your_key}` — returns matching drug names
+// @description 3. **Look up details:** `GET /v1/drugs/class?name=atorvastatin` — returns therapeutic classes and brand names
+// @description 4. **Get interactions:** `GET /v1/drugs/info?name=warfarin` — returns FDA label interaction warnings
+// @description 5. **Check multi-drug interactions:** `POST /v1/drugs/interactions` with `{"drugs": [{"name": "warfarin"}, {"name": "aspirin"}]}`
+
+// @contact.name  drug-gate on GitHub
+// @contact.url   https://github.com/finish06/drug-gate
+// @license.name  MIT
+// @license.url   https://github.com/finish06/drug-gate/blob/main/LICENSE
 
 // @BasePath /
+
+// @tag.name system
+// @tag.description Health, version, metrics, and documentation endpoints. No authentication required.
+// @tag.name drugs
+// @tag.description Drug lookup by NDC, name, and class — core data from FDA/DailyMed. Requires API key.
+// @tag.name rxnorm
+// @tag.description RxNorm drug search, profiles, NDCs, generics, and related concepts. Requires API key.
+// @tag.name spl
+// @tag.description Structured Product Labels — drug interaction and safety data from FDA labels. Requires API key.
+// @tag.name admin
+// @tag.description API key management and cache administration. Requires admin bearer token.
 
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name X-API-Key
-// @description Publishable API key for accessing /v1/* endpoints. Create one via POST /admin/keys.
+// @description Publishable API key for frontend applications. Create one via `POST /admin/keys`. Include in all `/v1/*` requests.
 
 // @securityDefinitions.apikey AdminAuth
 // @in header
 // @name Authorization
-// @description Bearer token for admin endpoints. Value: "Bearer {ADMIN_SECRET}"
+// @description Admin bearer token set via `ADMIN_SECRET` environment variable. Format: `Bearer {secret}`. Required for all `/admin/*` endpoints.
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{

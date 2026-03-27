@@ -9,7 +9,14 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {},
+        "contact": {
+            "name": "drug-gate on GitHub",
+            "url": "https://github.com/finish06/drug-gate"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://github.com/finish06/drug-gate/blob/main/LICENSE"
+        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -22,7 +29,7 @@ const docTemplate = `{
                         "AdminAuth": []
                     }
                 ],
-                "description": "Deletes all cache keys matching cache:*, or a subset matching cache:{prefix}* if the prefix query parameter is provided. Does not affect API key or rate limit data.",
+                "description": "Deletes all cache keys matching cache:*, or a subset matching cache:{prefix}* if the prefix query parameter is provided. Uses SCAN to iterate keys safely without blocking Redis. Does not affect API key or rate limit data stored under other key namespaces.",
                 "produces": [
                     "application/json"
                 ],
@@ -33,6 +40,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "rxnorm",
                         "description": "Key prefix filter (e.g. rxnorm, drugnames)",
                         "name": "prefix",
                         "in": "query"
@@ -43,6 +51,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/internal_handler.cacheClearResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid admin bearer token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
@@ -61,7 +75,7 @@ const docTemplate = `{
                         "AdminAuth": []
                     }
                 ],
-                "description": "Returns all provisioned API keys with metadata.",
+                "description": "Returns all provisioned API keys with their metadata including app name, allowed origins, rate limit, active status, and creation timestamp. Use this to audit which keys are active and their configurations.",
                 "produces": [
                     "application/json"
                 ],
@@ -79,6 +93,12 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid admin bearer token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal error",
                         "schema": {
@@ -93,7 +113,7 @@ const docTemplate = `{
                         "AdminAuth": []
                     }
                 ],
-                "description": "Provisions a new publishable API key with app name, allowed origins, and rate limit.",
+                "description": "Provisions a new publishable API key (pk_*) with the specified app name, allowed CORS origins, and per-minute rate limit. The full key value is only returned in this response and cannot be retrieved later. Store it securely.",
                 "consumes": [
                     "application/json"
                 ],
@@ -128,6 +148,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid admin bearer token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal error",
                         "schema": {
@@ -144,7 +170,7 @@ const docTemplate = `{
                         "AdminAuth": []
                     }
                 ],
-                "description": "Returns metadata for a specific API key.",
+                "description": "Returns metadata for a specific API key including app name, allowed origins, rate limit, active status, and expiration. Use this to inspect a single key's configuration.",
                 "produces": [
                     "application/json"
                 ],
@@ -155,7 +181,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "API key (e.g. pk_abc123)",
+                        "example": "pk_abc123def456",
+                        "description": "API key",
                         "name": "key",
                         "in": "path",
                         "required": true
@@ -166,6 +193,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_apikey.APIKey"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid admin bearer token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "404": {
@@ -188,7 +221,7 @@ const docTemplate = `{
                         "AdminAuth": []
                     }
                 ],
-                "description": "Marks an API key as inactive. The key remains retrievable but will be rejected by auth middleware.",
+                "description": "Marks an API key as inactive. The key record remains retrievable via GET for auditing purposes, but all requests using this key will be rejected by the auth middleware with a 401 response.",
                 "produces": [
                     "application/json"
                 ],
@@ -199,6 +232,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "pk_abc123def456",
                         "description": "API key to deactivate",
                         "name": "key",
                         "in": "path",
@@ -213,6 +247,12 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid admin bearer token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "500": {
@@ -231,7 +271,7 @@ const docTemplate = `{
                         "AdminAuth": []
                     }
                 ],
-                "description": "Creates a new key with the same metadata and sets a grace period expiration on the old key. Both keys are valid during the grace period.",
+                "description": "Creates a new API key with the same app name, origins, and rate limit as the old key, then sets a grace period expiration on the old key. Both old and new keys are valid during the grace period, allowing clients to migrate without downtime. After the grace period expires, the old key is automatically rejected.",
                 "consumes": [
                     "application/json"
                 ],
@@ -245,13 +285,14 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "pk_abc123def456",
                         "description": "API key to rotate",
                         "name": "key",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Grace period for old key",
+                        "description": "Grace period for old key (Go duration, e.g. 24h, 72h)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -273,6 +314,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid admin bearer token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal error",
                         "schema": {
@@ -284,7 +331,7 @@ const docTemplate = `{
         },
         "/health": {
             "get": {
-                "description": "Returns service health status, build version, and dependency health (Redis, upstream).",
+                "description": "Returns service health status, build version, and dependency health for Redis, the upstream cash-drugs API, and the circuit breaker. Returns 200 when all dependencies are healthy and 503 when any dependency is degraded. Use this endpoint for load balancer health probes and monitoring dashboards.",
                 "produces": [
                     "application/json"
                 ],
@@ -294,13 +341,13 @@ const docTemplate = `{
                 "summary": "Health check",
                 "responses": {
                     "200": {
-                        "description": "healthy",
+                        "description": "All dependencies healthy",
                         "schema": {
                             "$ref": "#/definitions/internal_handler.HealthResponse"
                         }
                     },
                     "503": {
-                        "description": "degraded — one or more dependencies unhealthy",
+                        "description": "One or more dependencies unhealthy",
                         "schema": {
                             "$ref": "#/definitions/internal_handler.HealthResponse"
                         }
@@ -310,7 +357,7 @@ const docTemplate = `{
         },
         "/openapi.json": {
             "get": {
-                "description": "Returns the generated OpenAPI specification as JSON.",
+                "description": "Returns the generated OpenAPI 2.0 (Swagger) specification as JSON. This is the machine-readable API contract used by Swagger UI and client code generators. The spec is embedded at build time via swaggo.",
                 "produces": [
                     "application/json"
                 ],
@@ -336,7 +383,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns drug names matching the given prefix. Fast typeahead endpoint for building search UIs.",
+                "description": "Returns drug names matching the given prefix, optimized for typeahead search UIs. Uses an in-memory prefix index for sub-millisecond response times. The prefix must be at least 2 characters. Results include both generic and brand names with their type labels.",
                 "produces": [
                     "application/json"
                 ],
@@ -347,6 +394,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "ator",
                         "description": "Prefix to match (min 2 chars)",
                         "name": "q",
                         "in": "query",
@@ -354,6 +402,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "example": 10,
                         "description": "Max results (default: 10, max: 50)",
                         "name": "limit",
                         "in": "query"
@@ -373,13 +422,25 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Missing or invalid q parameter",
+                        "description": "Missing or too-short q parameter",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -394,7 +455,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Looks up a drug by generic or brand name and returns its pharmacological classes, brand names, and generic name. Tries generic name first, falls back to brand name.",
+                "description": "Looks up a drug by generic or brand name and returns its pharmacological classes (EPC, MoA, PE, CS), deduplicated brand names, and generic name. Tries generic name first and falls back to brand name search. Use this endpoint to discover what class a drug belongs to.",
                 "produces": [
                     "application/json"
                 ],
@@ -405,7 +466,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Drug name (generic or brand, e.g. simvastatin, Zocor)",
+                        "example": "simvastatin",
+                        "description": "Drug name (generic or brand)",
                         "name": "name",
                         "in": "query",
                         "required": true
@@ -424,14 +486,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Drug not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -446,7 +520,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns a paginated list of pharmacological drug classes from DailyMed. Defaults to EPC (Established Pharmacologic Class) type. Supports filtering by type: epc, moa, pe, cs, or all.",
+                "description": "Returns a paginated list of pharmacological drug classes from DailyMed. Defaults to EPC (Established Pharmacologic Class) type. Supports filtering by class type: epc (pharmacologic class), moa (mechanism of action), pe (physiologic effect), cs (chemical structure), or all. Use this endpoint to discover available drug classes for browsing or filtering.",
                 "produces": [
                     "application/json"
                 ],
@@ -470,12 +544,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "Page number (default: 1)",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
+                        "example": 50,
                         "description": "Results per page (default: 50, max: 100)",
                         "name": "limit",
                         "in": "query"
@@ -488,8 +564,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -504,7 +592,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns a paginated list of drugs belonging to a specific pharmacological class, resolved via FDA NDC data. Returns empty data (not 404) for unknown classes.",
+                "description": "Returns a paginated list of drugs belonging to a specific pharmacological class, resolved via FDA NDC data. Returns empty data (not 404) for unknown classes. Use this endpoint to find all drugs in a therapeutic category such as \"HMG-CoA Reductase Inhibitor\" or \"Proton Pump Inhibitor\".",
                 "produces": [
                     "application/json"
                 ],
@@ -515,19 +603,22 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Pharmacological class name (e.g. HMG-CoA Reductase Inhibitor)",
+                        "example": "HMG-CoA Reductase Inhibitor",
+                        "description": "Pharmacological class name",
                         "name": "class",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "Page number (default: 1)",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
+                        "example": 100,
                         "description": "Results per page (default: 100, max: 500)",
                         "name": "limit",
                         "in": "query"
@@ -546,8 +637,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -562,7 +665,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Look up a single drug by name or NDC and return SPL metadata plus parsed interaction sections. NDC is normalized and resolved to drug name internally.",
+                "description": "Look up a single drug by name or NDC and return a consolidated info card with SPL metadata, drug interactions, contraindications, warnings, and adverse reactions. When an NDC is provided, it is normalized and resolved to a drug name internally. Provide either name or ndc; if both are given, ndc takes precedence.",
                 "produces": [
                     "application/json"
                 ],
@@ -573,12 +676,14 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "warfarin",
                         "description": "Drug name",
                         "name": "name",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "example": "00069-3150",
                         "description": "NDC code (any format)",
                         "name": "ndc",
                         "in": "query"
@@ -597,14 +702,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "404": {
-                        "description": "NDC not found",
+                        "description": "NDC not found or no SPL data",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -619,7 +736,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Submit 2-10 drug identifiers (name or NDC) and get cross-referenced interaction warnings from FDA SPL labels. Each drug's Section 7 is searched for mentions of the other drugs.",
+                "description": "Submit 2 to 10 drug identifiers (by name or NDC) and receive cross-referenced interaction warnings from FDA SPL labels. Each drug's Section 7 (Drug Interactions) is searched for mentions of the other submitted drugs. NDC identifiers are resolved to drug names automatically. Use this endpoint to check a patient's medication list for potential interactions.",
                 "consumes": [
                     "application/json"
                 ],
@@ -654,8 +771,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -670,7 +799,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns a paginated list of drug names from the DailyMed dataset. Supports case-insensitive substring search and type filtering (generic/brand).",
+                "description": "Returns a paginated list of drug names from the DailyMed dataset. Supports case-insensitive substring search via the q parameter and type filtering by generic or brand. Results are cached from the upstream drug names index. Use this endpoint to browse or search the full drug name catalogue.",
                 "produces": [
                     "application/json"
                 ],
@@ -681,6 +810,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "atorva",
                         "description": "Search substring filter (case-insensitive)",
                         "name": "q",
                         "in": "query"
@@ -698,12 +828,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "Page number (default: 1)",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
+                        "example": 50,
                         "description": "Results per page (default: 50, max: 100)",
                         "name": "limit",
                         "in": "query"
@@ -716,8 +848,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.PaginatedResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -732,7 +876,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Accepts a product NDC (dash-separated), queries cash-drugs upstream, and returns drug name, generic name, and therapeutic classes. Supports 5-4, 4-4, and 5-3 formats with automatic fallback to padded 5-4.",
+                "description": "Accepts a product NDC (dash-separated) and returns drug name, generic name, and therapeutic classes from the FDA NDC Directory. Supports 5-4, 4-4, and 5-3 formats with automatic fallback to zero-padded 5-4 form. Use this endpoint when you have an NDC and need to identify the drug.",
                 "produces": [
                     "application/json"
                 ],
@@ -743,7 +887,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Product NDC with dash (e.g. 58151-158, 0069-3150, 00069-315)",
+                        "example": "00069-3150",
+                        "description": "Product NDC with dash",
                         "name": "ndc",
                         "in": "path",
                         "required": true
@@ -757,19 +902,31 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid NDC format",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid API key",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "No drug found for this NDC",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
-                        "description": "Bad Gateway",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -784,7 +941,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Resolves a drug name via approximate match, then assembles NDCs, generic equivalents, and related concepts into a single response.",
+                "description": "Resolves a drug name via RxNorm approximate match, then assembles NDCs, generic equivalents, and all related concepts into a single unified response. This is a convenience endpoint that combines the results of search, NDCs, generics, and related into one call. Use this when you need a complete drug profile from a single request.",
                 "produces": [
                     "application/json"
                 ],
@@ -795,6 +952,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "metformin",
                         "description": "Drug name (generic or brand)",
                         "name": "name",
                         "in": "query",
@@ -814,14 +972,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Drug not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -836,7 +1006,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Approximate match search via RxNorm. Returns up to 5 candidates ranked by score. Includes spelling suggestions when no matches are found.",
+                "description": "Performs an approximate-match search via the RxNorm API and returns up to 5 candidates ranked by score, each with an RxCUI. When no exact matches are found, spelling suggestions are included to help correct the query. Use this as the entry point for RxNorm workflows before calling NDC, generic, or related endpoints.",
                 "produces": [
                     "application/json"
                 ],
@@ -847,6 +1017,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "lisinopril",
                         "description": "Drug name to search for",
                         "name": "name",
                         "in": "query",
@@ -866,14 +1037,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "No drugs found",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -888,7 +1071,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns generic product information for the given RxNorm concept identifier.",
+                "description": "Returns generic product information for the given RxNorm concept identifier, including ingredient names and dose form groups. Use this endpoint to find generic equivalents of a branded drug after resolving its RxCUI via the search endpoint.",
                 "produces": [
                     "application/json"
                 ],
@@ -899,6 +1082,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "314076",
                         "description": "RxNorm concept unique identifier",
                         "name": "rxcui",
                         "in": "path",
@@ -912,14 +1096,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormGenericResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "RxCUI not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -934,7 +1130,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns NDC codes associated with the given RxNorm concept identifier.",
+                "description": "Returns all National Drug Code (NDC) identifiers associated with the given RxNorm concept. Use this to map an RxCUI obtained from the search endpoint to specific packaged products. Results are cached with a long TTL since NDC-to-RxCUI mappings change infrequently.",
                 "produces": [
                     "application/json"
                 ],
@@ -945,6 +1141,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "314076",
                         "description": "RxNorm concept unique identifier",
                         "name": "rxcui",
                         "in": "path",
@@ -958,14 +1155,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormNDCResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "RxCUI not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -980,7 +1189,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns all related concepts grouped by type (ingredients, brand names, dose forms, clinical drugs, branded drugs).",
+                "description": "Returns all related RxNorm concepts grouped by relationship type: ingredients, brand names, dose forms, clinical drugs, and branded drugs. Returns 404 only when all groups are empty, indicating an unknown RxCUI. Individual empty groups within a valid response are normal.",
                 "produces": [
                     "application/json"
                 ],
@@ -991,6 +1200,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "314076",
                         "description": "RxNorm concept unique identifier",
                         "name": "rxcui",
                         "in": "path",
@@ -1004,14 +1214,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "404": {
-                        "description": "RxCUI not found",
+                        "description": "RxCUI not found or has no related concepts",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -1026,7 +1248,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Search Structured Product Labels by drug name. Returns paginated SPL metadata from DailyMed.",
+                "description": "Searches Structured Product Labels (SPLs) by drug name and returns paginated metadata from DailyMed. Each result includes the SPL title, set ID, published date, and version. Use the set ID from results to fetch full SPL detail with parsed interaction sections.",
                 "produces": [
                     "application/json"
                 ],
@@ -1037,6 +1259,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "metformin",
                         "description": "Drug name to search",
                         "name": "name",
                         "in": "query",
@@ -1044,12 +1267,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "Page number (default: 1)",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
+                        "example": 20,
                         "description": "Results per page (default: 20, max: 100)",
                         "name": "limit",
                         "in": "query"
@@ -1068,8 +1293,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -1084,7 +1321,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve SPL metadata and parsed Drug Interactions (Section 7) from the SPL XML document.",
+                "description": "Retrieves full SPL metadata and parsed safety sections from the SPL XML document, including Drug Interactions (Section 7), Contraindications, Warnings, and Adverse Reactions. Use this endpoint when you have a set ID from the SPL search results and need the complete label content.",
                 "produces": [
                     "application/json"
                 ],
@@ -1095,6 +1332,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "2c6ca939-8494-4b3b-8930-81c6c09b0125",
                         "description": "SPL set ID (UUID format)",
                         "name": "setid",
                         "in": "path",
@@ -1108,14 +1346,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.SPLDetail"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "SPL not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
                     },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
+                        }
+                    },
                     "502": {
-                        "description": "Upstream service error",
+                        "description": "Upstream service unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.ErrorResponse"
                         }
@@ -1125,12 +1375,12 @@ const docTemplate = `{
         },
         "/version": {
             "get": {
-                "description": "Returns build version, git commit, git branch, and Go runtime version.",
+                "description": "Returns build metadata including the semantic version, git commit hash, git branch, and Go runtime version. Use this endpoint to verify which version of the API is deployed in a given environment.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "public"
+                    "system"
                 ],
                 "summary": "Build version info",
                 "responses": {
@@ -1184,19 +1434,24 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "has_interactions": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "input_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "warfarin"
                 },
                 "input_type": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "name"
                 },
                 "resolved_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "WARFARIN SODIUM"
                 },
                 "spl_setid": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "b76006e5-1005-4a64-97a1-7cc20c0e6a1a"
                 }
             }
         },
@@ -1204,10 +1459,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "HMG-CoA Reductase Inhibitor"
                 },
                 "type": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "EPC"
                 }
             }
         },
@@ -1218,7 +1475,10 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "Zocor"
+                    ]
                 },
                 "classes": {
                     "type": "array",
@@ -1227,10 +1487,12 @@ const docTemplate = `{
                     }
                 },
                 "generic_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "SIMVASTATIN"
                 },
                 "query_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "simvastatin"
                 }
             }
         },
@@ -1241,16 +1503,22 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "HMG-CoA Reductase Inhibitor"
+                    ]
                 },
                 "generic_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "ATORVASTATIN CALCIUM"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Lipitor"
                 },
                 "ndc": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "00069-3150"
                 }
             }
         },
@@ -1258,10 +1526,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "warfarin"
                 },
                 "ndc": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "00069-3150"
                 }
             }
         },
@@ -1281,13 +1551,16 @@ const docTemplate = `{
                     }
                 },
                 "drug_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "warfarin"
                 },
                 "input_type": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "name"
                 },
                 "input_value": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "warfarin"
                 },
                 "interactions": {
                     "type": "array",
@@ -1310,10 +1583,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Lipitor"
                 },
                 "type": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "brand"
                 }
             }
         },
@@ -1321,10 +1596,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "error": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "not_found"
                 },
                 "message": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "No drug found for NDC 99999-9999"
                 }
             }
         },
@@ -1343,7 +1620,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "checked_pairs": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 3
                 },
                 "drugs": {
                     "type": "array",
@@ -1352,7 +1630,8 @@ const docTemplate = `{
                     }
                 },
                 "found_interactions": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 2
                 },
                 "interactions": {
                     "type": "array",
@@ -1366,22 +1645,28 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "drug_a": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "warfarin"
                 },
                 "drug_b": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "aspirin"
                 },
                 "section_title": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Drug Interactions"
                 },
                 "source": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "warfarin"
                 },
                 "spl_setid": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "b76006e5-1005-4a64-97a1-7cc20c0e6a1a"
                 },
                 "text": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Aspirin can increase the anticoagulant effect of warfarin."
                 }
             }
         },
@@ -1389,10 +1674,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "text": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Concomitant use of warfarin and aspirin increases the risk of bleeding."
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Drug Interactions"
                 }
             }
         },
@@ -1409,16 +1696,20 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "limit": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 50
                 },
                 "page": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "total": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1234
                 },
                 "total_pages": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 25
                 }
             }
         },
@@ -1426,13 +1717,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "atorvastatin"
                 },
                 "rxcui": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "153165"
                 },
                 "score": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 94
                 }
             }
         },
@@ -1440,10 +1734,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "atorvastatin calcium 10 MG Oral Tablet"
                 },
                 "rxcui": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "314076"
                 }
             }
         },
@@ -1457,7 +1753,8 @@ const docTemplate = `{
                     }
                 },
                 "rxcui": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "314076"
                 }
             }
         },
@@ -1468,10 +1765,14 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "00069-3150-30"
+                    ]
                 },
                 "rxcui": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "314076"
                 }
             }
         },
@@ -1482,28 +1783,37 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "Glucophage"
+                    ]
                 },
                 "generic": {
                     "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormConcept"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "metformin"
                 },
                 "ndcs": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "00087-6060-05"
+                    ]
                 },
                 "query": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "metformin"
                 },
                 "related": {
                     "$ref": "#/definitions/github_com_finish06_drug-gate_internal_model.RxNormRelatedResponse"
                 },
                 "rxcui": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "6809"
                 }
             }
         },
@@ -1541,7 +1851,8 @@ const docTemplate = `{
                     }
                 },
                 "rxcui": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "314076"
                 }
             }
         },
@@ -1555,13 +1866,17 @@ const docTemplate = `{
                     }
                 },
                 "query": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "lipitor"
                 },
                 "suggestions": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "lipitor"
+                    ]
                 }
             }
         },
@@ -1587,16 +1902,20 @@ const docTemplate = `{
                     }
                 },
                 "published_date": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-03-15"
                 },
                 "setid": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "b76006e5-1005-4a64-97a1-7cc20c0e6a1a"
                 },
                 "spl_version": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 12
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "WARFARIN SODIUM tablet"
                 },
                 "warnings": {
                     "type": "array",
@@ -1610,16 +1929,20 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "published_date": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-03-15"
                 },
                 "setid": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "b76006e5-1005-4a64-97a1-7cc20c0e6a1a"
                 },
                 "spl_version": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 12
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "WARFARIN SODIUM tablet"
                 }
             }
         },
@@ -1693,28 +2016,50 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "AdminAuth": {
-            "description": "Bearer token for admin endpoints. Value: \"Bearer {ADMIN_SECRET}\"",
+            "description": "Admin bearer token set via ` + "`" + `ADMIN_SECRET` + "`" + ` environment variable. Format: ` + "`" + `Bearer {secret}` + "`" + `. Required for all ` + "`" + `/admin/*` + "`" + ` endpoints.",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
         },
         "ApiKeyAuth": {
-            "description": "Publishable API key for accessing /v1/* endpoints. Create one via POST /admin/keys.",
+            "description": "Publishable API key for frontend applications. Create one via ` + "`" + `POST /admin/keys` + "`" + `. Include in all ` + "`" + `/v1/*` + "`" + ` requests.",
             "type": "apiKey",
             "name": "X-API-Key",
             "in": "header"
         }
-    }
+    },
+    "tags": [
+        {
+            "description": "Health, version, metrics, and documentation endpoints. No authentication required.",
+            "name": "system"
+        },
+        {
+            "description": "Drug lookup by NDC, name, and class — core data from FDA/DailyMed. Requires API key.",
+            "name": "drugs"
+        },
+        {
+            "description": "RxNorm drug search, profiles, NDCs, generics, and related concepts. Requires API key.",
+            "name": "rxnorm"
+        },
+        {
+            "description": "Structured Product Labels — drug interaction and safety data from FDA labels. Requires API key.",
+            "name": "spl"
+        },
+        {
+            "description": "API key management and cache administration. Requires admin bearer token.",
+            "name": "admin"
+        }
+    ]
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.1.0",
+	Version:          "0.9.0",
 	Host:             "",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "drug-gate API",
-	Description:      "Drug information gateway — NDC lookup, therapeutic classes, and more.",
+	Description:      "Open-source drug information gateway. Provides NDC lookup, therapeutic class search, drug interactions, RxNorm fuzzy search, and structured product label data — all through a clean REST API with Redis caching, per-key rate limiting, and circuit breaker protection.\n\n## Getting Started\n1. **Create an API key:** `POST /admin/keys` with `Authorization: Bearer {ADMIN_SECRET}` and body `{\"app_name\": \"my-app\", \"origins\": [\"*\"], \"rate_limit\": 1000}`\n2. **Search for a drug:** `GET /v1/drugs/autocomplete?q=lipit` with header `X-API-Key: {your_key}` — returns matching drug names\n3. **Look up details:** `GET /v1/drugs/class?name=atorvastatin` — returns therapeutic classes and brand names\n4. **Get interactions:** `GET /v1/drugs/info?name=warfarin` — returns FDA label interaction warnings\n5. **Check multi-drug interactions:** `POST /v1/drugs/interactions` with `{\"drugs\": [{\"name\": \"warfarin\"}, {\"name\": \"aspirin\"}]}`",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

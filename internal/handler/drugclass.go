@@ -31,14 +31,16 @@ func NewDrugClassHandler(c DrugClassClient) *DrugClassHandler {
 // HandleDrugClassLookup handles GET /v1/drugs/class?name={drug_name}.
 //
 // @Summary      Look up drug class by name
-// @Description  Looks up a drug by generic or brand name and returns its pharmacological classes, brand names, and generic name. Tries generic name first, falls back to brand name.
+// @Description  Looks up a drug by generic or brand name and returns its pharmacological classes (EPC, MoA, PE, CS), deduplicated brand names, and generic name. Tries generic name first and falls back to brand name search. Use this endpoint to discover what class a drug belongs to.
 // @Tags         drugs
 // @Produce      json
-// @Param        name  query  string  true  "Drug name (generic or brand, e.g. simvastatin, Zocor)"
+// @Param        name  query  string  true  "Drug name (generic or brand)"  example(simvastatin)
 // @Success      200  {object}  model.DrugClassResponse
 // @Failure      400  {object}  model.ErrorResponse  "Missing or empty name parameter"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
 // @Failure      404  {object}  model.ErrorResponse  "Drug not found"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/class [get]
 func (h *DrugClassHandler) HandleDrugClassLookup(w http.ResponseWriter, r *http.Request) {

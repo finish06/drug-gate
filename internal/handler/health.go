@@ -42,11 +42,11 @@ func NewHealthHandler(rdb *redis.Client, upstreamURL string, breaker ...*client.
 // Handle returns service health status with dependency checks.
 //
 // @Summary      Health check
-// @Description  Returns service health status, build version, and dependency health (Redis, upstream).
+// @Description  Returns service health status, build version, and dependency health for Redis, the upstream cash-drugs API, and the circuit breaker. Returns 200 when all dependencies are healthy and 503 when any dependency is degraded. Use this endpoint for load balancer health probes and monitoring dashboards.
 // @Tags         system
 // @Produce      json
-// @Success      200  {object}  HealthResponse  "healthy"
-// @Success      503  {object}  HealthResponse  "degraded — one or more dependencies unhealthy"
+// @Success      200  {object}  HealthResponse  "All dependencies healthy"
+// @Success      503  {object}  HealthResponse  "One or more dependencies unhealthy"
 // @Router       /health [get]
 func (h *HealthHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	deps := make(map[string]string)
@@ -109,7 +109,7 @@ func (h *HealthHandler) Handle(w http.ResponseWriter, r *http.Request) {
 // Kept for backward compatibility — use NewHealthHandler for full checks.
 //
 // @Summary      Health check (simple)
-// @Description  Returns service health status and build version.
+// @Description  Returns a minimal health response with service status and build version. This legacy endpoint does not check dependencies. Prefer the full health check endpoint for production monitoring.
 // @Tags         system
 // @Produce      json
 // @Success      200  {object}  map[string]string  "status and version"

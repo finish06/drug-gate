@@ -23,15 +23,17 @@ func NewDrugsByClassHandler(svc DataService) *DrugsByClassHandler {
 // HandleDrugsByClass handles GET /v1/drugs/classes/drugs.
 //
 // @Summary      List drugs in a class
-// @Description  Returns a paginated list of drugs belonging to a specific pharmacological class, resolved via FDA NDC data. Returns empty data (not 404) for unknown classes.
+// @Description  Returns a paginated list of drugs belonging to a specific pharmacological class, resolved via FDA NDC data. Returns empty data (not 404) for unknown classes. Use this endpoint to find all drugs in a therapeutic category such as "HMG-CoA Reductase Inhibitor" or "Proton Pump Inhibitor".
 // @Tags         drugs
 // @Produce      json
-// @Param        class  query  string  true   "Pharmacological class name (e.g. HMG-CoA Reductase Inhibitor)"
-// @Param        page   query  int     false  "Page number (default: 1)"
-// @Param        limit  query  int     false  "Results per page (default: 100, max: 500)"
+// @Param        class  query  string  true   "Pharmacological class name"  example(HMG-CoA Reductase Inhibitor)
+// @Param        page   query  int     false  "Page number (default: 1)"  example(1)
+// @Param        limit  query  int     false  "Results per page (default: 100, max: 500)"  example(100)
 // @Success      200  {object}  model.PaginatedResponse
 // @Failure      400  {object}  model.ErrorResponse  "Missing or empty class parameter"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/classes/drugs [get]
 func (h *DrugsByClassHandler) HandleDrugsByClass(w http.ResponseWriter, r *http.Request) {

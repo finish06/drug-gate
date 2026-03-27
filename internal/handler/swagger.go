@@ -11,7 +11,7 @@ import (
 // OpenAPIJSON serves the generated Swagger/OpenAPI spec as JSON.
 //
 // @Summary      OpenAPI spec
-// @Description  Returns the generated OpenAPI specification as JSON.
+// @Description  Returns the generated OpenAPI 2.0 (Swagger) specification as JSON. This is the machine-readable API contract used by Swagger UI and client code generators. The spec is embedded at build time via swaggo.
 // @Tags         system
 // @Produce      json
 // @Success      200  {object}  map[string]any

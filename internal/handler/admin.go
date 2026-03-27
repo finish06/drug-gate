@@ -40,13 +40,14 @@ type rotateKeyResponse struct {
 // CreateKey handles POST /admin/keys.
 //
 // @Summary      Create API key
-// @Description  Provisions a new publishable API key with app name, allowed origins, and rate limit.
+// @Description  Provisions a new publishable API key (pk_*) with the specified app name, allowed CORS origins, and per-minute rate limit. The full key value is only returned in this response and cannot be retrieved later. Store it securely.
 // @Tags         admin
 // @Accept       json
 // @Produce      json
 // @Param        body  body  createKeyRequest  true  "Key creation parameters"
 // @Success      201  {object}  apikey.APIKey
 // @Failure      400  {object}  model.ErrorResponse  "Invalid request body or validation error"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid admin bearer token"
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
 // @Security     AdminAuth
 // @Router       /admin/keys [post]
@@ -86,10 +87,11 @@ func (h *AdminHandler) CreateKey(w http.ResponseWriter, r *http.Request) {
 // ListKeys handles GET /admin/keys.
 //
 // @Summary      List all API keys
-// @Description  Returns all provisioned API keys with metadata.
+// @Description  Returns all provisioned API keys with their metadata including app name, allowed origins, rate limit, active status, and creation timestamp. Use this to audit which keys are active and their configurations.
 // @Tags         admin
 // @Produce      json
 // @Success      200  {array}   apikey.APIKey
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid admin bearer token"
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
 // @Security     AdminAuth
 // @Router       /admin/keys [get]
@@ -108,11 +110,12 @@ func (h *AdminHandler) ListKeys(w http.ResponseWriter, r *http.Request) {
 // GetKey handles GET /admin/keys/{key}.
 //
 // @Summary      Get API key details
-// @Description  Returns metadata for a specific API key.
+// @Description  Returns metadata for a specific API key including app name, allowed origins, rate limit, active status, and expiration. Use this to inspect a single key's configuration.
 // @Tags         admin
 // @Produce      json
-// @Param        key  path  string  true  "API key (e.g. pk_abc123)"
+// @Param        key  path  string  true  "API key"  example(pk_abc123def456)
 // @Success      200  {object}  apikey.APIKey
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid admin bearer token"
 // @Failure      404  {object}  model.ErrorResponse  "Key not found"
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
 // @Security     AdminAuth
@@ -138,11 +141,12 @@ func (h *AdminHandler) GetKey(w http.ResponseWriter, r *http.Request) {
 // DeactivateKey handles DELETE /admin/keys/{key}.
 //
 // @Summary      Deactivate API key
-// @Description  Marks an API key as inactive. The key remains retrievable but will be rejected by auth middleware.
+// @Description  Marks an API key as inactive. The key record remains retrievable via GET for auditing purposes, but all requests using this key will be rejected by the auth middleware with a 401 response.
 // @Tags         admin
 // @Produce      json
-// @Param        key  path  string  true  "API key to deactivate"
+// @Param        key  path  string  true  "API key to deactivate"  example(pk_abc123def456)
 // @Success      200  {object}  map[string]string  "status: deactivated"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid admin bearer token"
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
 // @Security     AdminAuth
 // @Router       /admin/keys/{key} [delete]
@@ -168,14 +172,15 @@ func (h *AdminHandler) DeactivateKey(w http.ResponseWriter, r *http.Request) {
 // RotateKey handles POST /admin/keys/{key}/rotate.
 //
 // @Summary      Rotate API key
-// @Description  Creates a new key with the same metadata and sets a grace period expiration on the old key. Both keys are valid during the grace period.
+// @Description  Creates a new API key with the same app name, origins, and rate limit as the old key, then sets a grace period expiration on the old key. Both old and new keys are valid during the grace period, allowing clients to migrate without downtime. After the grace period expires, the old key is automatically rejected.
 // @Tags         admin
 // @Accept       json
 // @Produce      json
-// @Param        key   path  string            true  "API key to rotate"
-// @Param        body  body  rotateKeyRequest  true  "Grace period for old key"
+// @Param        key   path  string            true  "API key to rotate"  example(pk_abc123def456)
+// @Param        body  body  rotateKeyRequest  true  "Grace period for old key (Go duration, e.g. 24h, 72h)"
 // @Success      200  {object}  rotateKeyResponse
 // @Failure      400  {object}  model.ErrorResponse  "Invalid request or grace period"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid admin bearer token"
 // @Failure      500  {object}  model.ErrorResponse  "Internal error"
 // @Security     AdminAuth
 // @Router       /admin/keys/{key}/rotate [post]

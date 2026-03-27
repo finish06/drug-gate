@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Created:** 2026-03-19
 **PRD Reference:** docs/prd.md
-**Status:** Approved
+**Status:** Complete
 **Milestone:** M6 — SPL Interactions (docs phase)
 
 ## 1. Overview

@@ -35,15 +35,17 @@ func NewSPLHandler(svc SPLDataService) *SPLHandler {
 // HandleSearchSPLs handles GET /v1/drugs/spls?name={name}.
 //
 // @Summary      Search SPL documents
-// @Description  Search Structured Product Labels by drug name. Returns paginated SPL metadata from DailyMed.
+// @Description  Searches Structured Product Labels (SPLs) by drug name and returns paginated metadata from DailyMed. Each result includes the SPL title, set ID, published date, and version. Use the set ID from results to fetch full SPL detail with parsed interaction sections.
 // @Tags         spl
 // @Produce      json
-// @Param        name   query  string  true   "Drug name to search"
-// @Param        page   query  int     false  "Page number (default: 1)"
-// @Param        limit  query  int     false  "Results per page (default: 20, max: 100)"
+// @Param        name   query  string  true   "Drug name to search"  example(metformin)
+// @Param        page   query  int     false  "Page number (default: 1)"  example(1)
+// @Param        limit  query  int     false  "Results per page (default: 20, max: 100)"  example(20)
 // @Success      200  {object}  model.PaginatedResponse
 // @Failure      400  {object}  model.ErrorResponse  "Missing name parameter"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/spls [get]
 func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
@@ -88,13 +90,15 @@ func (h *SPLHandler) HandleSearchSPLs(w http.ResponseWriter, r *http.Request) {
 // HandleSPLDetail handles GET /v1/drugs/spls/{setid}.
 //
 // @Summary      Get SPL detail with interactions
-// @Description  Retrieve SPL metadata and parsed Drug Interactions (Section 7) from the SPL XML document.
+// @Description  Retrieves full SPL metadata and parsed safety sections from the SPL XML document, including Drug Interactions (Section 7), Contraindications, Warnings, and Adverse Reactions. Use this endpoint when you have a set ID from the SPL search results and need the complete label content.
 // @Tags         spl
 // @Produce      json
-// @Param        setid  path  string  true  "SPL set ID (UUID format)"
+// @Param        setid  path  string  true  "SPL set ID (UUID format)"  example(2c6ca939-8494-4b3b-8930-81c6c09b0125)
 // @Success      200  {object}  model.SPLDetail
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
 // @Failure      404  {object}  model.ErrorResponse  "SPL not found"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/spls/{setid} [get]
 func (h *SPLHandler) HandleSPLDetail(w http.ResponseWriter, r *http.Request) {
@@ -126,15 +130,17 @@ func (h *SPLHandler) HandleSPLDetail(w http.ResponseWriter, r *http.Request) {
 // HandleDrugInfo handles GET /v1/drugs/info?name={name} or ?ndc={ndc}.
 //
 // @Summary      Drug info card with interactions
-// @Description  Look up a single drug by name or NDC and return SPL metadata plus parsed interaction sections. NDC is normalized and resolved to drug name internally.
+// @Description  Look up a single drug by name or NDC and return a consolidated info card with SPL metadata, drug interactions, contraindications, warnings, and adverse reactions. When an NDC is provided, it is normalized and resolved to a drug name internally. Provide either name or ndc; if both are given, ndc takes precedence.
 // @Tags         spl
 // @Produce      json
-// @Param        name  query  string  false  "Drug name"
-// @Param        ndc   query  string  false  "NDC code (any format)"
+// @Param        name  query  string  false  "Drug name"  example(warfarin)
+// @Param        ndc   query  string  false  "NDC code (any format)"  example(00069-3150)
 // @Success      200  {object}  model.DrugInfoResponse
 // @Failure      400  {object}  model.ErrorResponse  "Missing name or ndc"
-// @Failure      404  {object}  model.ErrorResponse  "NDC not found"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
+// @Failure      404  {object}  model.ErrorResponse  "NDC not found or no SPL data"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/info [get]
 func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
@@ -222,14 +228,16 @@ func (h *SPLHandler) HandleDrugInfo(w http.ResponseWriter, r *http.Request) {
 // HandleCheckInteractions handles POST /v1/drugs/interactions.
 //
 // @Summary      Check drug interactions
-// @Description  Submit 2-10 drug identifiers (name or NDC) and get cross-referenced interaction warnings from FDA SPL labels. Each drug's Section 7 is searched for mentions of the other drugs.
+// @Description  Submit 2 to 10 drug identifiers (by name or NDC) and receive cross-referenced interaction warnings from FDA SPL labels. Each drug's Section 7 (Drug Interactions) is searched for mentions of the other submitted drugs. NDC identifiers are resolved to drug names automatically. Use this endpoint to check a patient's medication list for potential interactions.
 // @Tags         spl
 // @Accept       json
 // @Produce      json
 // @Param        body  body  model.InteractionCheckRequest  true  "Drug identifiers to check"
 // @Success      200  {object}  model.InteractionCheckResponse
 // @Failure      400  {object}  model.ErrorResponse  "Too few/many drugs or invalid input"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/interactions [post]
 func (h *SPLHandler) HandleCheckInteractions(w http.ResponseWriter, r *http.Request) {

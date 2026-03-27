@@ -30,14 +30,16 @@ func NewAutocompleteHandler(svc AutocompleteService) *AutocompleteHandler {
 // HandleAutocomplete handles GET /v1/drugs/autocomplete.
 //
 // @Summary      Drug name autocomplete
-// @Description  Returns drug names matching the given prefix. Fast typeahead endpoint for building search UIs.
+// @Description  Returns drug names matching the given prefix, optimized for typeahead search UIs. Uses an in-memory prefix index for sub-millisecond response times. The prefix must be at least 2 characters. Results include both generic and brand names with their type labels.
 // @Tags         drugs
 // @Produce      json
-// @Param        q      query  string  true   "Prefix to match (min 2 chars)"
-// @Param        limit  query  int     false  "Max results (default: 10, max: 50)"
+// @Param        q      query  string  true   "Prefix to match (min 2 chars)"  example(ator)
+// @Param        limit  query  int     false  "Max results (default: 10, max: 50)"  example(10)
 // @Success      200  {object}  map[string][]model.DrugNameEntry
-// @Failure      400  {object}  model.ErrorResponse  "Missing or invalid q parameter"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      400  {object}  model.ErrorResponse  "Missing or too-short q parameter"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/autocomplete [get]
 func (h *AutocompleteHandler) HandleAutocomplete(w http.ResponseWriter, r *http.Request) {

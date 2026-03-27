@@ -34,14 +34,16 @@ func NewRxNormHandler(svc RxNormDataService) *RxNormHandler {
 // HandleSearch handles GET /v1/drugs/rxnorm/search?name={name}.
 //
 // @Summary      Search drugs by name (RxNorm)
-// @Description  Approximate match search via RxNorm. Returns up to 5 candidates ranked by score. Includes spelling suggestions when no matches are found.
+// @Description  Performs an approximate-match search via the RxNorm API and returns up to 5 candidates ranked by score, each with an RxCUI. When no exact matches are found, spelling suggestions are included to help correct the query. Use this as the entry point for RxNorm workflows before calling NDC, generic, or related endpoints.
 // @Tags         rxnorm
 // @Produce      json
-// @Param        name  query  string  true  "Drug name to search for"
+// @Param        name  query  string  true  "Drug name to search for"  example(lisinopril)
 // @Success      200  {object}  model.RxNormSearchResult
 // @Failure      400  {object}  model.ErrorResponse  "Missing name parameter"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
 // @Failure      404  {object}  model.ErrorResponse  "No drugs found"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/search [get]
 func (h *RxNormHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
@@ -73,13 +75,15 @@ func (h *RxNormHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 // HandleNDCs handles GET /v1/drugs/rxnorm/{rxcui}/ndcs.
 //
 // @Summary      Get NDCs for an RxCUI
-// @Description  Returns NDC codes associated with the given RxNorm concept identifier.
+// @Description  Returns all National Drug Code (NDC) identifiers associated with the given RxNorm concept. Use this to map an RxCUI obtained from the search endpoint to specific packaged products. Results are cached with a long TTL since NDC-to-RxCUI mappings change infrequently.
 // @Tags         rxnorm
 // @Produce      json
-// @Param        rxcui  path  string  true  "RxNorm concept unique identifier"
+// @Param        rxcui  path  string  true  "RxNorm concept unique identifier"  example(314076)
 // @Success      200  {object}  model.RxNormNDCResponse
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
 // @Failure      404  {object}  model.ErrorResponse  "RxCUI not found"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/{rxcui}/ndcs [get]
 func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
@@ -106,13 +110,15 @@ func (h *RxNormHandler) HandleNDCs(w http.ResponseWriter, r *http.Request) {
 // HandleGenerics handles GET /v1/drugs/rxnorm/{rxcui}/generics.
 //
 // @Summary      Get generic products for an RxCUI
-// @Description  Returns generic product information for the given RxNorm concept identifier.
+// @Description  Returns generic product information for the given RxNorm concept identifier, including ingredient names and dose form groups. Use this endpoint to find generic equivalents of a branded drug after resolving its RxCUI via the search endpoint.
 // @Tags         rxnorm
 // @Produce      json
-// @Param        rxcui  path  string  true  "RxNorm concept unique identifier"
+// @Param        rxcui  path  string  true  "RxNorm concept unique identifier"  example(314076)
 // @Success      200  {object}  model.RxNormGenericResponse
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
 // @Failure      404  {object}  model.ErrorResponse  "RxCUI not found"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/{rxcui}/generics [get]
 func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
@@ -139,13 +145,15 @@ func (h *RxNormHandler) HandleGenerics(w http.ResponseWriter, r *http.Request) {
 // HandleRelated handles GET /v1/drugs/rxnorm/{rxcui}/related.
 //
 // @Summary      Get related concepts for an RxCUI
-// @Description  Returns all related concepts grouped by type (ingredients, brand names, dose forms, clinical drugs, branded drugs).
+// @Description  Returns all related RxNorm concepts grouped by relationship type: ingredients, brand names, dose forms, clinical drugs, and branded drugs. Returns 404 only when all groups are empty, indicating an unknown RxCUI. Individual empty groups within a valid response are normal.
 // @Tags         rxnorm
 // @Produce      json
-// @Param        rxcui  path  string  true  "RxNorm concept unique identifier"
+// @Param        rxcui  path  string  true  "RxNorm concept unique identifier"  example(314076)
 // @Success      200  {object}  model.RxNormRelatedResponse
-// @Failure      404  {object}  model.ErrorResponse  "RxCUI not found"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
+// @Failure      404  {object}  model.ErrorResponse  "RxCUI not found or has no related concepts"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/{rxcui}/related [get]
 func (h *RxNormHandler) HandleRelated(w http.ResponseWriter, r *http.Request) {
@@ -179,14 +187,16 @@ func (h *RxNormHandler) HandleRelated(w http.ResponseWriter, r *http.Request) {
 // HandleProfile handles GET /v1/drugs/rxnorm/profile?name={name}.
 //
 // @Summary      Get unified drug profile
-// @Description  Resolves a drug name via approximate match, then assembles NDCs, generic equivalents, and related concepts into a single response.
+// @Description  Resolves a drug name via RxNorm approximate match, then assembles NDCs, generic equivalents, and all related concepts into a single unified response. This is a convenience endpoint that combines the results of search, NDCs, generics, and related into one call. Use this when you need a complete drug profile from a single request.
 // @Tags         rxnorm
 // @Produce      json
-// @Param        name  query  string  true  "Drug name (generic or brand)"
+// @Param        name  query  string  true  "Drug name (generic or brand)"  example(metformin)
 // @Success      200  {object}  model.RxNormProfile
 // @Failure      400  {object}  model.ErrorResponse  "Missing name parameter"
+// @Failure      401  {object}  model.ErrorResponse  "Missing or invalid API key"
 // @Failure      404  {object}  model.ErrorResponse  "Drug not found"
-// @Failure      502  {object}  model.ErrorResponse  "Upstream service error"
+// @Failure      429  {object}  model.ErrorResponse  "Rate limit exceeded"
+// @Failure      502  {object}  model.ErrorResponse  "Upstream service unavailable"
 // @Security     ApiKeyAuth
 // @Router       /v1/drugs/rxnorm/profile [get]
 func (h *RxNormHandler) HandleProfile(w http.ResponseWriter, r *http.Request) {
