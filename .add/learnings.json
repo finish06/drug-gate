@@ -275,6 +275,19 @@
       "date": "2026-03-22",
       "classified_by": "agent",
       "checkpoint_type": "post-verify"
+    },
+    {
+      "id": "L-022",
+      "title": "Generic cache-aside without singleflight causes thundering herd on TTL expiry",
+      "body": "CacheAside[T].Get had no deduplication — N concurrent cache misses triggered N identical upstream fetches. For the 7.4MB drugnames key at 1K concurrent requests, this is a self-inflicted DDoS on cash-drugs. Fix: add golang.org/x/sync/singleflight to coalesce concurrent fetches per key. Autocomplete index had its own TryLock stampede prevention, but that didn't protect the 10 other cached service methods. Lesson: stampede prevention belongs in the cache layer, not in individual callers.",
+      "scope": "workstation",
+      "stack": ["go", "redis"],
+      "category": "architecture",
+      "severity": "critical",
+      "source": "drug-gate",
+      "date": "2026-03-27",
+      "classified_by": "agent",
+      "checkpoint_type": "verification-catch"
     }
   ]
 }
