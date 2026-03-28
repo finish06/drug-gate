@@ -104,9 +104,14 @@ func main() {
 		}
 	}
 
-	// Redis client
+	// Redis client (tuned pool for production load)
 	rdb := redis.NewClient(&redis.Options{
-		Addr: redisURL,
+		Addr:         redisURL,
+		PoolSize:     128,
+		MinIdleConns: 16,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -144,10 +149,15 @@ func main() {
 	// Dependencies
 	store := apikey.NewRedisStore(rdb)
 	limiter := ratelimit.NewRedisLimiter(rdb)
-	// Shared circuit breaker for all upstream clients (same cash-drugs backend)
+	// Shared transport and circuit breaker for all upstream clients (same cash-drugs backend)
+	upstreamTransport := client.NewSharedTransport()
 	upstreamBreaker := client.NewCircuitBreaker(10, 30*time.Second)
+	clientOpts := []client.ClientOption{
+		client.WithBreaker(upstreamBreaker),
+		client.WithTransport(upstreamTransport),
+	}
 
-	drugClient := client.NewHTTPDrugClient(cashDrugsURL, upstreamBreaker)
+	drugClient := client.NewHTTPDrugClient(cashDrugsURL, clientOpts...)
 	drugHandler := handler.NewDrugHandler(drugClient)
 	drugClassHandler := handler.NewDrugClassHandler(drugClient)
 	dataSvc := service.NewDrugDataService(drugClient, rdb, m)
@@ -155,12 +165,12 @@ func main() {
 	drugClassesHandler := handler.NewDrugClassesHandler(dataSvc)
 	drugsByClassHandler := handler.NewDrugsByClassHandler(dataSvc)
 	autocompleteHandler := handler.NewAutocompleteHandler(dataSvc)
-	rxnormClient := client.NewHTTPRxNormClient(cashDrugsURL, upstreamBreaker)
+	rxnormClient := client.NewHTTPRxNormClient(cashDrugsURL, clientOpts...)
 	rxnormSvc := service.NewRxNormService(rxnormClient, rdb, m)
 	rxnormHandler := handler.NewRxNormHandler(rxnormSvc)
 	adminHandler := handler.NewAdminHandler(store)
 	cacheHandler := handler.NewCacheHandler(rdb)
-	splClient := client.NewHTTPSPLClient(cashDrugsURL, upstreamBreaker)
+	splClient := client.NewHTTPSPLClient(cashDrugsURL, clientOpts...)
 	splSvc := service.NewSPLService(splClient, drugClient, rdb, m)
 	splHandler := handler.NewSPLHandler(splSvc)
 
@@ -228,11 +238,12 @@ func main() {
 	})
 
 	srv := &http.Server{
-		Addr:         listenAddr,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              listenAddr,
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	go func() {

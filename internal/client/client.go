@@ -15,6 +15,16 @@ import (
 // The drugnames endpoint returns ~7.4MB, so 5MB was too low.
 const maxResponseBytes = 10 << 20
 
+// NewSharedTransport creates an HTTP transport tuned for a single upstream host.
+// Share this across all clients to maximize connection reuse.
+func NewSharedTransport() *http.Transport {
+	return &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 50,
+		IdleConnTimeout:     90 * time.Second,
+	}
+}
+
 // limitedReadCloser wraps a LimitReader while preserving the original body's
 // Close method for HTTP connection reuse.
 type limitedReadCloser struct {
@@ -62,25 +72,49 @@ type HTTPDrugClient struct {
 	breaker    *CircuitBreaker
 }
 
-// NewHTTPDrugClient creates a client pointing at the given cash-drugs base URL.
-func NewHTTPDrugClient(baseURL string, breaker ...*CircuitBreaker) *HTTPDrugClient {
-	var cb *CircuitBreaker
-	if len(breaker) > 0 {
-		cb = breaker[0]
-	} else {
-		cb = NewCircuitBreaker(10, 30*time.Second)
+// ClientOption configures an HTTP client. Pass a shared *CircuitBreaker and/or
+// *http.Transport via variadic options.
+type ClientOption func(*clientOpts)
+
+type clientOpts struct {
+	breaker   *CircuitBreaker
+	transport *http.Transport
+}
+
+// WithBreaker sets a shared circuit breaker.
+func WithBreaker(cb *CircuitBreaker) ClientOption {
+	return func(o *clientOpts) { o.breaker = cb }
+}
+
+// WithTransport sets a shared HTTP transport for connection pooling.
+func WithTransport(t *http.Transport) ClientOption {
+	return func(o *clientOpts) { o.transport = t }
+}
+
+func resolveOpts(opts []ClientOption) clientOpts {
+	o := clientOpts{}
+	for _, opt := range opts {
+		opt(&o)
 	}
+	if o.breaker == nil {
+		o.breaker = NewCircuitBreaker(10, 30*time.Second)
+	}
+	if o.transport == nil {
+		o.transport = NewSharedTransport()
+	}
+	return o
+}
+
+// NewHTTPDrugClient creates a client pointing at the given cash-drugs base URL.
+func NewHTTPDrugClient(baseURL string, opts ...ClientOption) *HTTPDrugClient {
+	o := resolveOpts(opts)
 	return &HTTPDrugClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 10,
-				IdleConnTimeout:     90 * time.Second,
-			},
+			Timeout:   10 * time.Second,
+			Transport: o.transport,
 		},
-		breaker: cb,
+		breaker: o.breaker,
 	}
 }
 

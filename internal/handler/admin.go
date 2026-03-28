@@ -52,6 +52,7 @@ type rotateKeyResponse struct {
 // @Security     AdminAuth
 // @Router       /admin/keys [post]
 func (h *AdminHandler) CreateKey(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<10) // 4KB limit
 	var req createKeyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeAdminHandlerError(w, http.StatusBadRequest, "invalid_request", "Invalid JSON body")
@@ -185,6 +186,7 @@ func (h *AdminHandler) DeactivateKey(w http.ResponseWriter, r *http.Request) {
 // @Security     AdminAuth
 // @Router       /admin/keys/{key}/rotate [post]
 func (h *AdminHandler) RotateKey(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<10) // 4KB limit
 	oldKeyStr := chi.URLParam(r, "key")
 
 	var req rotateKeyRequest

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/finish06/drug-gate/internal/client"
@@ -21,13 +22,21 @@ const (
 // DefaultIndexerCacheTTL is the default TTL for cached interaction data.
 const DefaultIndexerCacheTTL = 60 * time.Minute
 
-// IndexerCacheTTL is the active TTL used by the indexer for caching.
-// Set via SetIndexerCacheTTL to align with service.CacheTTL.
-var IndexerCacheTTL = DefaultIndexerCacheTTL
+// indexerCacheTTL stores the active TTL as an atomic value for safe concurrent access.
+var indexerCacheTTL atomic.Int64
 
-// SetIndexerCacheTTL updates the TTL used by the indexer.
+func init() {
+	indexerCacheTTL.Store(int64(DefaultIndexerCacheTTL))
+}
+
+// IndexerCacheTTLValue returns the current indexer cache TTL (thread-safe).
+func IndexerCacheTTLValue() time.Duration {
+	return time.Duration(indexerCacheTTL.Load())
+}
+
+// SetIndexerCacheTTL updates the TTL used by the indexer. Thread-safe.
 func SetIndexerCacheTTL(ttl time.Duration) {
-	IndexerCacheTTL = ttl
+	indexerCacheTTL.Store(int64(ttl))
 }
 
 // Indexer pre-fetches and caches parsed interaction data for popular drugs.
@@ -160,7 +169,7 @@ func (idx *Indexer) indexOnce() {
 			continue
 		}
 
-		idx.rdb.Set(ctx, cacheKey, data, IndexerCacheTTL)
+		idx.rdb.Set(ctx, cacheKey, data, IndexerCacheTTLValue())
 		indexed++
 	}
 

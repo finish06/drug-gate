@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -347,5 +349,125 @@ func TestCacheAside_GetWithStale_FreshHit(t *testing.T) {
 	}
 	if result.Value.Name != "fresh" {
 		t.Errorf("expected 'fresh', got %q", result.Value.Name)
+	}
+}
+
+// S-001: Singleflight prevents thundering herd on concurrent cache misses.
+func TestCacheAside_Singleflight_ConcurrentMiss(t *testing.T) {
+	mr, rdb := setupTestRedis(t)
+	defer mr.Close()
+
+	m := newTestMetrics(t)
+
+	var fetchCount atomic.Int32
+	concurrency := 100
+
+	var wg sync.WaitGroup
+	results := make([]testItem, concurrency)
+	errs := make([]error, concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			// Each goroutine creates its own CacheAside (mimics per-request construction)
+			ca := New[testItem](rdb, m, "test:singleflight", 60*time.Minute, "test")
+			results[idx], errs[idx] = ca.Get(context.Background(), func(ctx context.Context) (testItem, error) {
+				fetchCount.Add(1)
+				time.Sleep(10 * time.Millisecond) // simulate upstream latency
+				return testItem{Name: "shared", Value: 42}, nil
+			})
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Singleflight: exactly 1 fetch despite 100 concurrent callers
+	if fc := fetchCount.Load(); fc != 1 {
+		t.Errorf("expected exactly 1 fetch call, got %d", fc)
+	}
+
+	// All goroutines got the same result
+	for i := 0; i < concurrency; i++ {
+		if errs[i] != nil {
+			t.Errorf("goroutine %d got error: %v", i, errs[i])
+		}
+		if results[i].Name != "shared" || results[i].Value != 42 {
+			t.Errorf("goroutine %d got wrong result: %+v", i, results[i])
+		}
+	}
+}
+
+// S-001: Singleflight propagates fetch errors to all waiters.
+func TestCacheAside_Singleflight_ErrorPropagation(t *testing.T) {
+	mr, rdb := setupTestRedis(t)
+	defer mr.Close()
+
+	m := newTestMetrics(t)
+
+	var fetchCount atomic.Int32
+	concurrency := 50
+	fetchErr := fmt.Errorf("upstream down")
+
+	// Use a barrier to ensure all goroutines are ready before any start fetching
+	ready := make(chan struct{})
+
+	var wg sync.WaitGroup
+	errs := make([]error, concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			<-ready // wait for all goroutines to be ready
+			ca := New[testItem](rdb, m, "test:sf-error", 60*time.Minute, "test")
+			_, errs[idx] = ca.Get(context.Background(), func(ctx context.Context) (testItem, error) {
+				fetchCount.Add(1)
+				time.Sleep(10 * time.Millisecond) // hold the singleflight key so others coalesce
+				return testItem{}, fetchErr
+			})
+		}(i)
+	}
+
+	close(ready) // release all goroutines simultaneously
+	wg.Wait()
+
+	if fc := fetchCount.Load(); fc != 1 {
+		t.Errorf("expected exactly 1 fetch call, got %d", fc)
+	}
+
+	for i := 0; i < concurrency; i++ {
+		if errs[i] == nil {
+			t.Errorf("goroutine %d should have received error", i)
+		}
+	}
+}
+
+// S-001: Cache hit bypasses singleflight entirely.
+func TestCacheAside_Singleflight_CacheHitBypass(t *testing.T) {
+	mr, rdb := setupTestRedis(t)
+	defer mr.Close()
+
+	m := newTestMetrics(t)
+	ca := New[testItem](rdb, m, "test:sf-hit", 60*time.Minute, "test")
+
+	// Pre-populate cache
+	data, _ := json.Marshal(testItem{Name: "cached", Value: 99})
+	_ = mr.Set("test:sf-hit", string(data))
+
+	var fetchCount atomic.Int32
+	result, err := ca.Get(context.Background(), func(ctx context.Context) (testItem, error) {
+		fetchCount.Add(1)
+		return testItem{}, nil
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if fetchCount.Load() != 0 {
+		t.Error("fetch should not be called on cache hit")
+	}
+	if result.Name != "cached" {
+		t.Errorf("expected 'cached', got %q", result.Name)
 	}
 }

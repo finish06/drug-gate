@@ -33,24 +33,15 @@ type HTTPSPLClient struct {
 }
 
 // NewHTTPSPLClient creates a client pointing at the given cash-drugs base URL.
-func NewHTTPSPLClient(baseURL string, breaker ...*CircuitBreaker) *HTTPSPLClient {
-	var cb *CircuitBreaker
-	if len(breaker) > 0 {
-		cb = breaker[0]
-	} else {
-		cb = NewCircuitBreaker(10, 30*time.Second)
-	}
+func NewHTTPSPLClient(baseURL string, opts ...ClientOption) *HTTPSPLClient {
+	o := resolveOpts(opts)
 	return &HTTPSPLClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 10,
-				IdleConnTimeout:     90 * time.Second,
-			},
+			Timeout:   30 * time.Second,
+			Transport: o.transport,
 		},
-		breaker: cb,
+		breaker: o.breaker,
 	}
 }
 

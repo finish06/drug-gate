@@ -52,24 +52,15 @@ type HTTPRxNormClient struct {
 }
 
 // NewHTTPRxNormClient creates a client pointing at the given cash-drugs base URL.
-func NewHTTPRxNormClient(baseURL string, breaker ...*CircuitBreaker) *HTTPRxNormClient {
-	var cb *CircuitBreaker
-	if len(breaker) > 0 {
-		cb = breaker[0]
-	} else {
-		cb = NewCircuitBreaker(10, 30*time.Second)
-	}
+func NewHTTPRxNormClient(baseURL string, opts ...ClientOption) *HTTPRxNormClient {
+	o := resolveOpts(opts)
 	return &HTTPRxNormClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 10,
-				IdleConnTimeout:     90 * time.Second,
-			},
+			Timeout:   30 * time.Second,
+			Transport: o.transport,
 		},
-		breaker: cb,
+		breaker: o.breaker,
 	}
 }
 
