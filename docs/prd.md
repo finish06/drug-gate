@@ -104,7 +104,48 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M9: Upstream Resilience | Circuit breaker, stale-cache, parallel interactions, MaxBytesReader | beta | DONE | Circuit breaker (10 fails), stale-cache serving, errgroup(5), 10MB limit, v0.8.0 tagged |
 | M9.5: Production Deploy | Deploy automation with rollback | GA candidate | NEXT | GH Actions deploy workflow with health gate, version-pinned deploys, one-command rollback, runbook |
 | M10: Admin Auth Hardening | HMAC-signed admin tokens, rotation, audit log | GA candidate | LATER | Static bearer token replaced, token rotation without restart, admin audit log, separate rate limits |
+| M10.5: Landing Page | Public marketing page, GitHub Pages, config-driven redirect | beta | DONE | dg.calebdunn.tech, LANDING_URL env var, Umami analytics, v0.9.0 tagged |
 | M11: Flagship Aggregation | Unified drug profile, batch drug lookup | GA | LATER | GET /v1/drugs/profile merges all data, POST /v1/drugs/batch handles 5-20 drugs with per-item errors |
+
+### Engineering Backlog (from 2026-03-27 code review)
+
+Items below are not milestones — they are prioritized technical improvements identified during a Principal Engineer review. Pick up as part of future milestones or as standalone fixes.
+
+#### Critical — Scaling
+
+| ID | Issue | Effort | Notes |
+|----|-------|--------|-------|
+| S-001 | **Singleflight in `CacheAside.Get`** — TTL expiry triggers thundering herd to upstream. Add `golang.org/x/sync/singleflight` | 1 day | Autocomplete has stampede prevention; generic cache layer does not. Breaks upstream at 10K req/sec on TTL rollover. |
+
+#### High — Scaling & Security
+
+| ID | Issue | Effort | Notes |
+|----|-------|--------|-------|
+| S-002 | **HTTP `MaxIdleConnsPerHost` too low** — all 3 clients share one host, capped at 10 idle conns. Share transport, set 50-100. | 1 hour | Causes TCP TIME_WAIT accumulation under load |
+| S-003 | **Redis client has no pool config** — defaults to 20 conns on 2 vCPU. Set `PoolSize: 100-200`, add timeouts. | 1 hour | First bottleneck at scale (2 Redis calls per authenticated request) |
+| S-004 | **Missing `ReadHeaderTimeout`** on HTTP server — Slowloris defense. Add `ReadHeaderTimeout: 5s`. | 5 min | |
+| SEC-001 | **No `MaxBytesReader` on admin POST endpoints** — `CreateKey` and `RotateKey` accept unbounded body. Add 1KB limit. | 10 min | Pattern already used in `spl.go:245` |
+| U-001 | **`IndexerCacheTTL` is a plain `var`, not atomic** — same race as CacheTTL (already fixed). Match `atomic.Int64` pattern. | 5 min | Data race under Go race detector |
+
+#### Medium — Security & Upkeep
+
+| ID | Issue | Effort | Notes |
+|----|-------|--------|-------|
+| SEC-002 | **`DrugCheckResult.Error` leaks raw `err.Error()`** to clients — replace with categorized client-safe messages | 30 min | |
+| SEC-003 | **`ListKeys`/`GetKey` return full API key values** — redact to `key[:12]+"..."` except on `CreateKey` | 30 min | Design decision — may be intentional |
+| U-002 | **`GetWithStale` is dead code** — fully implemented and tested but never called. Wire it up or remove. | 1 hour | Misleading impression of resilience |
+| U-003 | **Legacy `HealthCheck` function is dead code** — tested instead of `HealthHandler.Handle`. Delete and update tests. | 15 min | |
+| U-004 | **Indexer uses `ParseInteractions` (narrow)** instead of `ParseSections` (complete) — pre-warmed cache entries are incomplete | 30 min | |
+| U-005 | **No upper bound on `rate_limit` or `origins`** in key creation — add `maxRateLimit`, `maxOrigins` validation | 15 min | |
+
+#### Low — Polish
+
+| ID | Issue | Effort | Notes |
+|----|-------|--------|-------|
+| U-006 | `gracePeriod` has no min/max bounds — add 1m min, 30d max | 5 min | |
+| U-007 | Request logger doesn't include query string — log `r.URL.RequestURI()` for debuggability | 5 min | Safe: API keys are header-only |
+| U-008 | `PaginatedResponse.Data` is `interface{}` — could be generic `[T any]` for better Swagger types | 1 hour | |
+| SEC-004 | Health endpoint uses `http.DefaultClient` — create dedicated client with explicit timeouts | 10 min | |
 
 ### Milestone Detail
 
