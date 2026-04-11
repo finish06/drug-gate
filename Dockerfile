@@ -10,10 +10,12 @@ COPY . .
 ARG VERSION=dev
 ARG GIT_COMMIT=unknown
 ARG GIT_BRANCH=unknown
+ARG BUILD_TIME=unknown
 RUN CGO_ENABLED=0 go build -ldflags="-s -w \
   -X github.com/finish06/drug-gate/internal/version.Version=${VERSION} \
   -X github.com/finish06/drug-gate/internal/version.GitCommit=${GIT_COMMIT} \
-  -X github.com/finish06/drug-gate/internal/version.GitBranch=${GIT_BRANCH}" \
+  -X github.com/finish06/drug-gate/internal/version.GitBranch=${GIT_BRANCH} \
+  -X github.com/finish06/drug-gate/internal/version.BuildTime=${BUILD_TIME}" \
   -o /server ./cmd/server
 
 FROM alpine:3.21

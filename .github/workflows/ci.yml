@@ -94,6 +94,7 @@ jobs:
             VERSION=${{ steps.version.outputs.tag }}
             GIT_COMMIT=${{ github.sha }}
             GIT_BRANCH=${{ github.ref_name }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
           tags: dockerhub.calebdunn.tech/finish06/drug-gate:beta
 
       - name: Trigger staging deploy
@@ -137,6 +138,7 @@ jobs:
             VERSION=v${{ steps.version.outputs.tag }}
             GIT_COMMIT=${{ github.sha }}
             GIT_BRANCH=${{ github.ref_name }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
           tags: |
             dockerhub.calebdunn.tech/finish06/drug-gate:${{ steps.version.outputs.tag }}
             dockerhub.calebdunn.tech/finish06/drug-gate:latest

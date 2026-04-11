@@ -1,9 +1,13 @@
 .PHONY: build test-unit test-coverage test-integration test-e2e run vet lint swagger k6-smoke k6-load k6-spike k6-soak k6-all k6-compare
 
 VERSION ?= dev
+BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 build:
-	go build -ldflags="-X github.com/finish06/drug-gate/internal/version.Version=$(VERSION)" -o bin/server ./cmd/server
+	go build -ldflags="\
+	  -X github.com/finish06/drug-gate/internal/version.Version=$(VERSION) \
+	  -X github.com/finish06/drug-gate/internal/version.BuildTime=$(BUILD_TIME)" \
+	  -o bin/server ./cmd/server
 
 run:
 	go run ./cmd/server
