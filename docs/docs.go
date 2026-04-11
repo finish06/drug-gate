@@ -331,7 +331,7 @@ const docTemplate = `{
         },
         "/health": {
             "get": {
-                "description": "Returns service health status, build version, and dependency health for Redis, the upstream cash-drugs API, and the circuit breaker. Returns 200 when all dependencies are healthy and 503 when any dependency is degraded. Use this endpoint for load balancer health probes and monitoring dashboards.",
+                "description": "Returns service health, build version, uptime, process start time, and per-dependency status for Redis, the upstream cash-drugs API, and the circuit breaker. Redis is a critical dependency — its failure returns HTTP 503 and status=error. Upstream or breaker issues are reported as status=degraded with HTTP 200 so load balancers keep routing traffic. Follows the cross-service health endpoint standard.",
                 "produces": [
                     "application/json"
                 ],
@@ -341,13 +341,13 @@ const docTemplate = `{
                 "summary": "Health check",
                 "responses": {
                     "200": {
-                        "description": "All dependencies healthy",
+                        "description": "ok or degraded",
                         "schema": {
                             "$ref": "#/definitions/internal_handler.HealthResponse"
                         }
                     },
                     "503": {
-                        "description": "One or more dependencies unhealthy",
+                        "description": "critical dependency down",
                         "schema": {
                             "$ref": "#/definitions/internal_handler.HealthResponse"
                         }
@@ -1375,7 +1375,7 @@ const docTemplate = `{
         },
         "/version": {
             "get": {
-                "description": "Returns build metadata including the semantic version, git commit hash, git branch, and Go runtime version. Use this endpoint to verify which version of the API is deployed in a given environment.",
+                "description": "Returns build metadata: semantic version, git commit hash, git branch, Go runtime version, target OS, target architecture, and build timestamp. All values are injected at compile time via ldflags. Use this endpoint to verify which version of the API is deployed in a given environment. Follows the cross-service version endpoint standard.",
                 "produces": [
                     "application/json"
                 ],
@@ -1387,10 +1387,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/internal_handler.VersionResponse"
                         }
                     }
                 }
@@ -1946,16 +1943,65 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.DependencyInfo": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "latency_ms": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.HealthResponse": {
             "type": "object",
             "properties": {
                 "dependencies": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.DependencyInfo"
                     }
                 },
+                "start_time": {
+                    "type": "string"
+                },
                 "status": {
+                    "type": "string"
+                },
+                "uptime": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.VersionResponse": {
+            "type": "object",
+            "properties": {
+                "arch": {
+                    "type": "string"
+                },
+                "build_time": {
+                    "type": "string"
+                },
+                "git_branch": {
+                    "type": "string"
+                },
+                "git_commit": {
+                    "type": "string"
+                },
+                "go_version": {
+                    "type": "string"
+                },
+                "os": {
                     "type": "string"
                 },
                 "version": {

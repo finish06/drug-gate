@@ -8,7 +8,10 @@
       "title": "cash-drugs uses slug-based routing with query params",
       "body": "Upstream API at /api/cache/{slug}. Key slugs: fda-ndc-by-name (BRAND_NAME), drugnames, drugclasses, spls-by-name (DRUGNAME), spls-by-class (DRUG_CLASS). Flat array response shape (data: [...] not data.results).",
       "scope": "project",
-      "stack": ["go", "chi"],
+      "stack": [
+        "go",
+        "chi"
+      ],
       "category": "technical",
       "severity": "medium",
       "source": "drug-gate",
@@ -19,9 +22,12 @@
     {
       "id": "L-002",
       "title": "Chi chosen for middleware-heavy gateway architecture",
-      "body": "Chi v5 over net/http stdlib — middleware chaining purpose-built for auth, rate limiting, NDC validation, logging, CORS, metrics, request ID. Uses stdlib interfaces.",
+      "body": "Chi v5 over net/http stdlib \u2014 middleware chaining purpose-built for auth, rate limiting, NDC validation, logging, CORS, metrics, request ID. Uses stdlib interfaces.",
       "scope": "project",
-      "stack": ["go", "chi"],
+      "stack": [
+        "go",
+        "chi"
+      ],
       "category": "architecture",
       "severity": "medium",
       "source": "drug-gate",
@@ -34,7 +40,9 @@
       "title": "Interface-based mocking enables comprehensive handler testing",
       "body": "DrugClient, SPLClient, RxNormClient interfaces with mock implementations allow testing all handler paths without Redis or upstream. Pattern reused across all milestones.",
       "scope": "project",
-      "stack": ["go"],
+      "stack": [
+        "go"
+      ],
       "category": "technical",
       "severity": "medium",
       "source": "drug-gate",
@@ -47,7 +55,9 @@
       "title": "M1 NDC Lookup complete: 42 tests, 97.1% coverage",
       "body": "ACs covered: 17. RED: 32 tests. GREEN: all passing. Blockers: gitignore and Go version mismatch caused 3 fix commits. Spec quality: good.",
       "scope": "project",
-      "stack": ["go"],
+      "stack": [
+        "go"
+      ],
       "category": "technical",
       "severity": "medium",
       "source": "drug-gate",
@@ -60,7 +70,10 @@
       "title": "M2 Security & Rate Limiting: 20 ACs, Redis integration tests behind build tag",
       "body": "All gates pass. Coverage 65.3% total but non-Redis code >80%. Redis implementations at 0% because integration tests use //go:build integration tag. Fixed auth_test.go grace period bug.",
       "scope": "project",
-      "stack": ["go", "redis"],
+      "stack": [
+        "go",
+        "redis"
+      ],
       "category": "technical",
       "severity": "medium",
       "source": "drug-gate",
@@ -73,7 +86,10 @@
       "title": "M3 Extended Lookups: lazy Redis caching with sliding TTL",
       "body": "4 endpoints (names, classes, class lookup, drugs-by-class). Lazy cache with 60-min sliding TTL using GetEx. ~104K drug names, ~1.2K classes cached. Pagination helper reused across all list endpoints.",
       "scope": "project",
-      "stack": ["go", "redis"],
+      "stack": [
+        "go",
+        "redis"
+      ],
       "category": "technical",
       "severity": "medium",
       "source": "drug-gate",
@@ -86,7 +102,9 @@
       "title": "M4 RxNorm: upstream response shape alignment required live testing",
       "body": "RxNorm client needed 2 fix commits to align with actual cash-drugs response shapes. Mock-based unit tests passed but E2E revealed field name mismatches. Always validate against live upstream.",
       "scope": "project",
-      "stack": ["go"],
+      "stack": [
+        "go"
+      ],
       "category": "anti-pattern",
       "severity": "high",
       "source": "drug-gate",
@@ -99,7 +117,9 @@
       "title": "M6 SPL Interactions: regex XML parsing sufficient for Section 7",
       "body": "SPL XML has namespace issues making full XML parser complex. Regex extraction of Section 7 (Drug Interactions) works reliably. spls-by-class deferred (unreliable/timeouts). Cross-reference uses word-boundary regex matching.",
       "scope": "project",
-      "stack": ["go"],
+      "stack": [
+        "go"
+      ],
       "category": "architecture",
       "severity": "medium",
       "source": "drug-gate",
@@ -109,7 +129,7 @@
     },
     {
       "id": "L-009",
-      "title": "Beta promotion: 10/10 evidence score at alpha→beta",
+      "title": "Beta promotion: 10/10 evidence score at alpha\u2192beta",
       "body": "All evidence items present: specs, 80%+ coverage, CI/CD, PR workflow, 2+ environments, conventional commits, TDD evidence, branch protection, release tags, quality gates.",
       "scope": "project",
       "stack": [],
@@ -123,9 +143,12 @@
     {
       "id": "L-010",
       "title": "M7 Operational Hardening: 4 features, 29 tests, TDD clean",
-      "body": "Request ID middleware (8 tests), autocomplete (13 tests), Redis persistence (ops docs), Prometheus alerts (8 tests). All TDD RED→GREEN confirmed. Coverage maintained at 80.7%.",
+      "body": "Request ID middleware (8 tests), autocomplete (13 tests), Redis persistence (ops docs), Prometheus alerts (8 tests). All TDD RED\u2192GREEN confirmed. Coverage maintained at 80.7%.",
       "scope": "project",
-      "stack": ["go", "redis"],
+      "stack": [
+        "go",
+        "redis"
+      ],
       "category": "technical",
       "severity": "medium",
       "source": "drug-gate",
@@ -138,7 +161,9 @@
       "title": "k6 baseline comparison enables performance regression gates",
       "body": "k6 harness covers all 21 endpoints across 4 scenarios (smoke/load/spike/soak). Baselines stored as JSON, comparison tool exits non-zero on >15% regression. Integrated into Makefile.",
       "scope": "project",
-      "stack": ["go"],
+      "stack": [
+        "go"
+      ],
       "category": "process",
       "severity": "medium",
       "source": "drug-gate",
@@ -175,9 +200,12 @@
     {
       "id": "L-014",
       "title": "M8 CacheAside[T]: 211 lines eliminated across 11 methods",
-      "body": "Generic CacheAside[T] replaced per-method cache boilerplate in DrugDataService (3), RxNormService (5), SPLService (3). Service files 865→654 lines. Pointer-vs-value return needed care: not-found sentinel via zero-value check (RxCUI==\"\" for profile). 9 unit tests for the generic.",
+      "body": "Generic CacheAside[T] replaced per-method cache boilerplate in DrugDataService (3), RxNormService (5), SPLService (3). Service files 865\u2192654 lines. Pointer-vs-value return needed care: not-found sentinel via zero-value check (RxCUI==\"\" for profile). 9 unit tests for the generic.",
       "scope": "project",
-      "stack": ["go", "redis"],
+      "stack": [
+        "go",
+        "redis"
+      ],
       "category": "architecture",
       "severity": "medium",
       "source": "drug-gate",
@@ -190,7 +218,9 @@
       "title": "M8 Expanded SPL sections: regex parser extended for sections 4-6",
       "body": "Same regex approach as Section 7 applied to sections 4 (Contraindications), 5 (Warnings), 6 (Adverse Reactions). SPLDetail model gains 3 new fields. Reuses InteractionSection type. ParseInteractions preserved for backward compat.",
       "scope": "project",
-      "stack": ["go"],
+      "stack": [
+        "go"
+      ],
       "category": "technical",
       "severity": "medium",
       "source": "drug-gate",
@@ -201,9 +231,12 @@
     {
       "id": "L-016",
       "title": "Cycle 4 complete: M8 CacheAside[T] + SPL sections 4-6",
-      "body": "Duration: 1 day. Features: 2 advanced SHAPED→VERIFIED. CacheAside[T] eliminated 211 lines across 11 methods. SPL sections 4-6 added with 6 parser tests. Coverage 81.1%. Pointer-vs-value generics required not-found sentinel pattern. TTL per environment deferred — only open M8 criterion. Documentation discipline improved: checkpoints L-014/L-015 written during cycle, specs updated.",
+      "body": "Duration: 1 day. Features: 2 advanced SHAPED\u2192VERIFIED. CacheAside[T] eliminated 211 lines across 11 methods. SPL sections 4-6 added with 6 parser tests. Coverage 81.1%. Pointer-vs-value generics required not-found sentinel pattern. TTL per environment deferred \u2014 only open M8 criterion. Documentation discipline improved: checkpoints L-014/L-015 written during cycle, specs updated.",
       "scope": "project",
-      "stack": ["go", "redis"],
+      "stack": [
+        "go",
+        "redis"
+      ],
       "category": "process",
       "severity": "medium",
       "source": "drug-gate",
@@ -216,7 +249,9 @@
       "title": "Cycle 6+7 complete: M8.5 Bugathon Tier 1+2 (13 bugs fixed)",
       "body": "Duration: 1 day. Tier 1: 7 security/correctness fixes (admin auth, SPL pagination, error matching, null fields, body limit, CORS wildcard, indexer TTL). Tier 2: 6 DX/reliability fixes (error codes, whitespace, RxNorm 200, rate limit header, metrics key truncation, health deps). DX-4 marked not-a-bug. Coverage 81.0%. Staging API keys updated for CORS change. 3-agent swarm audit was highly effective for bug discovery.",
       "scope": "project",
-      "stack": ["go"],
+      "stack": [
+        "go"
+      ],
       "category": "process",
       "severity": "medium",
       "source": "drug-gate",
@@ -227,7 +262,7 @@
     {
       "id": "L-018",
       "title": "3-agent bug-finding swarm found critical admin auth vulnerability",
-      "body": "spawn-swarm with QA/Principal/Support roles found 35 bugs including a critical auth bypass (empty ADMIN_SECRET). Only the code-review agent caught it — live testing didn't expose it. Multi-perspective swarm audits should be standard before any public launch.",
+      "body": "spawn-swarm with QA/Principal/Support roles found 35 bugs including a critical auth bypass (empty ADMIN_SECRET). Only the code-review agent caught it \u2014 live testing didn't expose it. Multi-perspective swarm audits should be standard before any public launch.",
       "scope": "workstation",
       "stack": [],
       "category": "process",
@@ -240,9 +275,11 @@
     {
       "id": "L-019",
       "title": "M9 Circuit breaker: io.NopCloser breaks HTTP connection reuse",
-      "body": "Wrapping resp.Body with io.NopCloser(io.LimitReader(...)) prevents the original Close() from releasing the connection back to the pool. Must use a custom limitedReadCloser that preserves the original Closer. Also, drugnames endpoint returns 7.4MB — initial 5MB limit truncated the response causing silent JSON decode failures (502). Always check actual upstream response sizes before setting limits.",
+      "body": "Wrapping resp.Body with io.NopCloser(io.LimitReader(...)) prevents the original Close() from releasing the connection back to the pool. Must use a custom limitedReadCloser that preserves the original Closer. Also, drugnames endpoint returns 7.4MB \u2014 initial 5MB limit truncated the response causing silent JSON decode failures (502). Always check actual upstream response sizes before setting limits.",
       "scope": "workstation",
-      "stack": ["go"],
+      "stack": [
+        "go"
+      ],
       "category": "anti-pattern",
       "severity": "high",
       "source": "drug-gate",
@@ -255,7 +292,10 @@
       "title": "Cycle 8 complete: M9 circuit breaker + stale-cache + parallel interactions",
       "body": "Duration: 1 session. Circuit breaker (9 tests), stale-cache with dual-key strategy (3 tests), parallel interactions with semaphore(5), MaxBytesReader (10MB). Two production bugs found post-merge: NopCloser connection leak and 5MB limit too low. Both fixed same session. Coverage 81.1%.",
       "scope": "project",
-      "stack": ["go", "redis"],
+      "stack": [
+        "go",
+        "redis"
+      ],
       "category": "process",
       "severity": "medium",
       "source": "drug-gate",
@@ -266,9 +306,12 @@
     {
       "id": "L-021",
       "title": "Autocomplete optimization: in-memory index gives 119,730x speedup",
-      "body": "Replaced per-request 7.4MB JSON deserialize + O(n) linear scan with pre-sorted in-memory index + O(log n) binary search. 30ms→0.25μs, 29MB→1KB, 200K→5 allocs. Key insight: the bottleneck was JSON deserialization from Redis on every request, not the prefix matching itself. Pre-lowercasing entries during index build eliminates repeated ToLower calls during search. Index refreshes on CacheTTL interval.",
+      "body": "Replaced per-request 7.4MB JSON deserialize + O(n) linear scan with pre-sorted in-memory index + O(log n) binary search. 30ms\u21920.25\u03bcs, 29MB\u21921KB, 200K\u21925 allocs. Key insight: the bottleneck was JSON deserialization from Redis on every request, not the prefix matching itself. Pre-lowercasing entries during index build eliminates repeated ToLower calls during search. Index refreshes on CacheTTL interval.",
       "scope": "workstation",
-      "stack": ["go", "redis"],
+      "stack": [
+        "go",
+        "redis"
+      ],
       "category": "performance",
       "severity": "high",
       "source": "drug-gate",
@@ -279,15 +322,34 @@
     {
       "id": "L-022",
       "title": "Generic cache-aside without singleflight causes thundering herd on TTL expiry",
-      "body": "CacheAside[T].Get had no deduplication — N concurrent cache misses triggered N identical upstream fetches. For the 7.4MB drugnames key at 1K concurrent requests, this is a self-inflicted DDoS on cash-drugs. Fix: add golang.org/x/sync/singleflight to coalesce concurrent fetches per key. Autocomplete index had its own TryLock stampede prevention, but that didn't protect the 10 other cached service methods. Lesson: stampede prevention belongs in the cache layer, not in individual callers.",
+      "body": "CacheAside[T].Get had no deduplication \u2014 N concurrent cache misses triggered N identical upstream fetches. For the 7.4MB drugnames key at 1K concurrent requests, this is a self-inflicted DDoS on cash-drugs. Fix: add golang.org/x/sync/singleflight to coalesce concurrent fetches per key. Autocomplete index had its own TryLock stampede prevention, but that didn't protect the 10 other cached service methods. Lesson: stampede prevention belongs in the cache layer, not in individual callers.",
       "scope": "workstation",
-      "stack": ["go", "redis"],
+      "stack": [
+        "go",
+        "redis"
+      ],
       "category": "architecture",
       "severity": "critical",
       "source": "drug-gate",
       "date": "2026-03-27",
       "classified_by": "agent",
       "checkpoint_type": "verification-catch"
+    },
+    {
+      "id": "L-023",
+      "title": "health-version-standard: clean TDD cycle, breaking health response shape",
+      "body": "ACs covered: AC-001 through AC-026 (health + version + ldflags wiring). RED: 12 new tests (compile errors on new types confirmed failure state). GREEN: rewrote HealthResponse from map[string]string to []DependencyInfo, added VersionResponse with os/arch/build_time, wired BuildTime through Makefile/Dockerfile/CI. Breaking change \u2014 /health 'dependencies' shape flipped from map to array, acceptable at beta with no external monitoring consumers yet. Spec quality: high, traceability matrix in plan made verification mechanical. Coverage 87.7% on handler package. Legacy HealthCheck function removed cleanly (unreferenced in routes, only in old tests).",
+      "scope": "project",
+      "stack": [
+        "go",
+        "chi"
+      ],
+      "category": "technical",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-04-11",
+      "classified_by": "agent",
+      "checkpoint_type": "post-tdd"
     }
   ]
 }
