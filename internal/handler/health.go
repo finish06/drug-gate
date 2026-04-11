@@ -155,7 +155,7 @@ func checkUpstream(url string) DependencyInfo {
 		d.Error = err.Error()
 		return d
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		d.Status = "disconnected"
 		d.Error = "upstream returned " + resp.Status
