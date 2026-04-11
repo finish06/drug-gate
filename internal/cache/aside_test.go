@@ -353,6 +353,11 @@ func TestCacheAside_GetWithStale_FreshHit(t *testing.T) {
 }
 
 // S-001: Singleflight prevents thundering herd on concurrent cache misses.
+//
+// The first fetch blocks on releaseFetch so the singleflight key stays in-flight
+// long enough for every sibling goroutine to reach sfGroup.Do and coalesce.
+// A bare time.Sleep was racy on fast CI schedulers — early goroutines could
+// finish before later ones entered Do, producing duplicate fetches.
 func TestCacheAside_Singleflight_ConcurrentMiss(t *testing.T) {
 	mr, rdb := setupTestRedis(t)
 	defer mr.Close()
@@ -361,6 +366,9 @@ func TestCacheAside_Singleflight_ConcurrentMiss(t *testing.T) {
 
 	var fetchCount atomic.Int32
 	concurrency := 100
+
+	fetchStarted := make(chan struct{}, 1) // buffered so first fetch signals without blocking
+	releaseFetch := make(chan struct{})    // closed by the test once siblings have enqueued
 
 	var wg sync.WaitGroup
 	results := make([]testItem, concurrency)
@@ -374,11 +382,23 @@ func TestCacheAside_Singleflight_ConcurrentMiss(t *testing.T) {
 			ca := New[testItem](rdb, m, "test:singleflight", 60*time.Minute, "test")
 			results[idx], errs[idx] = ca.Get(context.Background(), func(ctx context.Context) (testItem, error) {
 				fetchCount.Add(1)
-				time.Sleep(10 * time.Millisecond) // simulate upstream latency
+				select {
+				case fetchStarted <- struct{}{}:
+				default:
+				}
+				<-releaseFetch
 				return testItem{Name: "shared", Value: 42}, nil
 			})
 		}(i)
 	}
+
+	// Wait for the first fetch to enter the singleflight critical section.
+	<-fetchStarted
+	// Give sibling goroutines time to reach sfGroup.Do and block on the in-flight key.
+	// 100ms is generous: 99 goroutines routinely enqueue in single-digit ms.
+	time.Sleep(100 * time.Millisecond)
+	// Release the first fetch — singleflight broadcasts the result to all waiters.
+	close(releaseFetch)
 
 	wg.Wait()
 
@@ -399,6 +419,10 @@ func TestCacheAside_Singleflight_ConcurrentMiss(t *testing.T) {
 }
 
 // S-001: Singleflight propagates fetch errors to all waiters.
+//
+// See TestCacheAside_Singleflight_ConcurrentMiss for why the first fetch blocks
+// on a release channel instead of sleeping — bare sleeps race on fast CI
+// schedulers where early goroutines finish before later ones reach Do.
 func TestCacheAside_Singleflight_ErrorPropagation(t *testing.T) {
 	mr, rdb := setupTestRedis(t)
 	defer mr.Close()
@@ -409,7 +433,10 @@ func TestCacheAside_Singleflight_ErrorPropagation(t *testing.T) {
 	concurrency := 50
 	fetchErr := fmt.Errorf("upstream down")
 
-	// Use a barrier to ensure all goroutines are ready before any start fetching
+	fetchStarted := make(chan struct{}, 1)
+	releaseFetch := make(chan struct{})
+
+	// Release all goroutines simultaneously so they race into Get together.
 	ready := make(chan struct{})
 
 	var wg sync.WaitGroup
@@ -419,17 +446,25 @@ func TestCacheAside_Singleflight_ErrorPropagation(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			<-ready // wait for all goroutines to be ready
+			<-ready
 			ca := New[testItem](rdb, m, "test:sf-error", 60*time.Minute, "test")
 			_, errs[idx] = ca.Get(context.Background(), func(ctx context.Context) (testItem, error) {
 				fetchCount.Add(1)
-				time.Sleep(10 * time.Millisecond) // hold the singleflight key so others coalesce
+				select {
+				case fetchStarted <- struct{}{}:
+				default:
+				}
+				<-releaseFetch
 				return testItem{}, fetchErr
 			})
 		}(i)
 	}
 
-	close(ready) // release all goroutines simultaneously
+	close(ready)
+	<-fetchStarted
+	time.Sleep(100 * time.Millisecond)
+	close(releaseFetch)
+
 	wg.Wait()
 
 	if fc := fetchCount.Load(); fc != 1 {
