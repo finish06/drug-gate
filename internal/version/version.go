@@ -6,4 +6,5 @@ var (
 	Version   = "dev"
 	GitCommit = "unknown"
 	GitBranch = "unknown"
+	BuildTime = "unknown"
 )

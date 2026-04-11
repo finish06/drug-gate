@@ -68,6 +68,8 @@ import (
 // @description Admin bearer token set via `ADMIN_SECRET` environment variable. Format: `Bearer {secret}`. Required for all `/admin/*` endpoints.
 
 func main() {
+	startTime := time.Now().UTC()
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
@@ -197,7 +199,7 @@ func main() {
 	}
 
 	// Public routes (no auth)
-	healthHandler := handler.NewHealthHandler(rdb, cashDrugsURL, upstreamBreaker)
+	healthHandler := handler.NewHealthHandler(rdb, cashDrugsURL, startTime, upstreamBreaker)
 	r.Get("/health", healthHandler.Handle)
 	r.Get("/version", handler.VersionInfo)
 	r.Handle("/metrics", promhttp.Handler())

@@ -14,3 +14,13 @@ func TestVersion_Default(t *testing.T) {
 		t.Errorf("Version = %q, want %q (default)", Version, "dev")
 	}
 }
+
+// AC-020: BuildTime defaults to "unknown" when not injected via ldflags.
+func TestVersion_BuildTimeDefault(t *testing.T) {
+	if BuildTime == "" {
+		t.Error("BuildTime should not be empty")
+	}
+	if BuildTime != "unknown" {
+		t.Errorf("BuildTime = %q, want %q (default)", BuildTime, "unknown")
+	}
+}
