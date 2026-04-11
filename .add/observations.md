@@ -9,3 +9,7 @@
 2026-03-16 12:15 | docs | RxNorm docs update — 3 sequence diagrams added (search, profile, granular), route table updated (19 routes), Swagger regenerated with 5 new RxNorm endpoints, CLAUDE.md + README.md synced, CHANGELOG updated | 19/19 routes fully documented
 
 2026-04-11 16:24 | tdd-cycle | health-version-standard — 12 new tests, HealthResponse/DependencyInfo/VersionResponse types, BuildTime ldflag wired through Makefile/Dockerfile/CI, legacy HealthCheck removed, swagger regenerated, 87.7% handler coverage | Brings /health and /version into compliance with cross-service standard (rx-dag reference)
+
+2026-04-11 16:45 | verify | Gate 1-4 pass locally (vet clean, handler lint clean after fixing defer resp.Body.Close, handler pkg 87.7% coverage, 12/12 AC tests mapped). CI still blocked by pre-existing internal/cache singleflight flake (unrelated). | Confirmed health-version-standard changes are production-ready pending unrelated CI fix
+
+2026-04-11 16:52 | verify | fix singleflight flake + health.go errcheck, CI green, beta deployed to staging, manual /health + /version validate, k6 load 10/10 pass (HTTP p95 204.9ms vs baseline 347.7ms, -41.1%) | Unblocked health-version-standard deploy, fixed pre-existing blocker

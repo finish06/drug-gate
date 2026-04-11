@@ -350,6 +350,53 @@
       "date": "2026-04-11",
       "classified_by": "agent",
       "checkpoint_type": "post-tdd"
+    },
+    {
+      "id": "L-024",
+      "title": "verify post-TDD: caught unchecked defer resp.Body.Close in health handler",
+      "body": "Running golangci-lint after TDD-cycle caught one errcheck finding in my new code (internal/handler/health.go line 158 \u2014 defer resp.Body.Close() without error handling). Fixed by wrapping in defer func() { _ = resp.Body.Close() }(). Lesson: run golangci-lint locally as part of the tdd-cycle VERIFY phase, not just go vet. The handler test suite missed it because errcheck is a lint concern, not a test concern. Also: internal/cache singleflight tests (L-022 territory) fail on CI Linux but pass on macOS \u2014 a per-goroutine New() instantiation likely defeats singleflight coalescing on fast hardware. Not mine to fix this cycle but flagged for the singleflight spec owner.",
+      "scope": "project",
+      "stack": [
+        "go",
+        "chi"
+      ],
+      "category": "technical",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-04-11",
+      "classified_by": "agent",
+      "checkpoint_type": "post-verify"
+    },
+    {
+      "id": "L-025",
+      "title": "singleflight test flake: bare sleep races fast schedulers \u2014 use release-channel barrier",
+      "body": "internal/cache/aside_test.go TestCacheAside_Singleflight_{ConcurrentMiss,ErrorPropagation} failed deterministically on Linux CI but passed on macOS local. Root cause: first fetch fn slept 10ms INSIDE singleflight to give sibling goroutines time to reach sfGroup.Do, but on fast schedulers early goroutines completed before later ones entered Do, so coalescing broke. Fix: replace sleep with a buffered-channel signal (fetchStarted) + a release gate (releaseFetch). The test waits for the first fn to signal it's running, then sleeps 100ms for siblings to enqueue, then closes releaseFetch. Deterministic regardless of scheduler \u2014 5x local + -race clean. General principle: NEVER rely on 'sleep enough to give goroutines time to X' in concurrency tests \u2014 use explicit synchronization primitives. Also observed: scheduler behavior differs meaningfully between Linux CI runners and macOS dev boxes; tests that pass locally can fail CI 100% of the time with timing-sensitive sleeps.",
+      "scope": "workstation",
+      "stack": [
+        "go"
+      ],
+      "category": "anti-pattern",
+      "severity": "high",
+      "source": "drug-gate",
+      "date": "2026-04-11",
+      "classified_by": "agent",
+      "checkpoint_type": "verification-catch"
+    },
+    {
+      "id": "L-026",
+      "title": "post-deploy: health-version-standard live on staging, k6 load -41% vs baseline",
+      "body": "beta-70b05045 deployed to staging. /version emits all 7 standard fields (including new os=linux, arch=amd64, build_time from CI commit timestamp). /health returns 200 + status=ok + structured dependencies array (redis 0.52ms, upstream 1.94ms, breaker closed). k6 load 10/10 checks pass, 2034 requests, 0 errors, HTTP p95 204.9ms (baseline 347.7ms, -41.1% \u2014 unrelated perf improvements from recent backlog hardening). MINOR: CI injects build_time in offset format (-05:00) not Z format per spec example. Both RFC 3339, but string-match dashboards may care. Flagged for follow-up.",
+      "scope": "project",
+      "stack": [
+        "go",
+        "chi"
+      ],
+      "category": "technical",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-04-11",
+      "classified_by": "agent",
+      "checkpoint_type": "post-deploy"
     }
   ]
 }
