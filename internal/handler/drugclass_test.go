@@ -427,7 +427,7 @@ func TestHandleDrugClassLookup_AC012_UpstreamError(t *testing.T) {
 // AC-012 variant: Upstream error on brand fallback returns 502
 func TestHandleDrugClassLookup_AC012_UpstreamErrorOnBrandFallback(t *testing.T) {
 	mock := &mockDrugClassClient{
-		genericResults: nil,             // no generic results, triggers fallback
+		genericResults: nil,                // no generic results, triggers fallback
 		brandErr:       client.ErrUpstream, // brand lookup fails
 	}
 	h := NewDrugClassHandler(mock)

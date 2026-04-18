@@ -43,7 +43,7 @@ func TestCacheAside_AC002_CacheHit(t *testing.T) {
 	// Pre-populate cache
 	item := testItem{Name: "aspirin", Value: 42}
 	data, _ := json.Marshal(item)
-	mr.Set("test:key", string(data))
+	_ = mr.Set("test:key", string(data))
 	mr.SetTTL("test:key", 60*time.Minute)
 
 	m := newTestMetrics(t)
@@ -136,7 +136,7 @@ func TestCacheAside_AC004_CorruptCache(t *testing.T) {
 	mr, rdb := setupTestRedis(t)
 	defer mr.Close()
 
-	mr.Set("test:corrupt", "not-valid-json{{{")
+	_ = mr.Set("test:corrupt", "not-valid-json{{{")
 
 	m := newTestMetrics(t)
 	ca := New[testItem](rdb, m, "test:corrupt", 60*time.Minute, "test")

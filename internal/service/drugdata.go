@@ -36,10 +36,10 @@ func SetCacheTTL(ttl time.Duration) {
 
 // DrugDataService provides drug data with lazy Redis caching.
 type DrugDataService struct {
-	client      client.DrugClient
-	rdb         *redis.Client
-	metrics     *metrics.Metrics
-	acIndex     *drugNameIndex
+	client  client.DrugClient
+	rdb     *redis.Client
+	metrics *metrics.Metrics
+	acIndex *drugNameIndex
 }
 
 // NewDrugDataService creates a service with the given client and Redis connection.
@@ -158,7 +158,7 @@ func (s *DrugDataService) AutocompleteDrugs(ctx context.Context, prefix string, 
 		// If we couldn't get the lock but index is empty, wait for rebuild
 		if s.acIndex.isEmpty() {
 			s.acIndex.loading.Lock()
-			s.acIndex.loading.Unlock()
+			s.acIndex.loading.Unlock() //nolint:staticcheck // SA2001: intentional barrier — blocks until rebuilder releases
 			// After waiting, check if rebuild happened
 			if s.acIndex.isEmpty() {
 				names, err := s.GetDrugNames(ctx)

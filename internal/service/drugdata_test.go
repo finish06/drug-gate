@@ -261,8 +261,8 @@ func TestGetDrugNames_NameTypeMapping(t *testing.T) {
 	expected := []struct{ name, typ string }{
 		{"Generic Drug", "generic"},
 		{"Brand Drug", "brand"},
-		{"Lowercase G", "generic"},    // "g" uppercases to "G" → generic
-		{"Unknown Type", "generic"},   // non-B defaults to generic
+		{"Lowercase G", "generic"},  // "g" uppercases to "G" → generic
+		{"Unknown Type", "generic"}, // non-B defaults to generic
 	}
 	for i, e := range expected {
 		if entries[i].Name != e.name || entries[i].Type != e.typ {

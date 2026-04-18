@@ -75,4 +75,3 @@ func (h *AutocompleteHandler) HandleAutocomplete(w http.ResponseWriter, r *http.
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }
-
