@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -195,7 +196,7 @@ func (s *SPLService) CheckInteractions(ctx context.Context, drugs []model.DrugId
 					resolved[idx] = resolvedDrug{
 						result: model.DrugCheckResult{
 							InputName: inputName, InputType: inputType,
-							Error: err.Error(),
+							Error: clientSafeError(err, "drug lookup failed for NDC"),
 						},
 					}
 					return
@@ -212,7 +213,7 @@ func (s *SPLService) CheckInteractions(ctx context.Context, drugs []model.DrugId
 				resolved[idx] = resolvedDrug{
 					result: model.DrugCheckResult{
 						InputName: inputName, InputType: inputType, ResolvedName: drugName,
-						Error: err.Error(),
+						Error: clientSafeError(err, "interaction lookup failed"),
 					},
 				}
 				return
@@ -305,6 +306,24 @@ func (s *SPLService) fetchAndParseSections(ctx context.Context, setID string) (s
 		}, nil
 	}
 	return splpkg.ParseSections(xmlData), nil
+}
+
+// clientSafeError maps internal errors to client-safe messages. The raw error
+// is logged server-side for debugging; only a categorized message reaches the
+// API response, preventing leakage of Redis URLs, upstream hostnames, or stack
+// traces (SEC-002).
+func clientSafeError(err error, fallback string) string {
+	switch {
+	case errors.Is(err, client.ErrCircuitOpen):
+		return "service temporarily unavailable"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "upstream request timed out"
+	case errors.Is(err, context.Canceled):
+		return "request canceled"
+	default:
+		slog.Warn("suppressed raw error from client response", "err", err)
+		return fallback
+	}
 }
 
 // paginate returns a slice of SPLEntry for the given limit/offset.
