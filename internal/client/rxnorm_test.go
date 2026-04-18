@@ -251,6 +251,45 @@ func TestHTTPRxNormClient_FetchAllRelated_HappyPath(t *testing.T) {
 	}
 }
 
+func TestHTTPRxNormClient_FetchSpellingSuggestions_Upstream500(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := NewHTTPRxNormClient(srv.URL)
+	_, err := c.FetchSpellingSuggestions(context.Background(), "lipator")
+	if err == nil {
+		t.Error("expected error for 500 response, got nil")
+	}
+}
+
+func TestHTTPRxNormClient_FetchNDCs_Upstream500(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := NewHTTPRxNormClient(srv.URL)
+	_, err := c.FetchNDCs(context.Background(), "153165")
+	if err == nil {
+		t.Error("expected error for 500 response, got nil")
+	}
+}
+
+func TestHTTPRxNormClient_FetchGenericProduct_Upstream500(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := NewHTTPRxNormClient(srv.URL)
+	_, err := c.FetchGenericProduct(context.Background(), "153165")
+	if err == nil {
+		t.Error("expected error for 500 response, got nil")
+	}
+}
+
 func TestHTTPRxNormClient_FetchAllRelated_Upstream500(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

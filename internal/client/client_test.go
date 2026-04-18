@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 // Helper to build a cash-drugs style response with data as flat array
@@ -424,5 +425,46 @@ func TestDrugResult_MatchesUpstreamJSON(t *testing.T) {
 	}
 	if len(entry.PharmClass) != 1 || entry.PharmClass[0] != "HMG-CoA Reductase Inhibitor [EPC]" {
 		t.Errorf("PharmClass = %v, want [HMG-CoA Reductase Inhibitor [EPC]]", entry.PharmClass)
+	}
+}
+
+// WithBreaker and WithTransport option functions are exercised by passing them.
+func TestHTTPDrugClient_WithOptions(t *testing.T) {
+	br := NewCircuitBreaker(5, time.Second)
+	tr := NewSharedTransport()
+	c := NewHTTPDrugClient("http://localhost:1", WithBreaker(br), WithTransport(tr))
+	if c.Breaker() != br {
+		t.Error("Breaker() should return the injected circuit breaker")
+	}
+}
+
+// Breaker accessor returns the circuit breaker instance.
+func TestHTTPDrugClient_Breaker(t *testing.T) {
+	c := NewHTTPDrugClient("http://localhost:1")
+	if c.Breaker() == nil {
+		t.Error("Breaker() should never be nil (defaults to a new CircuitBreaker)")
+	}
+}
+
+// FetchDrugClasses with unreachable upstream returns error.
+func TestHTTPDrugClient_FetchDrugClasses_UpstreamError(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer upstream.Close()
+
+	c := NewHTTPDrugClient(upstream.URL)
+	_, err := c.FetchDrugClasses(context.Background())
+	if err == nil {
+		t.Error("expected error for 500 upstream, got nil")
+	}
+}
+
+// FetchDrugClasses with unreachable host returns error.
+func TestHTTPDrugClient_FetchDrugClasses_Unreachable(t *testing.T) {
+	c := NewHTTPDrugClient("http://localhost:1")
+	_, err := c.FetchDrugClasses(context.Background())
+	if err == nil {
+		t.Error("expected error for unreachable, got nil")
 	}
 }

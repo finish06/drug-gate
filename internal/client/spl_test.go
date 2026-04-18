@@ -148,6 +148,27 @@ func TestHTTPSPLClient_FetchSPLXML_NotFound(t *testing.T) {
 	}
 }
 
+func TestHTTPSPLClient_FetchSPLDetail_UpstreamError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := NewHTTPSPLClient(srv.URL)
+	_, err := c.FetchSPLDetail(context.Background(), "some-setid")
+	if err == nil {
+		t.Fatal("expected error for 500 response")
+	}
+}
+
+func TestHTTPSPLClient_FetchSPLsByName_Unreachable(t *testing.T) {
+	c := NewHTTPSPLClient("http://localhost:1")
+	_, err := c.FetchSPLsByName(context.Background(), "warfarin")
+	if err == nil {
+		t.Error("expected error for unreachable, got nil")
+	}
+}
+
 func TestHTTPSPLClient_FetchSPLXML_UpstreamError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
