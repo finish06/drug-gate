@@ -67,6 +67,14 @@ func (h *AdminHandler) CreateKey(w http.ResponseWriter, r *http.Request) {
 		writeAdminHandlerError(w, http.StatusBadRequest, "bad_request", "rate_limit must be greater than 0")
 		return
 	}
+	if req.RateLimit > 10000 {
+		writeAdminHandlerError(w, http.StatusBadRequest, "bad_request", "rate_limit must not exceed 10000")
+		return
+	}
+	if len(req.Origins) > 20 {
+		writeAdminHandlerError(w, http.StatusBadRequest, "bad_request", "origins must not exceed 20 entries")
+		return
+	}
 
 	ak, err := h.store.Create(r.Context(), req.AppName, req.Origins, req.RateLimit)
 	if err != nil {
@@ -198,6 +206,14 @@ func (h *AdminHandler) RotateKey(w http.ResponseWriter, r *http.Request) {
 	gracePeriod, err := time.ParseDuration(req.GracePeriod)
 	if err != nil {
 		writeAdminHandlerError(w, http.StatusBadRequest, "bad_request", "Invalid grace_period duration")
+		return
+	}
+	if gracePeriod < time.Minute {
+		writeAdminHandlerError(w, http.StatusBadRequest, "bad_request", "grace_period must be at least 1m")
+		return
+	}
+	if gracePeriod > 30*24*time.Hour {
+		writeAdminHandlerError(w, http.StatusBadRequest, "bad_request", "grace_period must not exceed 30 days")
 		return
 	}
 

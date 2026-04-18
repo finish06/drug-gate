@@ -513,6 +513,60 @@ func TestAdmin_RotateKey_InvalidGracePeriod(t *testing.T) {
 	}
 }
 
+// U-005: rate_limit must not exceed 10000.
+func TestAdmin_CreateKey_RateLimitTooHigh(t *testing.T) {
+	store := newMockAdminStore()
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodPost, "/admin/keys", bytes.NewBufferString(`{"app_name":"x","origins":["*"],"rate_limit":10001}`))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+// U-005: origins must not exceed 20 entries.
+func TestAdmin_CreateKey_TooManyOrigins(t *testing.T) {
+	store := newMockAdminStore()
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	origins := make([]string, 21)
+	for i := range origins {
+		origins[i] = fmt.Sprintf("https://%d.example.com", i)
+	}
+	body, _ := json.Marshal(createKeyRequest{AppName: "x", Origins: origins, RateLimit: 100})
+
+	rr := doAdminRequest(router, http.MethodPost, "/admin/keys", bytes.NewBuffer(body))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+// U-006: grace_period must be at least 1m.
+func TestAdmin_RotateKey_GracePeriodTooShort(t *testing.T) {
+	store := newMockAdminStore()
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodPost, "/admin/keys/pk_test_1/rotate", bytes.NewBufferString(`{"grace_period":"30s"}`))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+// U-006: grace_period must not exceed 30 days.
+func TestAdmin_RotateKey_GracePeriodTooLong(t *testing.T) {
+	store := newMockAdminStore()
+	h := NewAdminHandler(store)
+	router := newAdminTestRouter(h)
+
+	rr := doAdminRequest(router, http.MethodPost, "/admin/keys/pk_test_1/rotate", bytes.NewBufferString(`{"grace_period":"744h"}`))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
 func TestAdmin_RotateKey_StoreError(t *testing.T) {
 	store := &errAdminStore{rotateErr: fmt.Errorf("redis down")}
 	h := NewAdminHandler(store)
