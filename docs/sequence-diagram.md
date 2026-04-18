@@ -30,15 +30,32 @@ sequenceDiagram
     participant GW as drug-gate<br/>:8081
     participant LOG as RequestLogger
     participant MET as MetricsMiddleware
-    participant HC as HealthCheck
+    participant HH as HealthHandler
+    participant R as Redis
+    participant UP as cash-drugs<br/>upstream
+    participant CB as CircuitBreaker
 
     Client->>GW: GET /health
     GW->>LOG: Pass request
     LOG->>MET: Next handler
-    MET->>HC: Next handler
-    HC-->>Client: 200 {"status": "ok", "version": "..."}
+    MET->>HH: Next handler
+    HH->>R: PING (2s timeout)
+    R-->>HH: PONG (latency_ms)
+    HH->>UP: GET /health (2s timeout)
+    UP-->>HH: 200 OK (latency_ms)
+    HH->>CB: IsOpen?
+    CB-->>HH: closed
+
+    alt All deps healthy
+        HH-->>Client: 200 {"status":"ok", "uptime":"...", "dependencies":[...]}
+    else Redis down (critical)
+        HH-->>Client: 503 {"status":"error", "dependencies":[{redis: error}]}
+    else Upstream/breaker degraded (non-critical)
+        HH-->>Client: 200 {"status":"degraded", "dependencies":[...]}
+    end
+
     MET->>MET: Record request count + duration
-    LOG->>LOG: Log {method, path, status, duration_ms}
+    LOG->>LOG: Log {method, path, status, duration_ms, request_id}
 ```
 
 ---
@@ -990,8 +1007,8 @@ sequenceDiagram
 
 | Method | Path | Auth | Handler | Description |
 |--------|------|------|---------|-------------|
-| GET | `/health` | None | `HealthCheck` | Service health + version |
-| GET | `/version` | None | `VersionInfo` | Build version, git commit, branch, Go version |
+| GET | `/health` | None | `HealthHandler.Handle` | Service health, uptime, start_time, dependency checks (Redis, upstream, breaker) |
+| GET | `/version` | None | `VersionInfo` | Build version, git commit, branch, Go version, OS, arch, build_time |
 | GET | `/metrics` | None | `promhttp.Handler` | Prometheus metrics endpoint |
 | GET | `/swagger/*` | None | `httpSwagger.WrapHandler` | Swagger UI |
 | GET | `/openapi.json` | None | `OpenAPIJSON` | OpenAPI spec JSON |

@@ -7,6 +7,34 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added
+- `/health` endpoint: cross-service standard compliance — `uptime`, `start_time`, structured `dependencies[]` array with per-dep `latency_ms` and `error` fields
+- `/version` endpoint: `os`, `arch`, `build_time` fields from `runtime.GOOS`/`runtime.GOARCH`/ldflags
+- `version.BuildTime` variable injected at compile time via `-ldflags`
+- Three-tier health status: `ok` (all deps healthy), `degraded` (non-critical dep down), `error` (critical dep down → HTTP 503)
+- `DependencyInfo` and `VersionResponse` typed structs replace ad-hoc `map[string]string` responses
+- Admin key creation: `rate_limit` max 10000, `origins` max 20 entries validation (U-005)
+- Admin key rotation: `grace_period` min 1m, max 30d validation (U-006)
+- `clientSafeError()` helper in SPL service — maps internal errors to categorized client-safe messages, suppresses raw `err.Error()` from API responses (SEC-002)
+- 16 new tests: health (9), version (3), admin bounds (4)
+
+### Changed
+- `/health` response `dependencies` field changed from `map[string]string` to `[]DependencyInfo` — **breaking change** for monitoring dashboards parsing the old shape
+- `/health` Redis failure returns `status: "error"` + HTTP 503 instead of `status: "degraded"` + 503 (Redis is now classified as critical)
+- Request logger includes query string (`r.URL.RequestURI()` instead of `r.URL.Path`) (U-007)
+- CI passes `git_commit` as 7-char short SHA and `build_time` as UTC Z-format timestamp
+- `BUILD_TIME` ldflag wired through Dockerfile, Makefile, and CI workflow
+
+### Removed
+- Legacy `HealthCheck` function (unused in routes, replaced by `HealthHandler.Handle`) (U-003)
+
+### Fixed
+- Singleflight test flake: replaced bare `time.Sleep` with release-channel barrier pattern — deterministic on fast CI schedulers
+- `defer resp.Body.Close()` errcheck in health upstream probe
+- `gofmt` on 5 pre-existing unformatted files
+- `errcheck` on unchecked `mr.Set` in cache aside tests
+- `staticcheck SA2001` silenced with nolint on intentional Lock/Unlock barrier in `drugdata.go`
+
 ## [0.9.0] - 2026-03-25
 
 ### Added

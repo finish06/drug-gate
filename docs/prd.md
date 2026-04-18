@@ -113,39 +113,39 @@ Items below are not milestones — they are prioritized technical improvements i
 
 #### Critical — Scaling
 
-| ID | Issue | Effort | Notes |
-|----|-------|--------|-------|
-| S-001 | **Singleflight in `CacheAside.Get`** — TTL expiry triggers thundering herd to upstream. Add `golang.org/x/sync/singleflight` | 1 day | Autocomplete has stampede prevention; generic cache layer does not. Breaks upstream at 10K req/sec on TTL rollover. |
+| ID | Issue | Effort | Status |
+|----|-------|--------|--------|
+| S-001 | **Singleflight in `CacheAside.Get`** — thundering herd prevention | 1 day | **DONE** — `golang.org/x/sync/singleflight` in `internal/cache/aside.go`, test flake fixed with release-channel barrier |
 
 #### High — Scaling & Security
 
-| ID | Issue | Effort | Notes |
-|----|-------|--------|-------|
-| S-002 | **HTTP `MaxIdleConnsPerHost` too low** — all 3 clients share one host, capped at 10 idle conns. Share transport, set 50-100. | 1 hour | Causes TCP TIME_WAIT accumulation under load |
-| S-003 | **Redis client has no pool config** — defaults to 20 conns on 2 vCPU. Set `PoolSize: 100-200`, add timeouts. | 1 hour | First bottleneck at scale (2 Redis calls per authenticated request) |
-| S-004 | **Missing `ReadHeaderTimeout`** on HTTP server — Slowloris defense. Add `ReadHeaderTimeout: 5s`. | 5 min | |
-| SEC-001 | **No `MaxBytesReader` on admin POST endpoints** — `CreateKey` and `RotateKey` accept unbounded body. Add 1KB limit. | 10 min | Pattern already used in `spl.go:245` |
-| U-001 | **`IndexerCacheTTL` is a plain `var`, not atomic** — same race as CacheTTL (already fixed). Match `atomic.Int64` pattern. | 5 min | Data race under Go race detector |
+| ID | Issue | Effort | Status |
+|----|-------|--------|--------|
+| S-002 | **HTTP `MaxIdleConnsPerHost` too low** — share transport, set 50-100 | 1 hour | **DONE** — shared transport in `cmd/server/main.go` via `client.NewSharedTransport()` |
+| S-003 | **Redis client has no pool config** — set `PoolSize: 100-200`, add timeouts | 1 hour | **DONE** — `PoolSize: 128`, `MinIdleConns: 16`, explicit timeouts in `cmd/server/main.go` |
+| S-004 | **Missing `ReadHeaderTimeout`** on HTTP server — Slowloris defense | 5 min | **DONE** — `ReadHeaderTimeout: 5s` in `cmd/server/main.go` |
+| SEC-001 | **No `MaxBytesReader` on admin POST endpoints** — add limit | 10 min | **DONE** — 4KB limit on `CreateKey` and `RotateKey` |
+| U-001 | **`IndexerCacheTTL` is a plain `var`, not atomic** | 5 min | **DONE** — `atomic.Int64` in `internal/spl/indexer.go` |
 
 #### Medium — Security & Upkeep
 
-| ID | Issue | Effort | Notes |
-|----|-------|--------|-------|
-| SEC-002 | **`DrugCheckResult.Error` leaks raw `err.Error()`** to clients — replace with categorized client-safe messages | 30 min | |
-| SEC-003 | **`ListKeys`/`GetKey` return full API key values** — redact to `key[:12]+"..."` except on `CreateKey` | 30 min | Design decision — may be intentional |
-| U-002 | **`GetWithStale` is dead code** — fully implemented and tested but never called. Wire it up or remove. | 1 hour | Misleading impression of resilience |
-| U-003 | **Legacy `HealthCheck` function is dead code** — tested instead of `HealthHandler.Handle`. Delete and update tests. | 15 min | |
-| U-004 | **Indexer uses `ParseInteractions` (narrow)** instead of `ParseSections` (complete) — pre-warmed cache entries are incomplete | 30 min | |
-| U-005 | **No upper bound on `rate_limit` or `origins`** in key creation — add `maxRateLimit`, `maxOrigins` validation | 15 min | |
+| ID | Issue | Effort | Status |
+|----|-------|--------|--------|
+| SEC-002 | **`DrugCheckResult.Error` leaks raw `err.Error()`** to clients | 30 min | **DONE** — `clientSafeError()` helper maps to categorized messages, raw errors logged server-side |
+| SEC-003 | **`ListKeys`/`GetKey` return full API key values** — redact to `key[:12]+"..."` | 30 min | Open — design decision, may be intentional |
+| U-002 | **`GetWithStale` is dead code** — wire it up or remove | 1 hour | Open — architecture decision |
+| U-003 | **Legacy `HealthCheck` function is dead code** | 15 min | **DONE** — deleted during health-version-standard rewrite |
+| U-004 | **Indexer uses `ParseInteractions` (narrow)** instead of `ParseSections` (complete) | 30 min | Open — changes cache shape |
+| U-005 | **No upper bound on `rate_limit` or `origins`** in key creation | 15 min | **DONE** — max 10000 rate_limit, max 20 origins |
 
 #### Low — Polish
 
-| ID | Issue | Effort | Notes |
-|----|-------|--------|-------|
-| U-006 | `gracePeriod` has no min/max bounds — add 1m min, 30d max | 5 min | |
-| U-007 | Request logger doesn't include query string — log `r.URL.RequestURI()` for debuggability | 5 min | Safe: API keys are header-only |
-| U-008 | `PaginatedResponse.Data` is `interface{}` — could be generic `[T any]` for better Swagger types | 1 hour | |
-| SEC-004 | Health endpoint uses `http.DefaultClient` — create dedicated client with explicit timeouts | 10 min | |
+| ID | Issue | Effort | Status |
+|----|-------|--------|--------|
+| U-006 | `gracePeriod` has no min/max bounds — add 1m min, 30d max | 5 min | **DONE** |
+| U-007 | Request logger doesn't include query string | 5 min | **DONE** — `r.URL.RequestURI()` |
+| U-008 | `PaginatedResponse.Data` is `interface{}` — could be generic `[T any]` | 1 hour | Open — changes Swagger types |
+| SEC-004 | Health endpoint uses `http.DefaultClient` | 10 min | **DONE** — `checkUpstream()` uses dedicated client with explicit timeout |
 
 ### Milestone Detail
 
