@@ -468,7 +468,7 @@ info:
     name: MIT
     url: https://github.com/finish06/drug-gate/blob/main/LICENSE
   title: drug-gate API
-  version: 0.9.0
+  version: 0.10.0
 paths:
   /admin/cache:
     delete:

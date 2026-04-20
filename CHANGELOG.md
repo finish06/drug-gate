@@ -7,6 +7,8 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-20
+
 ### Added
 - `/health` endpoint: cross-service standard compliance — `uptime`, `start_time`, structured `dependencies[]` array with per-dep `latency_ms` and `error` fields
 - `/version` endpoint: `os`, `arch`, `build_time` fields from `runtime.GOOS`/`runtime.GOARCH`/ldflags
@@ -16,7 +18,16 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 - Admin key creation: `rate_limit` max 10000, `origins` max 20 entries validation (U-005)
 - Admin key rotation: `grace_period` min 1m, max 30d validation (U-006)
 - `clientSafeError()` helper in SPL service — maps internal errors to categorized client-safe messages, suppresses raw `err.Error()` from API responses (SEC-002)
-- 16 new tests: health (9), version (3), admin bounds (4)
+- Singleflight in `CacheAside.Get` — prevents thundering herd on cache TTL expiry via package-level `singleflight.Group` (S-001)
+- Shared HTTP transport across all 3 upstream clients — unified connection pool with `MaxIdleConnsPerHost` 50 (S-002)
+- Redis client pool: `PoolSize: 128`, `MinIdleConns: 16`, explicit dial/read/write timeouts (S-003)
+- `ReadHeaderTimeout: 5s` on HTTP server for Slowloris defense (S-004)
+- `MaxBytesReader` (4KB) on admin POST endpoints `CreateKey` and `RotateKey` (SEC-001)
+- Admin auth uses constant-time comparison (`crypto/subtle`) to prevent timing attacks
+- API keys redacted in all log output (truncated to 12 chars)
+- `LANDING_URL` validated as http/https before registering redirect
+- Umami custom event tracking on landing page
+- 25 new tests: health (9), version (3), admin bounds (4), singleflight (3), client error paths (6)
 
 ### Changed
 - `/health` response `dependencies` field changed from `map[string]string` to `[]DependencyInfo` — **breaking change** for monitoring dashboards parsing the old shape

@@ -29,7 +29,7 @@ import (
 )
 
 // @title       drug-gate API
-// @version     0.9.0
+// @version     0.10.0
 // @description Open-source drug information gateway. Provides NDC lookup, therapeutic class search, drug interactions, RxNorm fuzzy search, and structured product label data — all through a clean REST API with Redis caching, per-key rate limiting, and circuit breaker protection.
 // @description
 // @description ## Getting Started

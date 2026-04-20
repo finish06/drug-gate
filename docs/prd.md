@@ -132,10 +132,10 @@ Items below are not milestones — they are prioritized technical improvements i
 | ID | Issue | Effort | Status |
 |----|-------|--------|--------|
 | SEC-002 | **`DrugCheckResult.Error` leaks raw `err.Error()`** to clients | 30 min | **DONE** — `clientSafeError()` helper maps to categorized messages, raw errors logged server-side |
-| SEC-003 | **`ListKeys`/`GetKey` return full API key values** — redact to `key[:12]+"..."` | 30 min | Open — design decision, may be intentional |
-| U-002 | **`GetWithStale` is dead code** — wire it up or remove | 1 hour | Open — architecture decision |
+| SEC-003 | **`ListKeys`/`GetKey` return full API key values** | — | **By design** — full values intentional for admin use |
+| U-002 | **`GetWithStale` is dead code** — wire it up or remove | 1 hour | Open — needs detailed discussion on where to integrate stale-serving (follow up) |
 | U-003 | **Legacy `HealthCheck` function is dead code** | 15 min | **DONE** — deleted during health-version-standard rewrite |
-| U-004 | **Indexer uses `ParseInteractions` (narrow)** instead of `ParseSections` (complete) | 30 min | Open — changes cache shape |
+| U-004 | **Indexer uses `ParseInteractions` (narrow)** instead of `ParseSections` (complete) | 30 min | Open — needs impact analysis before changing cached data shape (follow up) |
 | U-005 | **No upper bound on `rate_limit` or `origins`** in key creation | 15 min | **DONE** — max 10000 rate_limit, max 20 origins |
 
 #### Low — Polish
