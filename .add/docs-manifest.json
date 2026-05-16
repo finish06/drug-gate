@@ -1,7 +1,7 @@
 {
   "$schema": "https://github.com/MountainUnicorn/add/docs-manifest.schema.json",
   "version": "1.0.0",
-  "generated": "2026-03-25T07:40:00Z",
+  "generated": "2026-05-16T00:00:00Z",
   "stack": {
     "language": "go",
     "framework": "chi",
@@ -14,6 +14,7 @@
     "models": ["internal/model/"],
     "schemas": [],
     "services": ["internal/service/"],
+    "cache": ["internal/cache/"],
     "middleware": ["internal/middleware/"],
     "client": ["internal/client/"],
     "ndc": ["internal/ndc/"],
@@ -29,12 +30,22 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/",
+      "handler_file": "cmd/server/main.go",
+      "handler_function": "inline LANDING_URL redirect",
+      "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware"],
+      "tags": ["public"],
+      "response_model": null,
+      "conditional": "Registered only when LANDING_URL env var is set to an http/https URL"
+    },
+    {
+      "method": "GET",
       "path": "/health",
       "handler_file": "internal/handler/health.go",
       "handler_function": "HealthHandler.Handle",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware"],
-      "tags": ["public"],
-      "response_model": null
+      "tags": ["system"],
+      "response_model": "HealthResponse"
     },
     {
       "method": "GET",
@@ -42,8 +53,8 @@
       "handler_file": "internal/handler/version.go",
       "handler_function": "VersionInfo",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware"],
-      "tags": ["public"],
-      "response_model": null
+      "tags": ["system"],
+      "response_model": "VersionResponse"
     },
     {
       "method": "GET",
@@ -51,7 +62,7 @@
       "handler_file": null,
       "handler_function": "promhttp.Handler",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware"],
-      "tags": ["public"],
+      "tags": ["system"],
       "response_model": null
     },
     {
@@ -60,7 +71,7 @@
       "handler_file": null,
       "handler_function": "httpSwagger.WrapHandler",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware"],
-      "tags": ["public"],
+      "tags": ["system"],
       "response_model": null
     },
     {
@@ -69,7 +80,7 @@
       "handler_file": "internal/handler/swagger.go",
       "handler_function": "OpenAPIJSON",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware"],
-      "tags": ["public"],
+      "tags": ["system"],
       "response_model": null
     },
     {
@@ -78,7 +89,7 @@
       "handler_file": "internal/handler/drug.go",
       "handler_function": "DrugHandler.HandleNDCLookup",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["drugs", "v1"],
+      "tags": ["drugs"],
       "response_model": "DrugDetailResponse"
     },
     {
@@ -87,7 +98,7 @@
       "handler_file": "internal/handler/drugclass.go",
       "handler_function": "DrugClassHandler.HandleDrugClassLookup",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["drugs", "v1"],
+      "tags": ["drugs"],
       "response_model": "DrugClassResponse"
     },
     {
@@ -96,7 +107,7 @@
       "handler_file": "internal/handler/drugnames.go",
       "handler_function": "DrugNamesHandler.HandleDrugNames",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["drugs", "v1"],
+      "tags": ["drugs"],
       "response_model": "PaginatedResponse"
     },
     {
@@ -105,7 +116,7 @@
       "handler_file": "internal/handler/drugclasses.go",
       "handler_function": "DrugClassesHandler.HandleDrugClasses",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["drugs", "v1"],
+      "tags": ["drugs"],
       "response_model": "PaginatedResponse"
     },
     {
@@ -114,7 +125,7 @@
       "handler_file": "internal/handler/drugsbyclass.go",
       "handler_function": "DrugsByClassHandler.HandleDrugsByClass",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["drugs", "v1"],
+      "tags": ["drugs"],
       "response_model": "PaginatedResponse"
     },
     {
@@ -123,7 +134,7 @@
       "handler_file": "internal/handler/autocomplete.go",
       "handler_function": "AutocompleteHandler.HandleAutocomplete",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["drugs", "v1"],
+      "tags": ["drugs"],
       "response_model": null
     },
     {
@@ -132,7 +143,7 @@
       "handler_file": "internal/handler/spl.go",
       "handler_function": "SPLHandler.HandleSearchSPLs",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["spl", "v1"],
+      "tags": ["spl"],
       "response_model": "PaginatedResponse"
     },
     {
@@ -141,7 +152,7 @@
       "handler_file": "internal/handler/spl.go",
       "handler_function": "SPLHandler.HandleSPLDetail",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["spl", "v1"],
+      "tags": ["spl"],
       "response_model": "SPLDetail"
     },
     {
@@ -150,7 +161,7 @@
       "handler_file": "internal/handler/spl.go",
       "handler_function": "SPLHandler.HandleDrugInfo",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["spl", "v1"],
+      "tags": ["spl"],
       "response_model": "DrugInfoResponse"
     },
     {
@@ -159,7 +170,7 @@
       "handler_file": "internal/handler/spl.go",
       "handler_function": "SPLHandler.HandleCheckInteractions",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["spl", "v1"],
+      "tags": ["spl"],
       "response_model": "InteractionCheckResponse"
     },
     {
@@ -168,7 +179,7 @@
       "handler_file": "internal/handler/rxnorm.go",
       "handler_function": "RxNormHandler.HandleSearch",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["rxnorm", "v1"],
+      "tags": ["rxnorm"],
       "response_model": "RxNormSearchResult"
     },
     {
@@ -177,7 +188,7 @@
       "handler_file": "internal/handler/rxnorm.go",
       "handler_function": "RxNormHandler.HandleProfile",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["rxnorm", "v1"],
+      "tags": ["rxnorm"],
       "response_model": "RxNormProfile"
     },
     {
@@ -186,7 +197,7 @@
       "handler_file": "internal/handler/rxnorm.go",
       "handler_function": "RxNormHandler.HandleNDCs",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["rxnorm", "v1"],
+      "tags": ["rxnorm"],
       "response_model": "RxNormNDCResponse"
     },
     {
@@ -195,7 +206,7 @@
       "handler_file": "internal/handler/rxnorm.go",
       "handler_function": "RxNormHandler.HandleGenerics",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["rxnorm", "v1"],
+      "tags": ["rxnorm"],
       "response_model": "RxNormGenericResponse"
     },
     {
@@ -204,7 +215,7 @@
       "handler_file": "internal/handler/rxnorm.go",
       "handler_function": "RxNormHandler.HandleRelated",
       "middleware": ["RequestID", "RequestLogger", "MetricsMiddleware", "APIKeyAuth", "PerKeyCORS", "RateLimit"],
-      "tags": ["rxnorm", "v1"],
+      "tags": ["rxnorm"],
       "response_model": "RxNormRelatedResponse"
     },
     {
@@ -334,7 +345,7 @@
     {
       "name": "DrugNameEntry",
       "file": "internal/model/response.go",
-      "field_count": 2,
+      "field_count": 3,
       "relationships": []
     },
     {
@@ -402,6 +413,84 @@
       "file": "internal/model/rxnorm.go",
       "field_count": 7,
       "relationships": ["RxNormConcept", "RxNormRelatedResponse"]
+    },
+    {
+      "name": "SPLEntry",
+      "file": "internal/model/spl.go",
+      "field_count": 4,
+      "relationships": []
+    },
+    {
+      "name": "InteractionSection",
+      "file": "internal/model/spl.go",
+      "field_count": 2,
+      "relationships": []
+    },
+    {
+      "name": "SPLDetail",
+      "file": "internal/model/spl.go",
+      "field_count": 8,
+      "relationships": ["InteractionSection"]
+    },
+    {
+      "name": "SPLSource",
+      "file": "internal/model/spl.go",
+      "field_count": 4,
+      "relationships": []
+    },
+    {
+      "name": "DrugInfoResponse",
+      "file": "internal/model/spl.go",
+      "field_count": 8,
+      "relationships": ["SPLSource", "InteractionSection"]
+    },
+    {
+      "name": "InteractionCheckRequest",
+      "file": "internal/model/spl.go",
+      "field_count": 1,
+      "relationships": ["DrugIdentifier"]
+    },
+    {
+      "name": "DrugIdentifier",
+      "file": "internal/model/spl.go",
+      "field_count": 2,
+      "relationships": []
+    },
+    {
+      "name": "InteractionCheckResponse",
+      "file": "internal/model/spl.go",
+      "field_count": 4,
+      "relationships": ["DrugCheckResult", "InteractionMatch"]
+    },
+    {
+      "name": "DrugCheckResult",
+      "file": "internal/model/spl.go",
+      "field_count": 6,
+      "relationships": []
+    },
+    {
+      "name": "InteractionMatch",
+      "file": "internal/model/spl.go",
+      "field_count": 6,
+      "relationships": []
+    },
+    {
+      "name": "HealthResponse",
+      "file": "internal/handler/health.go",
+      "field_count": 5,
+      "relationships": ["DependencyInfo"]
+    },
+    {
+      "name": "DependencyInfo",
+      "file": "internal/handler/health.go",
+      "field_count": 4,
+      "relationships": []
+    },
+    {
+      "name": "VersionResponse",
+      "file": "internal/handler/version.go",
+      "field_count": 7,
+      "relationships": []
     }
   ],
   "services": [
@@ -416,9 +505,19 @@
       "public_functions": ["SearchSPLs", "GetSPLDetail", "GetInteractionsForDrug", "ResolveDrugNameFromNDC", "CheckInteractions"]
     },
     {
+      "name": "RxNormService",
+      "file": "internal/service/rxnorm.go",
+      "public_functions": ["Search", "GetNDCs", "GetGenerics", "GetRelated", "GetProfile"]
+    },
+    {
+      "name": "CacheAside",
+      "file": "internal/cache/aside.go",
+      "public_functions": ["New", "Get", "GetWithStale"]
+    },
+    {
       "name": "HTTPDrugClient",
       "file": "internal/client/client.go",
-      "public_functions": ["LookupByNDC", "LookupByGenericName", "LookupByBrandName", "LookupByPharmClass", "FetchDrugNames", "FetchDrugClasses"]
+      "public_functions": ["LookupByNDC", "LookupByGenericName", "LookupByBrandName", "LookupByPharmClass", "FetchDrugNames", "FetchDrugClasses", "NewSharedTransport"]
     },
     {
       "name": "HTTPSPLClient",
@@ -426,8 +525,18 @@
       "public_functions": ["FetchSPLsByName", "FetchSPLDetail", "FetchSPLXML"]
     },
     {
+      "name": "HTTPRxNormClient",
+      "file": "internal/client/rxnorm.go",
+      "public_functions": ["SearchApproximate", "FetchSpellingSuggestions", "FetchNDCs", "FetchGenericProduct", "FetchAllRelated"]
+    },
+    {
+      "name": "CircuitBreaker",
+      "file": "internal/client/breaker.go",
+      "public_functions": ["NewCircuitBreaker", "Execute", "IsOpen"]
+    },
+    {
       "name": "RedisStore (apikey)",
-      "file": "internal/apikey/store.go",
+      "file": "internal/apikey/redis_store.go",
       "public_functions": ["Create", "Get", "List", "Deactivate", "Rotate"]
     },
     {
@@ -436,24 +545,14 @@
       "public_functions": ["Allow"]
     },
     {
-      "name": "RxNormService",
-      "file": "internal/service/rxnorm.go",
-      "public_functions": ["Search", "GetNDCs", "GetGenerics", "GetRelated", "GetProfile"]
-    },
-    {
-      "name": "HTTPRxNormClient",
-      "file": "internal/client/rxnorm.go",
-      "public_functions": ["SearchApproximate", "FetchSpellingSuggestions", "FetchNDCs", "FetchGenericProduct", "FetchAllRelated"]
-    },
-    {
       "name": "Metrics",
       "file": "internal/metrics/metrics.go",
-      "public_functions": ["NewMetrics", "NewRedisCollector", "NewSystemCollector"]
+      "public_functions": ["NewMetrics", "NewRedisCollector", "NewSystemCollector", "NewProcfsSource"]
     },
     {
       "name": "SPLIndexer",
       "file": "internal/spl/indexer.go",
-      "public_functions": ["Start", "Stop"]
+      "public_functions": ["NewIndexer", "Start", "Stop", "SetIndexerCacheTTL"]
     }
   ],
   "existing_docs": [
@@ -473,6 +572,31 @@
       "type": "other"
     },
     {
+      "path": "docs/staging-deployment.md",
+      "topic": "deployment",
+      "type": "other"
+    },
+    {
+      "path": "docs/staging-drug-gate.md",
+      "topic": "deployment",
+      "type": "other"
+    },
+    {
+      "path": "docs/staging-environment.md",
+      "topic": "deployment",
+      "type": "other"
+    },
+    {
+      "path": "docs/swagger.json",
+      "topic": "openapi-spec",
+      "type": "api"
+    },
+    {
+      "path": "docs/swagger.yaml",
+      "topic": "openapi-spec",
+      "type": "api"
+    },
+    {
       "path": "CLAUDE.md",
       "topic": "project-overview",
       "type": "readme"
@@ -485,6 +609,7 @@
   ],
   "flows": {
     "documented": [
+      "GET /",
       "GET /health",
       "GET /version",
       "GET /metrics",
@@ -510,42 +635,47 @@
       "GET /v1/drugs/rxnorm/profile",
       "GET /v1/drugs/rxnorm/{rxcui}/ndcs",
       "GET /v1/drugs/rxnorm/{rxcui}/generics",
-      "GET /v1/drugs/rxnorm/{rxcui}/related"
+      "GET /v1/drugs/rxnorm/{rxcui}/related",
+      "Upstream Resilience (CircuitBreaker + Singleflight + Stale Fallback)"
     ],
     "undocumented": [],
     "stale": []
   },
   "fingerprints": {
-    "cmd/server/main.go": "56280a58fb9c987bccbb4ebe1eccfae6a25a3cd4d7905a72e1b27990fbb2dd95",
-    "internal/handler/drug.go": "61a1298906fb8aef98562ea50e0c2b66c9081bd66b01864e3d935715ee68e54a",
-    "internal/handler/drugclass.go": "95f9f567bbf84cce6895de6d0e5723d96d7d73a6bddbbaacff8dd02294359570",
-    "internal/handler/drugclasses.go": "0ab278f1ffd8c3c839cf8faa4f41817f6647d1099a90923f596677677e808aab",
-    "internal/handler/drugnames.go": "ee033ec2fdcdb3f218e03270a88c8f3367fdea021ed1f8f7f1e31cb7958bd639",
-    "internal/handler/drugsbyclass.go": "6a793fc1fa648467f2e18b9ed47da331d02b689a83ce98df9b9d0f1f6ed299f7",
-    "internal/handler/admin.go": "2c096287f549df8d613ec97c8ed46735c70ba69eaaf4153e6ab4a0f37909d7ab",
-    "internal/handler/health.go": "6843a8608692a76198589fa7a9146801bae61460051432f44161b843945b35a1",
-    "internal/handler/swagger.go": "81fc5cdcb3ff36aea5fea042bfdeaad69ea311638fa3a38a17111f13db0e9eac",
+    "cmd/server/main.go": "e13b71db67c27bb8ffc5a44ab0386d2f702242e7dcd47ddc95791eb518cf0bfa",
+    "internal/handler/drug.go": "f11d914dc7963615a18a2cc5fa570f98e4a690afcebeaeaf5839fb5822137c94",
+    "internal/handler/drugclass.go": "1fe95f728bb7f877df0a6955169fa45eaadba0c638a14abeac85c288a803254a",
+    "internal/handler/drugclasses.go": "8b40b6aab94a290364d5ab338ba7073ffbcd1e54ac0e863ce747ac89b8ceac89",
+    "internal/handler/drugnames.go": "936898bebf16cb0399cbd256e8027768c5a0e0a76173607e3b4e302c468adb8d",
+    "internal/handler/drugsbyclass.go": "a1f467f38f4731c99e5e59e38b11c2a27b3f37acae634c8edf417ac64759a3cf",
+    "internal/handler/admin.go": "4079d697136e0d809a0b9d4a032ace970d7aec9c56c1e0a48618ef09a40fe099",
+    "internal/handler/health.go": "b66cb8ff128609ed7ed30b9a2acab84a2698db210d27ad9477f2012957be5c73",
+    "internal/handler/swagger.go": "bebc40b7a55011645d6bfc6ba56f83b715be1cfa26dfb96f7e74df94bba033d9",
     "internal/handler/pagination.go": "006730ca57e72e25407c48a76563a3926a54e0f7341a6c7811f5a60d293c3399",
-    "internal/handler/autocomplete.go": "5b2441b9ae8c826d24b54872ffa202bfe6fed023335d263373aadc5a3e051b1c",
-    "internal/handler/spl.go": "50734010baac14170524c66e1e1e11ab900ea0f05c37a1eb3a784915a391e674",
-    "internal/handler/rxnorm.go": "66d76b3703e5ebdee6f14241c1bee318fa61796dae770c1b2e3d919fc788b0fe",
-    "internal/handler/cache.go": "17a1c8e697a3a8842c523862edf03fd6c40235243434dd6a1755c93a14cdb8a5",
-    "internal/handler/version.go": "8d0161d79ba538a6b5e9c495bb0ca453c42825a4c62aa0dc54a986edf2795c5e",
+    "internal/handler/autocomplete.go": "d9c9ccb47cfeb32e8b88840b7d812e8ab243eb9c35942c0b4683d9f5786e5dcb",
+    "internal/handler/spl.go": "357c61f1768975454a0cfca6f8d1031e263ee2d2f53cffdb5efb0df98d70313e",
+    "internal/handler/rxnorm.go": "536fe8e5ce9348bc5b3b935fbd38a7819698e69b37df33f55017b2ed54183560",
+    "internal/handler/cache.go": "66f9d3aaddcb025e63342d85dbf31f961ce06546dd6d296d5706520aafbba4d7",
+    "internal/handler/version.go": "6ae3d98a9233bc92856cd4c4ec946b2dc8f39b534de672ec837aefb843e4642b",
     "internal/middleware/auth.go": "1402d7fdd71277c25f8cf8d2c3192726d62b2a96d6d3da610d7a03ef3afafa03",
-    "internal/middleware/admin.go": "f12ce5117eee647fc877016e2bbf4aa58c6033c7f718685ecc66882c80147fd7",
+    "internal/middleware/admin.go": "b04b48de9652d890e42b89aeae9d73d6777763cb4c4441d9a6afeac74ff0b2e0",
     "internal/middleware/ratelimit.go": "20a319e314e53374845325b9fadbb5d3fb7ce77c21285d48eb4c9f1f21aa9efd",
     "internal/middleware/cors.go": "fa413997a0b826f2b7219f2f469dbbfe7cbaef58ccfea041311ffe7dcc806a45",
-    "internal/middleware/logging.go": "149932de14e9fb9d42511316e8fd5db0cc563a5dc4828fd7db692115c52cdd74",
+    "internal/middleware/logging.go": "753e809aae33b9f0304afe322138d2403d89fe47a2949fa604bf90b74c546a25",
     "internal/middleware/metrics.go": "5c65ddbeaaf54cc8d07b7021ea0ef096a93c75d647152df63f469c2a8850c018",
     "internal/middleware/requestid.go": "d0d326b53e3d5554803cc15187a720b797b993418557fd05d0667f24513a6466",
-    "internal/model/response.go": "47af7aa2f2851814079b630c826d6f2bb8b75db271c35ae0981028964ef1f667",
-    "internal/model/rxnorm.go": "3affefc40dfe7009ce897d33cfd61b2688794992bbc53619471625108a69cbe9",
-    "internal/service/drugdata.go": "3cdef06bd50531b937f3061dbf017fb104749fca8afa1ae09c72b13701f28c80",
+    "internal/model/response.go": "17bd31b0b4640038a429cf64321eefcbe8edf1eb81fcbebd89d95650f43825ce",
+    "internal/model/rxnorm.go": "ab039fd5321ceeafd377d99cd99b56eafca6e62444021b8bc8a26a98f6da2cc8",
+    "internal/model/spl.go": "9126aafebd740030438502c045b29f1982dc4b15280e9a8bf0b23b8e4f3dc497",
+    "internal/service/drugdata.go": "5c2894026bfb7e010122ddc6703425a236f0854d321a87e3aaee49cd8533a111",
     "internal/service/rxnorm.go": "40b0c72c962bd743d860987e13d5ccfb0dbb329b4f3090c087d13ea0c01cf16f",
-    "internal/service/spl.go": "7576f947d3fda841db703642b554973061f2fe9c9073e2c18716d2d44279a8ec",
-    "internal/client/client.go": "ce29564e844576232ab0e86dd76d01b180f14df4b6632c9897b19e8b390a35bf",
-    "internal/client/rxnorm.go": "e3877b5aafc06775775e4fb75aae5e7d615be7f0fe8b69a6815d0a1ac86838c4",
-    "internal/client/spl.go": "75482289a2b99dd87d5aab303a6710ea62d8285623fb45a2db18c737558526c6",
-    "internal/spl/indexer.go": "a1ce9638afc2b1493d7389f3849b72db7c3c464439ec62dd71b76c76d22a7d07"
+    "internal/service/spl.go": "47728889a989fef1fe105079e47b9cca67df4298a006e913181e42526307fb68",
+    "internal/client/client.go": "3b0c7cae5751f4681cf59d578338def0e835c9d1a1e0e96df1b0944202c35e36",
+    "internal/client/rxnorm.go": "371c6901352946327a10397787ca4e967bf357af5063e2d402d307ba1100d7a1",
+    "internal/client/spl.go": "d317de69ecab12870a137745171269925acdc979dd7b9eaed95d15c7787fff3c",
+    "internal/client/breaker.go": "dece35a4d6a9ca3ce4597fc85d86cd6c055f296999e7593150cddcb7879126a2",
+    "internal/cache/aside.go": "ba83e8887b7c9f9e8d31a3b60751de798bcd06054098738d5e07c96f2af9290c",
+    "internal/spl/indexer.go": "a726ef6969a36e88d2f1b38a434ee2a51fbd54738ef01881ab03e09a65fdac62",
+    "internal/version/version.go": "dcd8b1e0b8835ec48e24bf5057add42fb5119b60b0edddb1762e10262ba27f34"
   }
 }

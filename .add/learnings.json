@@ -397,6 +397,22 @@
       "date": "2026-04-11",
       "classified_by": "agent",
       "checkpoint_type": "post-deploy"
+    },
+    {
+      "id": "L-027",
+      "title": "docs manifest drift compounds fast when verify gates skip docs check",
+      "body": "Manifest sat 7 weeks (2026-03-25 → 2026-05-16) across cycles 7-10 + v0.10.0 release. 34 of 35 fingerprinted files changed, three new components (internal/cache CacheAside w/ singleflight + GetWithStale, client.CircuitBreaker, client.NewSharedTransport) and a model split (internal/model/spl.go) landed without docs updates. Existing sequence-diagram.md was kept current via per-deploy edits (it already showed the CircuitBreaker in /health), but the cross-cutting upstream-resilience layer was never diagrammed. Lesson: per-route diagrams are a poor place to document cross-cutting infra (breaker, singleflight, stale fallback) — they get duplicated 15× or omitted; one dedicated 'Upstream Resilience' diagram + a note on per-route ones is cleaner. Action: consider adding `/add:docs --check` as a Gate 2 advisory so manifest drift surfaces before it compounds.",
+      "scope": "project",
+      "stack": [
+        "go",
+        "chi"
+      ],
+      "category": "process",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-05-16",
+      "classified_by": "agent",
+      "checkpoint_type": "post-verify"
     }
   ]
 }
