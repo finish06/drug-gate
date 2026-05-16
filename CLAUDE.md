@@ -70,6 +70,7 @@ internal/
   model/            — Request/response types
   pharma/           — Pharm class parsing, brand name deduplication
   service/          — DrugDataService + RxNormService + SPLService (Redis-cached data layer)
+  cache/            — Generic CacheAside utility (sliding TTL via GetEx, singleflight coalescing, optional stale-on-circuit-open fallback)
   spl/              — SPL interaction indexer and XML parser
   metrics/          — Prometheus metrics, Redis health collector, system metrics collector
   version/          — Build version (set via -ldflags)

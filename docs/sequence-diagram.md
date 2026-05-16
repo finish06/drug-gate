@@ -20,6 +20,28 @@ Admin `/admin/*` routes additionally pass through:
 
 Public routes (`/health`, `/version`, `/metrics`, `/swagger/*`, `/openapi.json`) use the global chain only (RequestID + RequestLogger + MetricsMiddleware).
 
+When `LANDING_URL` is set, `GET /` is registered as an additional public route that issues a 302 redirect (see "Landing Page Redirect" below).
+
+---
+
+## Landing Page Redirect (GET /, optional)
+
+```mermaid
+sequenceDiagram
+    actor Visitor as Browser
+    participant GW as drug-gate<br/>:8081
+    participant MW as Middleware Chain<br/>(RequestID→Logger→Metrics)
+
+    Note over GW: Route registered only when LANDING_URL env var is set<br/>to an http:// or https:// URL at boot.
+
+    Visitor->>GW: GET /
+    GW->>MW: Pass request
+    MW->>GW: Next handler
+    GW-->>Visitor: 302 Found<br/>Location: {LANDING_URL}
+
+    Note over GW: If LANDING_URL is unset or invalid (non-http/https),<br/>no handler is registered and GET / returns 404.
+```
+
 ---
 
 ## Health Check
@@ -963,6 +985,83 @@ sequenceDiagram
 
 ---
 
+## Upstream Resilience (Circuit Breaker + Singleflight + Stale Fallback)
+
+Every upstream cash-drugs request is mediated by three coordinated layers. They are not shown in the per-route diagrams above for clarity, but apply to **all** `HTTPDrugClient`, `HTTPSPLClient`, and `HTTPRxNormClient` calls.
+
+```mermaid
+sequenceDiagram
+    participant CA as CacheAside<br/>(internal/cache)
+    participant SF as singleflight.Group
+    participant CB as CircuitBreaker<br/>(10 fails, 30s cooldown)
+    participant TR as Shared http.Transport<br/>(MaxIdleConnsPerHost=50)
+    participant CD as cash-drugs<br/>:8083
+    participant RDS as Redis
+
+    Note over CA,CD: Boot wiring: all upstream clients share one transport<br/>and one CircuitBreaker. Cache key → singleflight key.
+
+    CA->>RDS: GetEx(key, ttl) — sliding TTL
+
+    alt Cache hit (fresh)
+        RDS-->>CA: bytes
+        CA-->>CA: Unmarshal, recordCache("hit")
+    end
+
+    alt Cache miss
+        RDS-->>CA: redis.Nil
+        CA->>CA: recordCache("miss")
+        CA->>SF: Do(key, fetch)
+
+        alt First caller for this key
+            SF->>CB: Execute(fn)
+
+            alt Circuit closed (or half-open probe)
+                CB->>TR: Do(req)
+                TR->>CD: GET /api/cache/{slug}
+                CD-->>TR: 200 / 4xx / 5xx
+                TR-->>CB: response
+                alt Success
+                    CB->>CB: consecutiveFails=0, state=Closed
+                    CB-->>SF: result
+                    SF->>RDS: SET key {json} EX ttl
+                    SF->>RDS: SET stale:key {json} (no TTL, GetWithStale only)
+                end
+                alt Failure (5xx / network / non-2xx)
+                    CB->>CB: consecutiveFails++<br/>if ≥10 → state=Open, openedAt=now
+                    CB-->>SF: ErrUpstream
+                end
+            end
+
+            alt Circuit open (cooldown not elapsed)
+                CB-->>SF: ErrCircuitOpen (upstream not called)
+            end
+        end
+
+        alt Concurrent callers for the same key
+            Note over SF: Block until the in-flight fetch returns,<br/>then receive the shared result (no duplicate upstream call)
+        end
+    end
+
+    alt GetWithStale path: fetch returned ErrCircuitOpen
+        CA->>RDS: GET stale:key (no-TTL backup)
+        alt Stale data exists
+            RDS-->>CA: bytes
+            CA->>CA: recordCache("stale")
+            CA-->>CA: Return Result{Value, Stale: true}
+        end
+        alt No stale data
+            CA-->>CA: Return ErrCircuitOpen
+        end
+    end
+```
+
+Notes:
+- **CircuitBreaker** state is exposed at `/health` as the `circuit_breaker` dependency (`closed` / `open`). An open breaker degrades health (HTTP 200, status `degraded`) but does not fail it (HTTP 503 reserved for Redis).
+- **Singleflight** keys are the Redis cache keys, so coalescing happens per cached resource — a thundering herd on one expired key becomes a single upstream fetch regardless of caller count.
+- **Stale fallback** (`GetWithStale`) is used only on paths that opted in; on a cold cache + open circuit, the request fails fast with `ErrCircuitOpen`.
+
+---
+
 ## SPL Background Indexer (Startup Process)
 
 ```mermaid
@@ -1007,6 +1106,7 @@ sequenceDiagram
 
 | Method | Path | Auth | Handler | Description |
 |--------|------|------|---------|-------------|
+| GET | `/` | None | inline redirect | 302 → `LANDING_URL` (only registered when env var is set to an http/https URL) |
 | GET | `/health` | None | `HealthHandler.Handle` | Service health, uptime, start_time, dependency checks (Redis, upstream, breaker) |
 | GET | `/version` | None | `VersionInfo` | Build version, git commit, branch, Go version, OS, arch, build_time |
 | GET | `/metrics` | None | `promhttp.Handler` | Prometheus metrics endpoint |

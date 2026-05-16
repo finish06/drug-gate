@@ -13,3 +13,5 @@
 2026-04-11 16:45 | verify | Gate 1-4 pass locally (vet clean, handler lint clean after fixing defer resp.Body.Close, handler pkg 87.7% coverage, 12/12 AC tests mapped). CI still blocked by pre-existing internal/cache singleflight flake (unrelated). | Confirmed health-version-standard changes are production-ready pending unrelated CI fix
 
 2026-04-11 16:52 | verify | fix singleflight flake + health.go errcheck, CI green, beta deployed to staging, manual /health + /version validate, k6 load 10/10 pass (HTTP p95 204.9ms vs baseline 347.7ms, -41.1%) | Unblocked health-version-standard deploy, fixed pre-existing blocker
+
+2026-05-16 00:10 | docs | manifest 7 weeks stale (34 source files changed since 2026-03-25); incremental re-discovery added internal/cache package, CircuitBreaker, SharedTransport, SPL model split; sequence-diagram.md gained Landing Page Redirect + Upstream Resilience (singleflight/breaker/stale fallback) diagrams; CLAUDE.md picked up cache/ dir; manifest fingerprints refreshed for 35 files | Manifest now matches v0.10.0 reality; future /add:docs runs can do incremental checks instead of full re-scan
