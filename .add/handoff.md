@@ -1,31 +1,39 @@
 # Session Handoff
-**Written:** 2026-04-18
+**Written:** 2026-05-17 (12h away session wrap)
 
 ## In Progress
-- Nothing active. Away session complete.
+- Nothing active. Session complete. 4 PRs open for your review.
 
 ## Completed This Session
-- `b9a3a4e` fix: normalize git_commit to short SHA and build_time to UTC Z format
-- `5034732` docs: mark health-version-standard and cache-singleflight specs as Complete
-- `0e234da` fix: repo hygiene — gofmt, errcheck, staticcheck across 6 files
-- `ebe0a88` fix: backlog U-005, U-006, U-007 — input bounds and request logging
-- `176dfee` fix(security): sanitize DrugCheckResult.Error messages (SEC-002)
-- `a24d549` test: improve client package coverage 82.3% → 86.6%
-- `19c34be` docs: update PRD backlog (12 items DONE), CHANGELOG, sequence diagrams
-- All CI green, deployed to staging, k6 smoke passed
-- golangci-lint: 0 issues across entire repo
+
+### PRs open for review (all CI green except #26 still running)
+1. **PR #23** `docs/prd-cleanup-stale-tags` — fix M6/M8/M9 stale detail-block tags (no roadmap-table changes)
+2. **PR #24** `docs/readme-sync-v0.10.0` — add `GET /` to public table, add cache/version to project structure diagram
+3. **PR #25** `docs/away-session-decision-packet` — 3 decision docs + M9.5 DRAFT spec (see below)
+4. **PR #26** `test/middleware-coverage` — close 2 coverage gaps in `middleware/metrics.go` to 100%
+
+### Decision docs awaiting your call (in PR #25)
+- **`.add/decisions/U-002-getwithstale.md`** — recommends wiring `GetWithStale` via thin `GetOrStale` wrapper, ~15 lines glue
+- **`.add/decisions/U-004-indexer-parser.md`** — ⚠️ surfaces a real bug: indexer and on-demand service share a cache key with different `SPLDetail` shapes. Recommends 5-line fix.
+- **`.add/decisions/coverage-gap-analysis.md`** — all pkgs ≥80%; lowest function is `AutocompleteDrugs` at 57.9%
+
+### Untracked files in working tree (flag-only, no commits)
+- `.add/cycles/cycle-10.md` — completed work, not marked complete (recommend commit-as-COMPLETE)
+- `.add/learnings-active.md` — generated view (recommend git-ignore)
+- `.add/security/injection-events.jsonl` — session-local log (recommend git-ignore)
 
 ## Decisions Made
-- SEC-002: categorized messages for circuit-open ("service temporarily unavailable"), deadline ("upstream request timed out"), cancel ("request canceled"), fallback for unknown errors
-- SPL coverage improvement skipped: gaps are in indexer run/indexOnce which require Redis integration tests, not unit-testable
+- Bundled all decision docs + M9.5 DRAFT into one PR (#25) rather than splitting — single review surface for related "review-and-decide" artifacts.
+- Skipped 3 of 4 coverage micro-wins (Task 8 partial) — diminishing returns vs. review burden.
+- Did NOT change any production code. All work is docs, tests, or decision-prep.
 
 ## Blockers
-- None
+- All 4 PRs are blocked on `REVIEW_REQUIRED` (main branch protection — expected).
 
 ## Next Steps
-1. SEC-003: ListKeys/GetKey redaction — needs human decision on policy
-2. U-002: GetWithStale dead code — wire up or remove (architecture decision)
-3. U-004: Indexer ParseInteractions vs ParseSections — changes cache shape
-4. M9.5: Production Deploy workflow — needs spec
-5. M10: Admin Auth Hardening — needs spec interview
-6. Consider tagging a release (v0.10.0?) to cut the current beta
+1. Merge PRs #23, #24, #26 (low-risk, mechanical).
+2. Review PR #25 — start with `U-004-indexer-parser.md` (real bug), then U-002 and the M9.5 DRAFT spec.
+3. Resolve untracked-file triage (Q1/Q2 in away-log).
+4. Run `/add:spec m9.5-production-deploy` interview to convert v0.1 DRAFT → v1.0 (8 open questions in the spec).
+5. Promote M9.5 Next → Now via `/add:roadmap --edit` and set `planning.current_milestone`.
+6. Optionally: implement U-004 fix (5 lines) and U-002 wiring (15 lines) — both have acceptance steps in their decision docs.
