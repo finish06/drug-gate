@@ -270,7 +270,7 @@ Frontend apps need to understand how drug data connects. There are three indepen
 - [x] Cache expires after 60 minutes of inactivity
 - [x] Upstream errors return 502 with clear message
 
-#### M6: SPL Interactions [IN_PROGRESS]
+#### M6: SPL Interactions [DONE]
 **Goal:** Expose drug interaction data from FDA Structured Product Labels (SPL) via three complementary APIs
 **Appetite:** 1 week
 **Target maturity:** beta
@@ -323,7 +323,7 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
 - [x] Autocomplete endpoint returns results in < 50ms for cached data
 - [x] 80%+ test coverage on new code
 
-#### M8: Cache Architecture + Clinical Data [NOW — next 2 weeks]
+#### M8: Cache Architecture + Clinical Data [DONE]
 **Goal:** Clean up technical debt that unblocks faster development, double the clinical data coverage
 **Appetite:** 2 weeks
 **Target maturity:** beta
@@ -340,24 +340,42 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
   - Alongside existing Section 7 — Drug Interactions
 
 **Success criteria:**
-- [ ] CacheAside[T] generic used by all cached endpoints (drug names, classes, NDC, RxNorm, SPL)
-- [ ] Net reduction of ~300 lines of cache boilerplate
-- [ ] TTL configurable per environment via config/env vars
-- [ ] SPL detail endpoint returns sections 4, 5, 6, and 7
-- [ ] Drug info card includes contraindications, warnings, and adverse reactions
-- [ ] 80%+ test coverage on new code
+- [x] CacheAside[T] generic used by all cached endpoints (drug names, classes, NDC, RxNorm, SPL)
+- [x] Net reduction of ~300 lines of cache boilerplate (211 lines eliminated across 11 methods)
+- [x] TTL configurable per environment via `CACHE_TTL` env var
+- [x] SPL detail endpoint returns sections 4, 5, 6, and 7
+- [x] Drug info card includes contraindications, warnings, and adverse reactions
+- [x] 80%+ test coverage on new code (81.1% achieved)
 
-#### M9: Upstream Resilience + Production Deploy [NEXT — weeks 5-6]
-**Goal:** Eliminate single points of failure and establish production-grade deployment
-**Appetite:** 2 weeks
-**Target maturity:** GA candidate
+#### M9: Upstream Resilience [DONE]
+**Goal:** Eliminate single points of failure on upstream cash-drugs calls
+**Appetite:** 1 week
+**Target maturity:** beta (resilience portion; production-deploy portion moved to M9.5)
 
 **Features:**
 - Circuit Breaker + Parallel Resolution (M effort)
-  - Circuit breaker on cash-drugs HTTP client (open after N consecutive failures, half-open probe, auto-close)
-  - Stale-cache serving when circuit is open (return expired cached data rather than 502)
-  - Parallelize interaction checker with `errgroup` for multi-drug lookups
-  - `MaxBytesReader` on all upstream responses to prevent memory exhaustion
+  - Circuit breaker on cash-drugs HTTP client (opens after 10 consecutive failures, half-open probe, auto-close on success)
+  - Stale-cache serving available via `CacheAside[T].GetWithStale` (no-TTL backup key; activates on `ErrCircuitOpen`)
+  - Parallelize interaction checker with semaphore(5) for multi-drug lookups
+  - `MaxBytesReader` (10MB) on all upstream responses to prevent memory exhaustion
+- Singleflight in cache layer (S effort) — thundering-herd prevention on TTL expiry; `golang.org/x/sync/singleflight` in `internal/cache/aside.go`
+- Shared HTTP transport + Redis pool tuning — `MaxIdleConnsPerHost: 50`, `PoolSize: 128`
+
+**Success criteria:**
+- [x] Circuit breaker trips after 10 consecutive upstream failures
+- [x] Circuit auto-recovers via half-open probe after configurable cooldown (30s)
+- [x] Stale-cache fallback available via `GetWithStale` (not yet wired to any endpoint — see backlog U-002)
+- [x] Multi-drug interaction checker runs parallel upstream calls
+- [x] `MaxBytesReader` limits upstream response size (10MB — raised from initial 5MB after drugnames truncation incident)
+- [x] Singleflight coalesces concurrent cache misses per key
+- [x] v0.8.0 tagged; resilience surfaced in `/health` as `circuit_breaker` dependency
+
+#### M9.5: Production Deploy [NEXT]
+**Goal:** Establish production-grade deployment automation with health gate and rollback
+**Appetite:** 1 week
+**Target maturity:** GA candidate
+
+**Features:**
 - Production Deploy Automation + Rollback (M effort)
   - Pin deployments to version tags (no `:latest` in production)
   - GitHub Actions deploy workflow with health gate (deploy → health check → promote or rollback)
@@ -365,14 +383,12 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
   - Documented runbook for production operations
 
 **Success criteria:**
-- [ ] Circuit breaker trips after 10 consecutive upstream failures, serves stale cache
-- [ ] Circuit auto-recovers via half-open probe after configurable cooldown
-- [ ] Multi-drug interaction checker runs parallel upstream calls via errgroup
-- [ ] MaxBytesReader limits upstream response size to 5MB
 - [ ] Production deploy pinned to version tags, triggered by GH Actions
-- [ ] Health gate verifies deployment before promoting
+- [ ] Health gate verifies deployment before promoting (uses `/health` standard endpoint from M-health-version-standard)
 - [ ] One-command rollback documented and tested
 - [ ] Runbook covers: deploy, rollback, Redis recovery, circuit breaker reset
+
+> **Spec status:** No spec yet. PRD scope above is provisional — confirm during `/add:spec m9.5-production-deploy` interview.
 
 #### M10: Admin Auth Hardening [LATER — week 7]
 **Goal:** Harden the highest-privilege credential in the system
@@ -504,3 +520,4 @@ Single tier for MVP or multiple from the start? Consider:
 | 2026-03-07 | 0.1.0 | calebdunn | Initial draft from /add:init interview |
 | 2026-03-07 | 0.2.0 | calebdunn | Auth decision: publishable API keys (frontend-safe). Added Future Discovery section. |
 | 2026-03-18 | 0.3.0 | calebdunn | Beta promotion. M6 SPL Interactions added. RxNorm and SPL moved from out-of-scope to done/in-progress. |
+| 2026-05-17 | 0.4.0 | claude (away) | Section 6 detail-block sync to roadmap-table reality: M6 [IN_PROGRESS]→[DONE], M8 [NOW]→[DONE] with criteria checked, M9 split into M9 Upstream Resilience [DONE] and M9.5 Production Deploy [NEXT]. No roadmap-table changes; only stale detail-block tags. |
