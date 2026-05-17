@@ -1,25 +1,81 @@
 # Away Mode Log
 
-**Started:** 2026-04-18 15:30 UTC
-**Expected Return:** 2026-04-19 15:30 UTC
-**Duration:** 1 day
+**Started:** 2026-05-17T00:53Z (2026-05-16 evening PT)
+**Expected Return:** 2026-05-17T12:53Z (12-hour session)
+**Maturity:** beta · **Autonomy:** autonomous · **Tier:** 3
 
-## Work Plan
-1. SEC-002: Sanitize DrugCheckResult.Error — client-safe messages
-2. PRD backlog: mark 11 completed items as DONE
-3. CHANGELOG: add unreleased changes since v0.9.0
-4. Sequence diagrams: verify health/version flows
-5. Test coverage: apikey (80.5→85+), client (82.3→85+), spl (83.9→85+)
-6. Final verify + push
+## Work Plan (confirmed)
+
+1. PRD detail-block cleanup (M6/M8/M9 stale tags) — PR
+2. Untracked-file triage (cycle-10.md, learnings-active.md, security/) — flag only
+3. README.md drift scan — PR if drift found
+4. U-004 indexer parser impact analysis — decision doc, no code
+5. U-002 GetWithStale wiring scope — decision doc, no code
+6. Coverage gap analysis — write-up
+7. M9.5 DRAFT spec from PRD — PR, marked DRAFT, TODO(human) for interview decisions
+8. Coverage micro-wins inside existing specs (time-permitting)
+9. Fresh handoff + return briefing
+
+## Hard Lines
+
+- No merges to main
+- No staging or prod deploys
+- No new feature implementation without confirmed spec
+- No code changes for U-002 or U-004 (decision-prep only)
+- No git rewrites / force pushes / branch deletes
 
 ## Progress Log
-| Time | Task | Status | Notes |
-|------|------|--------|-------|
-| 15:32 | SEC-002: clientSafeError() | done | Maps ErrCircuitOpen, DeadlineExceeded, Canceled; fallback for unknown |
-| 15:38 | PRD backlog update | done | 12 items marked DONE |
-| 15:42 | CHANGELOG [Unreleased] | done | 8 Added, 5 Changed, 1 Removed, 5 Fixed entries |
-| 15:48 | Sequence diagram | done | Health check flow rewritten with dep checks + 3-tier status |
-| 15:55 | Client test coverage | done | 82.3% → 86.6% — 9 new tests (options, error paths) |
-| 16:00 | SPL test coverage | skipped | 83.9% — gaps in indexer require Redis integration, not unit-testable |
-| 16:05 | Full verify | done | go vet clean, all tests pass, golangci-lint 0 issues |
-| 16:08 | Commits + push | done | 3 commits: SEC-002, test coverage, docs |
+
+| Time (UTC) | Task | Status | Notes |
+|------------|------|--------|-------|
+| 00:53 | Session start | active | Plan confirmed by user ("go") |
+| 00:58 | Task 1: PRD cleanup | done | PR #23, CI green, blocked on review |
+| 01:05 | Task 2: Untracked-file triage | done (flag-only) | See "Untracked file triage" below |
+| 01:05 | Task 3: README drift scan | done | PR #24, CI green, blocked on review |
+| 01:06 | Task 4: U-004 indexer parser decision doc | done | Surfaced data-shape bug; doc in PR #25 |
+| 01:06 | Task 5: U-002 GetWithStale scoping doc | done | Doc in PR #25 |
+| 01:06 | Task 6: Coverage gap analysis | done | Doc in PR #25; all packages ≥80% |
+| 01:06 | Task 7: M9.5 DRAFT spec | done | v0.1, 10 ACs, 8 open questions; in PR #25 |
+| 01:06 | Task 8: Coverage micro-wins | partial (1 of 4) | PR #26 closes metrics.go gaps to 100% |
+| 01:08 | Task 9: Fresh handoff + return briefing | done | Handoff rewritten; this log finalized |
+| 01:08 | Session end | complete | 4 PRs open, all CI green/pending |
+
+## Decision Docs Produced
+
+- `.add/decisions/U-002-getwithstale.md` — recommends Option A (~15 lines glue to wire it up)
+- `.add/decisions/U-004-indexer-parser.md` — ⚠️ surfaces a real bug, recommends Option A (5-line fix)
+- `.add/decisions/coverage-gap-analysis.md` — all packages ≥80%; identifies safe quick wins
+
+## Branches & PRs Opened
+
+- **PR #23** — `docs/prd-cleanup-stale-tags` · M6/M8/M9 detail-block sync · CI ✅ · blocked on review
+- **PR #24** — `docs/readme-sync-v0.10.0` · landing route + cache/version diagram · CI ✅ · blocked on review
+- **PR #25** — `docs/away-session-decision-packet` · 3 decision docs + M9.5 DRAFT spec · CI ✅ · blocked on review
+- **PR #26** — `test/middleware-coverage` · metrics.go to 100% · CI pending · blocked on review
+
+Total: **4 PRs**, **0 production code changes**, **3 decision docs + 1 draft spec**, **2 functions newly at 100% coverage**.
+
+## Untracked File Triage (Task 2 — flag-only, no commits)
+
+Three items present in working tree, never committed, all from 2026-05-16:
+
+1. **`.add/cycles/cycle-10.md`** — Planned cycle (Status: PLANNED, Started: TBD) for "Backlog Hardening Critical+High" covering S-001, U-001, SEC-001, S-002, S-003, S-004. **All six items are now DONE** per PRD backlog (shipped across commits `180621e`, `ebe0a88`, `b9a3a4e`, etc.). The cycle was never formally started/completed via the cycles system but the work happened.
+   - **Recommendation:** Update file's Status to COMPLETE, fill Completed date, add brief retro note, then commit. OR delete (work is already attributed in commits + PRD backlog + L-022/L-025). I lean toward **commit-as-completed** for historical traceability since cycle-1 through cycle-8 are all committed.
+
+2. **`.add/learnings-active.md`** — Generated file (10 KB, 2026-05-16 17:33). Looks like output of an `/add:learnings --active` or similar view, pre-filtered to 15 of 27 entries by severity/date. Consistent format with the committed `.add/learnings.md`.
+   - **Recommendation:** Either git-ignore (it's a regenerated view, like a build artifact) OR commit it (consistent with `learnings.md` being committed). Slight preference for **git-ignore** since it duplicates filtered content from `learnings.json`, but this is your call.
+
+3. **`.add/security/injection-events.jsonl`** — 230 lines of structured events (each line `{"timestamp", "tool", ...}`), 2026-05-16 between 22:28Z and ~23:30Z. Generated by some local security/monitoring hook.
+   - **Recommendation:** **Git-ignore.** This is session-local observation data with potentially sensitive context (tool calls, file paths). Same blast-radius as `away-logs/` and `tests/screenshots/errors/` which are already ignored.
+
+Proposed `.gitignore` additions (queued — not applied):
+```
+# ADD — ephemeral artifacts (don't commit)
+.add/security/
+.add/learnings-active.md   # generated view, optional
+```
+
+## Open Questions for Human
+
+- Q1 (triage): commit cycle-10.md as COMPLETE, or delete? (recommend commit)
+- Q2 (triage): git-ignore `.add/learnings-active.md` and `.add/security/`? (recommend both)
