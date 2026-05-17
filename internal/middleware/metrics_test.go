@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -200,6 +201,78 @@ func TestMetricsMiddleware_CapturesStatusCodes(t *testing.T) {
 				t.Errorf("expected status_code=%s, got %q", expected, got)
 			}
 		})
+	}
+}
+
+// Handler calls Write directly without WriteHeader (implicit 200).
+// Covers the !sw.written branch in statusWriter.Write.
+func TestMetricsMiddleware_WriteWithoutExplicitWriteHeader(t *testing.T) {
+	m, reg := newTestMetrics(t)
+
+	r := chi.NewRouter()
+	r.Use(MetricsMiddleware(m))
+	r.Get("/implicit", func(w http.ResponseWriter, r *http.Request) {
+		// No WriteHeader call — net/http implicitly writes 200 on first Write.
+		_, _ = w.Write([]byte("implicit ok"))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/implicit", nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	families, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("failed to gather: %v", err)
+	}
+
+	mf := findMetricFamily(families, "druggate_http_requests_total")
+	if mf == nil {
+		t.Fatal("druggate_http_requests_total not found")
+	}
+
+	metric := mf.GetMetric()[0]
+	// Status code defaults to 200 in statusWriter, since WriteHeader was never called.
+	if got := getLabelValue(metric, "status_code"); got != "200" {
+		t.Errorf("expected status_code=200 for implicit-200 handler, got %q", got)
+	}
+}
+
+// When MetricsMiddleware runs in a context where Chi did not match a route
+// pattern (request goes through chi.RouteCtxKey but RoutePattern() is empty),
+// the label falls back to r.URL.Path. Covers the `route == ""` branch.
+func TestMetricsMiddleware_RouteFallbackOnEmptyPattern(t *testing.T) {
+	m, reg := newTestMetrics(t)
+
+	handler := MetricsMiddleware(m)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Build a request with an empty RouteContext attached — chi.RouteContext()
+	// returns it but RoutePattern() returns "".
+	emptyRouteCtx := chi.NewRouteContext()
+	ctx := context.WithValue(context.Background(), chi.RouteCtxKey, emptyRouteCtx)
+	req := httptest.NewRequest(http.MethodGet, "/no-such-route", nil).WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 from inner handler, got %d", rr.Code)
+	}
+
+	families, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("failed to gather: %v", err)
+	}
+
+	mf := findMetricFamily(families, "druggate_http_requests_total")
+	if mf == nil {
+		t.Fatal("druggate_http_requests_total not found")
+	}
+
+	metric := mf.GetMetric()[0]
+	if got := getLabelValue(metric, "route"); got != "/no-such-route" {
+		t.Errorf("expected route fallback to URL.Path, got %q", got)
 	}
 }
 
