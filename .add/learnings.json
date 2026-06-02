@@ -401,7 +401,7 @@
     {
       "id": "L-027",
       "title": "docs manifest drift compounds fast when verify gates skip docs check",
-      "body": "Manifest sat 7 weeks (2026-03-25 → 2026-05-16) across cycles 7-10 + v0.10.0 release. 34 of 35 fingerprinted files changed, three new components (internal/cache CacheAside w/ singleflight + GetWithStale, client.CircuitBreaker, client.NewSharedTransport) and a model split (internal/model/spl.go) landed without docs updates. Existing sequence-diagram.md was kept current via per-deploy edits (it already showed the CircuitBreaker in /health), but the cross-cutting upstream-resilience layer was never diagrammed. Lesson: per-route diagrams are a poor place to document cross-cutting infra (breaker, singleflight, stale fallback) — they get duplicated 15× or omitted; one dedicated 'Upstream Resilience' diagram + a note on per-route ones is cleaner. Action: consider adding `/add:docs --check` as a Gate 2 advisory so manifest drift surfaces before it compounds.",
+      "body": "Manifest sat 7 weeks (2026-03-25 \u2192 2026-05-16) across cycles 7-10 + v0.10.0 release. 34 of 35 fingerprinted files changed, three new components (internal/cache CacheAside w/ singleflight + GetWithStale, client.CircuitBreaker, client.NewSharedTransport) and a model split (internal/model/spl.go) landed without docs updates. Existing sequence-diagram.md was kept current via per-deploy edits (it already showed the CircuitBreaker in /health), but the cross-cutting upstream-resilience layer was never diagrammed. Lesson: per-route diagrams are a poor place to document cross-cutting infra (breaker, singleflight, stale fallback) \u2014 they get duplicated 15\u00d7 or omitted; one dedicated 'Upstream Resilience' diagram + a note on per-route ones is cleaner. Action: consider adding `/add:docs --check` as a Gate 2 advisory so manifest drift surfaces before it compounds.",
       "scope": "project",
       "stack": [
         "go",
@@ -413,6 +413,22 @@
       "date": "2026-05-16",
       "classified_by": "agent",
       "checkpoint_type": "post-verify"
+    },
+    {
+      "id": "L-028",
+      "title": "Auth-before-CORS ordering breaks browser preflight (401 on keyless OPTIONS)",
+      "body": "On /v1/* the chain was APIKeyAuth \u2192 PerKeyCORS, so CORS preflight (OPTIONS) requests \u2014 which browsers send WITHOUT X-API-Key \u2014 hit auth first and got 401, blocking the real cross-origin request (surfaced to callers as a misleading 'TLS error'). Fix: a keyless CORSPreflight middleware ahead of auth that returns 204 + reflects Origin + advertises X-API-Key in Access-Control-Allow-Headers. Per-key origin locking can't run at preflight (no key present) \u2014 it must live on the actual request (PerKeyCORS sets ACAO there). Pattern: any auth middleware in front of a CORS-exposed route must let CORS preflights pass before authenticating. The spec already documented this (edge case 'preflight without API key') \u2014 code had drifted from spec.",
+      "scope": "project",
+      "stack": [
+        "go",
+        "chi"
+      ],
+      "category": "anti-pattern",
+      "severity": "high",
+      "source": "drug-gate",
+      "date": "2026-06-02",
+      "classified_by": "agent",
+      "checkpoint_type": "post-tdd"
     }
   ]
 }
