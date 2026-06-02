@@ -18,7 +18,8 @@
 ## Blockers
 - None.
 
+- Added e2e regression tests (`tests/e2e/e2e_test.go`): keyless preflight → 204, non-preflight OPTIONS → 401, per-key origin enforcement on real request. Verified PASS against the `docker-compose.e2e.yml` stack built from this branch. e2e is not in CI; run via `make test-e2e`. Commits: `5f94973` (fix) + `b0c4c93` (e2e). PR #28.
+
 ## Next Steps
-1. Commit on a `fix/` branch (conventional commit) and open a PR — beta requires PR review before merge; do not merge to main without approval.
+1. PR #28 awaits review — beta requires PR review before merge; do not merge to main without approval.
 2. Verify in a real browser against staging (cross-origin `fetch` from an allowed origin) once deployed.
-3. Optional: add an e2e preflight assertion in `tests/e2e/` to lock the behavior at the HTTP boundary.
