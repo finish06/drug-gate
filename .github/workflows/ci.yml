@@ -46,6 +46,65 @@ jobs:
       - name: Build
         run: go build ./cmd/server
 
+  e2e:
+    runs-on: ubuntu-latest
+    # Non-blocking: cash-drugs pulls live data from FDA/DailyMed, so an upstream
+    # hiccup must not turn unrelated PRs red. Failures surface as a warning
+    # annotation; this job never fails the workflow. Run the full suite locally
+    # (blocking) with `make test-e2e`.
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+
+      - name: Log in to private registry (cash-drugs image)
+        uses: docker/login-action@v3
+        with:
+          registry: dockerhub.calebdunn.tech
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Start e2e stack
+        run: docker compose -f docker-compose.e2e.yml up -d --build
+
+      - name: Wait for stack to be ready
+        run: |
+          echo "Waiting for cash-drugs..."
+          for _ in $(seq 1 60); do
+            if docker compose -f docker-compose.e2e.yml exec -T cash-drugs wget -q --spider http://localhost:8080/health 2>/dev/null; then
+              echo "cash-drugs ready"; break
+            fi
+            sleep 2
+          done
+          echo "Waiting for drug-gate..."
+          for _ in $(seq 1 60); do
+            if curl -sf http://localhost:18081/health >/dev/null 2>&1; then
+              echo "drug-gate ready"; break
+            fi
+            sleep 2
+          done
+
+      - name: Run e2e tests
+        id: e2e
+        continue-on-error: true
+        run: |
+          DRUG_GATE_URL=http://localhost:18081 ADMIN_SECRET=e2e-test-secret \
+            go test -tags=e2e -count=1 -v ./tests/e2e/...
+
+      - name: Report e2e result
+        if: steps.e2e.outcome == 'failure'
+        run: echo "::warning::e2e tests failed or were flaky (non-blocking — cash-drugs depends on live FDA/DailyMed APIs). See the 'Run e2e tests' step logs."
+
+      - name: Dump drug-gate logs on failure
+        if: steps.e2e.outcome == 'failure'
+        run: docker compose -f docker-compose.e2e.yml logs --no-color drug-gate cash-drugs
+
+      - name: Tear down e2e stack
+        if: always()
+        run: docker compose -f docker-compose.e2e.yml down -v
+
   publish:
     needs: test
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
