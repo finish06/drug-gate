@@ -10,9 +10,12 @@ All routes pass through these global middleware (in order):
 
 `/v1/*` routes additionally pass through:
 
-4. **APIKeyAuth** -- validates X-API-Key header against Redis store; increments `druggate_auth_rejections_total` on failure
-5. **PerKeyCORS** -- sets CORS headers based on the key's allowed origins
-6. **RateLimit** -- enforces per-key rate limits via Redis sliding window; increments `druggate_ratelimit_rejections_total` on 429
+4. **CORSPreflight** -- short-circuits CORS preflight (OPTIONS) requests *before* auth: browsers strip `X-API-Key` from preflights, so they cannot be authenticated. Returns 204, reflects the requesting `Origin`, and advertises `X-API-Key` in `Access-Control-Allow-Headers`. Non-preflight requests pass through untouched.
+5. **APIKeyAuth** -- validates X-API-Key header against Redis store; increments `druggate_auth_rejections_total` on failure
+6. **PerKeyCORS** -- sets CORS headers on the *actual* (authenticated) request based on the key's allowed origins. This is where origin locking is enforced — a disallowed origin gets no `Access-Control-Allow-Origin`, so the browser blocks the response read.
+7. **RateLimit** -- enforces per-key rate limits via Redis sliding window; increments `druggate_ratelimit_rejections_total` on 429
+
+> **CORS preflight flow:** `Browser → OPTIONS /v1/... (Origin + Access-Control-Request-Method, no X-API-Key) → CORSPreflight → 204 + reflected Origin`. The browser then sends the real request with `X-API-Key`, which runs the full Auth → PerKeyCORS → RateLimit chain.
 
 Admin `/admin/*` routes additionally pass through:
 

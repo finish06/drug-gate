@@ -208,6 +208,10 @@ func main() {
 
 	// Protected API routes
 	r.Route("/v1", func(r chi.Router) {
+		// CORSPreflight must run before auth: browsers strip X-API-Key from
+		// preflight (OPTIONS) requests, so auth would reject them with 401 and
+		// the browser would block the real request.
+		r.Use(middleware.CORSPreflight)
 		r.Use(middleware.APIKeyAuth(store, m))
 		r.Use(middleware.PerKeyCORS)
 		r.Use(middleware.RateLimit(limiter, m))

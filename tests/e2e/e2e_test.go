@@ -1031,3 +1031,123 @@ func TestE2E_AdminCacheClear(t *testing.T) {
 	deleted, _ := result["keys_deleted"].(float64)
 	t.Logf("Cache cleared: %d keys deleted", int(deleted))
 }
+
+// --- CORS preflight (security-rate-limiting AC-021) ---
+
+// createTestKeyWithOrigins creates an origin-locked key for CORS enforcement tests.
+func createTestKeyWithOrigins(t *testing.T, appName string, origins []string, rateLimit int) string {
+	t.Helper()
+	resp, err := adminRequest(http.MethodPost, "/admin/keys", map[string]interface{}{
+		"app_name":   appName,
+		"origins":    origins,
+		"rate_limit": rateLimit,
+	})
+	if err != nil {
+		t.Fatalf("create key: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create key: status = %d, want 201", resp.StatusCode)
+	}
+
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	key, ok := result["key"].(string)
+	if !ok || key == "" {
+		t.Fatal("create key: missing key in response")
+	}
+	return key
+}
+
+// AC-021: A browser preflight carries no X-API-Key (the browser strips it). It must
+// be answered before auth — 204 with the origin reflected — not rejected with 401.
+// This is the regression lock for the auth-before-CORS ordering bug (PR #28).
+func TestE2E_AC021_CORSPreflightBypassesAuth(t *testing.T) {
+	origin := "https://myapp.example"
+	req, _ := http.NewRequest(http.MethodOptions, baseURL+"/v1/drugs/ndc/00069-3150", nil)
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Access-Control-Request-Method", "GET")
+	req.Header.Set("Access-Control-Request-Headers", "x-api-key")
+	// Deliberately no X-API-Key — browsers do not send it on preflights.
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("OPTIONS preflight: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("preflight status = %d, want 204 (must not require an API key)", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != origin {
+		t.Errorf("Access-Control-Allow-Origin = %q, want %q", got, origin)
+	}
+	if got := resp.Header.Get("Access-Control-Allow-Headers"); !strings.Contains(got, "X-API-Key") {
+		t.Errorf("Access-Control-Allow-Headers = %q, must include X-API-Key", got)
+	}
+	if resp.Header.Get("Access-Control-Allow-Methods") == "" {
+		t.Error("missing Access-Control-Allow-Methods on preflight")
+	}
+}
+
+// An OPTIONS request that is NOT a CORS preflight (no Access-Control-Request-Method)
+// must still require auth — the preflight bypass must not become a blanket OPTIONS exemption.
+func TestE2E_AC021_NonPreflightOptionsRequiresAuth(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodOptions, baseURL+"/v1/drugs/ndc/00069-3150", nil)
+	req.Header.Set("Origin", "https://myapp.example")
+	// No Access-Control-Request-Method → not a preflight.
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("OPTIONS: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("non-preflight OPTIONS without a key: status = %d, want 401", resp.StatusCode)
+	}
+}
+
+// AC-004/AC-005: the permissive preflight does not weaken origin locking — per-key
+// enforcement happens on the actual (authenticated) request. An allowed origin gets
+// Access-Control-Allow-Origin; a disallowed origin does not, so the browser blocks
+// the response read. Asserted independently of upstream availability, since PerKeyCORS
+// sets the header before the handler runs.
+func TestE2E_AC005_RealRequestOriginEnforcement(t *testing.T) {
+	allowed := "https://allowed.example"
+	key := createTestKeyWithOrigins(t, "e2e-cors-origin", []string{allowed}, 250)
+
+	t.Run("allowed origin gets ACAO", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, baseURL+"/v1/drugs/ndc/00069-3150", nil)
+		req.Header.Set("X-API-Key", key)
+		req.Header.Set("Origin", allowed)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("GET: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusUnauthorized {
+			t.Fatalf("unexpected 401 for valid key")
+		}
+		if got := resp.Header.Get("Access-Control-Allow-Origin"); got != allowed {
+			t.Errorf("Access-Control-Allow-Origin = %q, want %q (status %d)", got, allowed, resp.StatusCode)
+		}
+	})
+
+	t.Run("disallowed origin gets no ACAO", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, baseURL+"/v1/drugs/ndc/00069-3150", nil)
+		req.Header.Set("X-API-Key", key)
+		req.Header.Set("Origin", "https://evil.example")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("GET: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "" {
+			t.Errorf("disallowed origin must get no Access-Control-Allow-Origin, got %q (status %d)", got, resp.StatusCode)
+		}
+	})
+}

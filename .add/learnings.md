@@ -5,6 +5,9 @@
 > Agents read JSON for filtering; this file is for human review.
 
 ## Anti-Patterns
+- **[high] Auth-before-CORS ordering breaks browser preflight (401 on keyless OPTIONS)** (L-028, 2026-06-02)
+  On /v1/* the chain was APIKeyAuth → PerKeyCORS, so CORS preflight (OPTIONS) requests — which browsers send WITHOUT X-API-Key — hit auth first and got 401, blocking the real cross-origin request (surfaced to callers as a misleading 'TLS error'). Fix: a keyless CORSPreflight middleware ahead of auth that returns 204 + reflects Origin + advertises X-API-Key in Access-Control-Allow-Headers. Per-key origin locking can't run at preflight (no key present) — it must live on the actual request (PerKeyCORS sets ACAO there). Pattern: any auth middleware in front of a CORS-exposed route must let CORS preflights pass before authenticating. The spec already documented this (edge case 'preflight without API key') — code had drifted from spec.
+
 - **[high] singleflight test flake: bare sleep races fast schedulers — use release-channel barrier** (L-025, 2026-04-11)
   internal/cache/aside_test.go TestCacheAside_Singleflight_{ConcurrentMiss,ErrorPropagation} failed deterministically on Linux CI but passed on macOS local. Root cause: first fetch fn slept 10ms INSIDE singleflight to give sibling goroutines time to reach sfGroup.Do, but on fast schedulers early goroutines completed before later ones entered Do, so coalescing broke. Fix: replace sleep with a buffered-channel signal (fetchStarted) + a release gate (releaseFetch). General principle: NEVER rely on 'sleep enough to give goroutines time to X' in concurrency tests — use explicit synchronization primitives.
 
@@ -91,4 +94,4 @@
   All evidence items present: specs, 80%+ coverage, CI/CD, PR workflow, 2+ environments, conventional commits, TDD evidence, branch protection, release tags, quality gates.
 
 ---
-*27 entries. Last updated: 2026-05-16. Source: .add/learnings.json*
+*28 entries. Last updated: 2026-06-02. Source: .add/learnings.json*

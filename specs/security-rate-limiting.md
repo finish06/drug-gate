@@ -37,6 +37,7 @@ As a frontend developer integrating with drug-gate, I want my application identi
 | AC-018 | Rate limit tier is configurable per key (default 250 req/min) | Should |
 | AC-019 | Health endpoint (`/health`) and Swagger endpoints (`/swagger/*`, `/openapi.json`) are exempt from API key auth | Must |
 | AC-020 | Sliding window rate limiting (not fixed window) to prevent burst-at-boundary abuse | Should |
+| AC-021 | CORS preflight (OPTIONS) requests are answered before auth — keyless, returning 204 with the requesting origin reflected and `X-API-Key` advertised in `Access-Control-Allow-Headers`. Per-key origin enforcement happens on the actual request. | Must |
 
 ## 3. User Test Cases
 
@@ -263,7 +264,7 @@ N/A — API-only feature. No UI components.
 | API key is in grace period after rotation | Request succeeds with old key until expiry |
 | API key grace period has expired | 401 unauthorized |
 | Redis is unreachable | 502 with error message (fail closed — deny requests) |
-| CORS preflight (OPTIONS) request | Respond with appropriate CORS headers without requiring API key |
+| CORS preflight (OPTIONS) request | Answered by `CORSPreflight` middleware *before* auth (browsers strip `X-API-Key` from preflights). Returns 204, reflects the requesting `Origin`, advertises allowed methods + `X-API-Key` header. Origin locking is enforced on the actual request, not the preflight. See AC-021. |
 | Rate limit window rolls over | Counter resets, requests succeed again |
 | Admin creates key with rate_limit=0 | Reject with 400 — rate limit must be positive |
 | Admin creates key with empty app_name | Reject with 400 — app_name required |
@@ -282,3 +283,4 @@ N/A — API-only feature. No UI components.
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
 | 2026-03-08 | 0.1.0 | calebdunn | Initial spec from /add:spec interview |
+| 2026-06-02 | 0.2.0 | calebdunn | Fix: CORS preflight rejected with 401 because auth ran before CORS. Added `CORSPreflight` middleware ahead of auth + AC-021. Per-key origin enforcement moved to the actual request only (preflights cannot carry the key). |
