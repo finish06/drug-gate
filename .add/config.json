@@ -62,18 +62,26 @@
     "dev": {
       "deploy_trigger": null,
       "url": null,
-      "verify": ["unit_tests"]
+      "verify": [
+        "unit_tests"
+      ]
     },
     "staging": {
       "deploy_trigger": "push to main (beta image)",
       "url": "http://192.168.1.145:8082",
-      "verify": ["unit_tests", "integration_tests", "e2e"],
+      "verify": [
+        "unit_tests",
+        "integration_tests",
+        "e2e"
+      ],
       "deploy_path": "/opt/drug-gate/",
       "host": "192.168.1.145"
     },
     "production": {
       "deploy_trigger": "merge to main",
-      "verify": ["smoke_tests"],
+      "verify": [
+        "smoke_tests"
+      ],
       "url": "https://drug-gate.calebdunn.tech",
       "requires_approval": true
     }
@@ -110,7 +118,9 @@
     "default_branch": "main",
     "commit_convention": "conventional",
     "pr_template": true,
-    "protected_branches": ["main"]
+    "protected_branches": [
+      "main"
+    ]
   },
   "branding": {
     "accentColor": "#0891b2",
@@ -145,10 +155,19 @@
     "lastVersionTag": "v0.9.0"
   },
   "planning": {
-    "current_milestone": null,
+    "current_milestone": "M9.5-production-deploy",
     "current_cycle": null,
     "wip_limit": 3,
     "parallel_agents": 1,
-    "cycle_history": ["cycle-1", "cycle-2", "cycle-3", "cycle-4", "cycle-5", "cycle-6", "cycle-7", "cycle-8"]
+    "cycle_history": [
+      "cycle-1",
+      "cycle-2",
+      "cycle-3",
+      "cycle-4",
+      "cycle-5",
+      "cycle-6",
+      "cycle-7",
+      "cycle-8"
+    ]
   }
 }
