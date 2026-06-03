@@ -1,0 +1,64 @@
+name: Rollback Production
+
+# Audited manual rollback for the K3s production deployment.
+# Run from the Actions tab or: gh workflow run rollback-prod.yml [-f to_revision=N]
+# Gated behind the `production` Environment (same approval as deploy).
+# For break-glass (no Actions access), see ops/production-deploy.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      to_revision:
+        description: 'Revision to roll back to (see `kubectl rollout history`). Empty = previous revision.'
+        required: false
+        default: ''
+
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
+env:
+  NAMESPACE: drugs
+  DEPLOYMENT: drug-gate
+  ROLLOUT_TIMEOUT: 120s
+
+jobs:
+  rollback:
+    runs-on: [self-hosted, k3s]
+    environment: production   # manual approval gate
+    steps:
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          printf '%s' "$KUBECONFIG_DATA" > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Show rollout history
+        run: kubectl -n "$NAMESPACE" rollout history deployment/"$DEPLOYMENT"
+
+      - name: Rollback
+        env:
+          TO_REVISION: ${{ github.event.inputs.to_revision }}
+        run: |
+          if [ -n "$TO_REVISION" ]; then
+            kubectl -n "$NAMESPACE" rollout undo deployment/"$DEPLOYMENT" --to-revision="$TO_REVISION"
+          else
+            kubectl -n "$NAMESPACE" rollout undo deployment/"$DEPLOYMENT"
+          fi
+
+      - name: Verify
+        run: kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT" --timeout="$ROLLOUT_TIMEOUT"
+
+      - name: Summary
+        if: always()
+        env:
+          TO_REVISION: ${{ github.event.inputs.to_revision }}
+        run: |
+          {
+            echo "### Production rollback"
+            echo ""
+            echo "- To revision: ${TO_REVISION:-previous}"
+            echo "- Result: **${{ job.status }}**"
+          } >> "$GITHUB_STEP_SUMMARY"

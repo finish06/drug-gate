@@ -9,12 +9,14 @@
 
 ## Progress
 
-- [x] **Item 2 — `/livez`** (2026-06-02): TDD cycle complete. `internal/handler/livez.go` + tests (RED→GREEN→VERIFY), route wired in `cmd/server/main.go`. Handler coverage 88%, lint clean. Swagger annotation added; regen deferred (`swag` not installed locally).
-- [ ] Item 1 — execution surface decision
-- [ ] Item 3 — deploy-prod workflow
-- [ ] Item 4 — rollback-prod workflow
-- [ ] Item 5 — runbook
-- [ ] Item 6 — prod Environment + probe contract
+- [x] **Item 2 — `/livez`** (2026-06-02): TDD cycle complete. `internal/handler/livez.go` + tests (RED→GREEN→VERIFY), route wired in `cmd/server/main.go`. Handler coverage 88%, lint clean. Swagger annotation added; regen deferred (`swag` not installed locally). Merged PR #31.
+- [x] **Item 1 — execution surface** (2026-06-02): decided **Option A** — GitHub Actions (tag `v*` + `production` Environment approval), deploy job on self-hosted in-cluster runner `runs-on: [self-hosted, k3s]`.
+- [x] **Item 3 — `deploy-prod` workflow** (2026-06-02): `.github/workflows/deploy-prod.yml` — tag trigger, approval, `kubectl set image` → rollout health gate (120s) → k6 smoke → auto `rollout undo` on either failure. actionlint clean.
+- [x] **Item 4 — `rollback-prod` workflow** (2026-06-02): `.github/workflows/rollback-prod.yml` — `workflow_dispatch` (optional `to_revision`) → approval → `rollout undo` → verify. actionlint clean.
+- [x] **Item 5 — runbook** (2026-06-02): `ops/production-deploy.md` — deploy, auto + manual rollback, Redis recovery, breaker reset.
+- [ ] **Item 6 — prod Environment + probe contract** (needs your access): create the GitHub `production` Environment (required reviewer + `KUBECONFIG`, `PROD_API_KEY`); confirm the cluster Deployment's readiness=`/health`, liveness=`/livez` probes.
+
+Static validation: `actionlint` clean (custom `k3s` label declared in `.github/actionlint.yaml`); both workflows YAML-parse. Live `kubectl --dry-run` + the 6 TCs remain the human-supervised verification step.
 
 ## Goal
 

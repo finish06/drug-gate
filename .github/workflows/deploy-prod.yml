@@ -1,0 +1,86 @@
+name: Deploy Production
+
+# Production deploy to the K3s cluster (namespace `drugs`).
+# Triggered by pushing a release tag `v*`; gated behind the `production`
+# GitHub Environment (manual approval). The deploy job runs on a self-hosted
+# runner inside the cluster so kubectl has direct API access.
+#
+# Ordering: the `publish` job in ci.yml builds + pushes the release image on the
+# same tag push. The manual approval gate below naturally serializes after that
+# build — approve only once the release image is green. See ops/production-deploy.md.
+
+on:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY_IMAGE: dockerhub.calebdunn.tech/finish06/drug-gate
+  NAMESPACE: drugs
+  DEPLOYMENT: drug-gate
+  CONTAINER: drug-gate
+  ROLLOUT_TIMEOUT: 120s
+  PROD_URL: https://drug-gate.calebdunn.tech
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, k3s]
+    environment: production   # manual approval gate (required reviewer)
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve image tag
+        id: img
+        run: |
+          # git tag v0.11.0 -> published image tag 0.11.0 (publish strips the leading v)
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "image=${REGISTRY_IMAGE}:${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          printf '%s' "$KUBECONFIG_DATA" > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+          # Fail fast if the deployment/namespace is wrong before changing anything.
+          kubectl -n "$NAMESPACE" get deployment "$DEPLOYMENT" >/dev/null
+
+      - name: Deploy (set image)
+        run: |
+          kubectl -n "$NAMESPACE" set image deployment/"$DEPLOYMENT" \
+            "$CONTAINER=${{ steps.img.outputs.image }}"
+
+      - name: Health gate (rollout status)
+        id: rollout
+        run: kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT" --timeout="$ROLLOUT_TIMEOUT"
+
+      - name: Smoke test (production)
+        id: smoke
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: tests/k6/staging.js
+          flags: --env SCENARIO=smoke --env BASE_URL=${{ env.PROD_URL }} --env API_KEY=${{ secrets.PROD_API_KEY }}
+
+      - name: Rollback on failure
+        if: failure() && (steps.rollout.outcome == 'failure' || steps.smoke.outcome == 'failure')
+        run: |
+          echo "::warning::Deploy failed (rollout=${{ steps.rollout.outcome }}, smoke=${{ steps.smoke.outcome }}) — rolling back"
+          kubectl -n "$NAMESPACE" rollout undo deployment/"$DEPLOYMENT"
+          kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT" --timeout="$ROLLOUT_TIMEOUT"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Production deploy"
+            echo ""
+            echo "- Image: \`${{ steps.img.outputs.image }}\`"
+            echo "- Rollout: ${{ steps.rollout.outcome }}"
+            echo "- Smoke: ${{ steps.smoke.outcome }}"
+            echo "- Result: **${{ job.status }}**"
+          } >> "$GITHUB_STEP_SUMMARY"
