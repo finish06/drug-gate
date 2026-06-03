@@ -2,24 +2,21 @@
 **Written:** 2026-06-02
 
 ## In Progress
-- None — CORS preflight fix is complete and verified locally, not yet committed.
+- **M9.5 — Production Deploy** is now the active milestone (`planning.current_milestone`). Staging deploy automation exists in CI; remaining work is the production path: health-gated deploy, one-command rollback, runbook. Next step: `/add:spec deploy-automation` then `/add:cycle --plan`.
 
 ## Completed This Session
-- **Fixed CORS preflight 401 bug** (security-rate-limiting AC-021). Browsers strip `X-API-Key` from preflights, but `/v1/*` ran `APIKeyAuth` before CORS, so keyless OPTIONS got 401 and the browser blocked the real request (mislabeled "TLS error" by callers).
-- Added `CORSPreflight` middleware (`internal/middleware/cors.go`) ahead of auth: answers keyless preflights with 204, reflects `Origin`, advertises `X-API-Key` in `Access-Control-Allow-Headers`, sets `Vary: Origin`.
-- Simplified `PerKeyCORS` — removed its (now-unreachable) preflight block; it only sets ACAO on the actual authenticated request. Origin locking still enforced there.
-- Wired `middleware.CORSPreflight` into `/v1` chain in `cmd/server/main.go` before `APIKeyAuth`.
-- TDD: RED → GREEN → REFACTOR → VERIFY. Replaced 3 preflight tests that injected a key into a path that never exists in production; added 6 chain-level tests. Middleware coverage 92.4%.
-- Docs: spec AC-021 + edge case + revision history; sequence-diagram.md middleware overview + preflight note; CHANGELOG [Unreleased]; learning L-028.
+- **CORS preflight fix shipped** (PR #28, merged `e923eb7`, `--admin` override). `CORSPreflight` middleware answers keyless preflights before auth → 204 + reflected origin. Live on staging (`/version` = `beta-e923eb77`, git_commit `e923eb7`). Verified: unit (92.4%), e2e (regression tests green in CI), and a live staging preflight returning 204. Production not deployed (needs approval).
+- **Roadmap reorg** (PRD §6 → v0.4.0): split M9 into **M9 Upstream Resilience [DONE, v0.8.0]** + **M9.5 Production Deploy [NOW/IN_PROGRESS]**. Reconciled the stale M9 detail block and milestone file (was DONE but bundled production deploy with all criteria unchecked). Created `docs/milestones/M9.5-production-deploy.md`. GA path now gated on M9.5 + M10.
 
 ## Decisions Made
-- **Preflight origin policy:** reflect the requesting origin at preflight; enforce the per-key allowlist on the actual request (user-confirmed). A preflight can't carry the key, so per-key enforcement at preflight is impossible; the security boundary lives on the real response's ACAO.
+- Preflight reflects origin; per-key origin locking enforced on the actual request (user-confirmed).
+- e2e CI job is full-suite but non-blocking (cash-drugs pulls live FDA/DailyMed; upstream hiccups must not block PRs).
+- M9.5 marked IN_PROGRESS (not NOT_STARTED) because CI already covers version-pinned builds + staging deploy + smoke.
 
 ## Blockers
-- None.
-
-- Added e2e regression tests (`tests/e2e/e2e_test.go`): keyless preflight → 204, non-preflight OPTIONS → 401, per-key origin enforcement on real request. Verified PASS against the `docker-compose.e2e.yml` stack built from this branch. e2e is not in CI; run via `make test-e2e`. Commits: `5f94973` (fix) + `b0c4c93` (e2e). PR #28.
+- None. (Pre-existing e2e failures `TestE2E_Health` + `AC010_DrugsbyClassMissingParam` are not data-dependent and look worth a separate look.)
 
 ## Next Steps
-1. PR #28 awaits review — beta requires PR review before merge; do not merge to main without approval.
-2. Verify in a real browser against staging (cross-origin `fetch` from an allowed origin) once deployed.
+1. `/add:spec deploy-automation` — spec the production health-gate + rollback + runbook for M9.5.
+2. `/add:cycle --plan` to start M9.5 execution.
+3. Optionally fix the two pre-existing non-data e2e failures.

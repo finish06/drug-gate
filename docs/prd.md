@@ -102,7 +102,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M8: Cache Architecture + Clinical Data | Generic CacheAside[T], expanded SPL sections | beta | DONE | 211 lines eliminated, configurable TTL, SPL sections 4-6, 81.1% coverage |
 | M8.5: Bugathon | Security, correctness, and DX fixes from 3-agent audit | beta | DONE | 13 bugs fixed (7 Tier 1, 6 Tier 2), v0.7.1 tagged |
 | M9: Upstream Resilience | Circuit breaker, stale-cache, parallel interactions, MaxBytesReader | beta | DONE | Circuit breaker (10 fails), stale-cache serving, errgroup(5), 10MB limit, v0.8.0 tagged |
-| M9.5: Production Deploy | Deploy automation with rollback | GA candidate | NEXT | GH Actions deploy workflow with health gate, version-pinned deploys, one-command rollback, runbook |
+| M9.5: Production Deploy | Deploy automation with rollback | GA candidate | IN_PROGRESS | GH Actions deploy workflow with health gate, version-pinned deploys, one-command rollback, runbook |
 | M10: Admin Auth Hardening | HMAC-signed admin tokens, rotation, audit log | GA candidate | LATER | Static bearer token replaced, token rotation without restart, admin audit log, separate rate limits |
 | M10.5: Landing Page | Public marketing page, GitHub Pages, config-driven redirect | beta | DONE | dg.calebdunn.tech, LANDING_URL env var, Umami analytics, v0.9.0 tagged |
 | M11: Flagship Aggregation | Unified drug profile, batch drug lookup | GA | LATER | GET /v1/drugs/profile merges all data, POST /v1/drugs/batch handles 5-20 drugs with per-item errors |
@@ -347,17 +347,32 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
 - [ ] Drug info card includes contraindications, warnings, and adverse reactions
 - [ ] 80%+ test coverage on new code
 
-#### M9: Upstream Resilience + Production Deploy [NEXT — weeks 5-6]
-**Goal:** Eliminate single points of failure and establish production-grade deployment
+#### M9: Upstream Resilience [DONE — v0.8.0]
+**Goal:** Eliminate single points of failure in the cash-drugs upstream path
 **Appetite:** 2 weeks
-**Target maturity:** GA candidate
+**Target maturity:** beta
 
 **Features:**
 - Circuit Breaker + Parallel Resolution (M effort)
   - Circuit breaker on cash-drugs HTTP client (open after N consecutive failures, half-open probe, auto-close)
   - Stale-cache serving when circuit is open (return expired cached data rather than 502)
   - Parallelize interaction checker with `errgroup` for multi-drug lookups
-  - `MaxBytesReader` on all upstream responses to prevent memory exhaustion
+  - `MaxBytesReader` on upstream responses to prevent memory exhaustion
+
+**Success criteria:**
+- [x] Circuit breaker trips after 10 consecutive upstream failures, serves stale cache
+- [x] Circuit auto-recovers via half-open probe after 30s cooldown
+- [x] Multi-drug interaction checker runs parallel upstream calls via errgroup (cap 5)
+- [x] MaxBytesReader limits upstream response size to 5MB
+
+> Production-deploy automation was originally bundled here; it is split out to **M9.5** below.
+
+#### M9.5: Production Deploy [NOW — IN_PROGRESS]
+**Goal:** Establish production-grade deployment automation with a health gate and one-command rollback
+**Appetite:** 1 week
+**Target maturity:** GA candidate
+
+**Features:**
 - Production Deploy Automation + Rollback (M effort)
   - Pin deployments to version tags (no `:latest` in production)
   - GitHub Actions deploy workflow with health gate (deploy → health check → promote or rollback)
@@ -365,14 +380,13 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
   - Documented runbook for production operations
 
 **Success criteria:**
-- [ ] Circuit breaker trips after 10 consecutive upstream failures, serves stale cache
-- [ ] Circuit auto-recovers via half-open probe after configurable cooldown
-- [ ] Multi-drug interaction checker runs parallel upstream calls via errgroup
-- [ ] MaxBytesReader limits upstream response size to 5MB
-- [ ] Production deploy pinned to version tags, triggered by GH Actions
-- [ ] Health gate verifies deployment before promoting
-- [ ] One-command rollback documented and tested
+- [x] Version-pinned release images built/pushed via GH Actions (`:vX.Y.Z` + `:latest`)
+- [x] Staging auto-deploy via CI webhook + k6 smoke (live)
+- [ ] Production deploy workflow with health gate (deploy → health check → promote or rollback)
+- [ ] One-command rollback to previous version, documented and tested
 - [ ] Runbook covers: deploy, rollback, Redis recovery, circuit breaker reset
+
+> Partially covered by `.github/workflows/ci.yml` (publish job: beta/release builds, staging webhook deploy, k6 smoke). Remaining work is the **production** path: health gate, rollback command, runbook. Needs `specs/deploy-automation.md` via `/add:spec`.
 
 #### M10: Admin Auth Hardening [LATER — week 7]
 **Goal:** Harden the highest-privilege credential in the system
@@ -434,7 +448,7 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
 | From | To | Requirements |
 |------|-----|-------------|
 | alpha → beta | Feature specs for all endpoints, 50%+ coverage, PR workflow active, TDD evidence | **PROMOTED 2026-03-17** (10/10 evidence) |
-| beta → GA | Circuit breaker on upstream (M9), production deploy automation with health gate and rollback (M9), HMAC admin auth replacing static tokens (M10), admin audit log (M10), 80%+ coverage sustained, 30+ days production stability, SLAs defined, full CI/CD pipeline with version-pinned deploys | Requires M9 + M10 complete |
+| beta → GA | Circuit breaker on upstream (M9 ✓), production deploy automation with health gate and rollback (M9.5), HMAC admin auth replacing static tokens (M10), admin audit log (M10), 80%+ coverage sustained, 30+ days production stability, SLAs defined, full CI/CD pipeline with version-pinned deploys | Requires M9.5 + M10 complete |
 
 ## 7. Key Features
 
@@ -504,3 +518,4 @@ Single tier for MVP or multiple from the start? Consider:
 | 2026-03-07 | 0.1.0 | calebdunn | Initial draft from /add:init interview |
 | 2026-03-07 | 0.2.0 | calebdunn | Auth decision: publishable API keys (frontend-safe). Added Future Discovery section. |
 | 2026-03-18 | 0.3.0 | calebdunn | Beta promotion. M6 SPL Interactions added. RxNorm and SPL moved from out-of-scope to done/in-progress. |
+| 2026-06-02 | 0.4.0 | roadmap | Split M9 into M9 (Upstream Resilience — DONE, v0.8.0) and M9.5 (Production Deploy). Promoted M9.5 to Now/IN_PROGRESS. Reconciled stale M9 detail block + milestone file; GA path now gated on M9.5 + M10. |
