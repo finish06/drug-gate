@@ -7,6 +7,9 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added
+- `GET /livez` — dependency-free liveness probe (always 200 if the process is up). Unlike `/health` (which returns 503 when Redis is down), `/livez` never checks dependencies, so it can serve as the Kubernetes liveness probe without crash-looping pods during a Redis outage. Readiness stays on `/health`. (deploy-automation AC-006)
+
 ### Fixed
 - CORS preflight requests were rejected with 401 because `APIKeyAuth` ran before CORS handling and browsers strip `X-API-Key` from preflights. Cross-origin browser clients (e.g. `fetch` from a different site) saw a failed preflight and could never make the real request. Added `CORSPreflight` middleware ahead of auth on `/v1/*` — it answers keyless preflights with 204, reflects the requesting `Origin`, and advertises `X-API-Key` in `Access-Control-Allow-Headers`. Per-key origin locking is now enforced on the actual (authenticated) request, where the key is present. (security-rate-limiting AC-021)
 

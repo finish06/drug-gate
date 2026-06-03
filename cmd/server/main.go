@@ -201,6 +201,7 @@ func main() {
 	// Public routes (no auth)
 	healthHandler := handler.NewHealthHandler(rdb, cashDrugsURL, startTime, upstreamBreaker)
 	r.Get("/health", healthHandler.Handle)
+	r.Get("/livez", handler.Livez)
 	r.Get("/version", handler.VersionInfo)
 	r.Handle("/metrics", promhttp.Handler())
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
