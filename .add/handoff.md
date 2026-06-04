@@ -8,12 +8,10 @@ The "other option" arrived and was adopted. Production deploy is now an
 prompts a human in Discord to promote and owns the cluster deploy/health-gate/rollback.
 This repo no longer runs kubectl.
 
-## This pivot PR (open / merging)
-- ADD `.github/workflows/notify-prod-promote.yml` (`v*.*.*` + `workflow_dispatch` → POST event to `nats-publish.kube.calebdunn.tech`, Bearer `NATS_BRIDGE_KEY`)
-- REMOVE `deploy-prod.yml`, `rollback-prod.yml`, `.github/actionlint.yaml` (kubectl approach)
-- REWRITE `ops/production-deploy.md` (tag→event→Discord→Joe)
-- REVISE `specs/deploy-automation.md` → v0.2.0, `docs/plans/deploy-automation-plan.md`, `cycle-11.md`, CHANGELOG
-- KEEP `/livez` (#31) + the readiness(`/health`)/liveness(`/livez`) probe contract
+## Deploy notification (current design — spec v0.3.0)
+- Notification is a **`notify-prod` job in `ci.yml`**, `needs: publish`, **`v*` tags only**, carrying the **exact build digest** (`publish.outputs.image_digest`); **fails CI on non-202**.
+- Standalone `notify-prod-promote.yml` was **deleted** — its registry digest-poll raced the build and timed out at `timeout-minutes: 5` before publishing (verified: a `workflow_dispatch` test run was cancelled mid-poll, publish step skipped). Sequencing publish→notify removes the race entirely.
+- Earlier this session (#33, merged): pivot from kubectl deploy to the notification model; removed `deploy-prod.yml`/`rollback-prod.yml`/`.github/actionlint.yaml`. KEEP `/livez` (#31) + the readiness(`/health`)/liveness(`/livez`) probe contract.
 
 ## Still needs the user
 - **Add repo secret `NATS_BRIDGE_KEY`** — the `NATS-gh-actions-drug-gate-…` key from the homelab operator (ask in the deploy-promote Discord channel). `REGISTRY_USERNAME`/`REGISTRY_PASSWORD` already exist (optional digest resolve).

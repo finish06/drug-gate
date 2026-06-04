@@ -16,20 +16,26 @@ Spec: `specs/deploy-automation.md` · Plan: `docs/plans/deploy-automation-plan.m
 ```
 git tag v0.11.0 && git push --tags
    │
-   ├─ ci.yml (publish)            → builds + pushes image :0.11.0 / :latest
-   └─ notify-prod-promote.yml     → POSTs event to the homelab NATS bridge
-                                     subject: joe.deploy.drug-gate.tag.v0.11.0
-                                          │
-                                          ▼
-                                   Joe posts in Discord:
-                                   "drug-gate v0.11.0 published. Promote to prod?"
-                                          │
-                                 human: yes / no / hold X
-                                          │
-                                   yes → Joe deploys (kubectl set image,
-                                         rollout status, smoke) + rolls back
-                                         on failure
+   ▼
+ci.yml:  test ──► publish (build + push :0.11.0 / :latest)
+                     └──► notify-prod   (needs: publish, v* tags only)
+                            POSTs event to the homelab NATS bridge
+                            subject: joe.deploy.drug-gate.tag.v0.11.0
+                            digest:  exact, from the build (no polling)
+                            non-202  → job fails (red CI)
+                                 │
+                                 ▼
+                          Joe posts in Discord:
+                          "drug-gate v0.11.0 published. Promote to prod?"
+                                 │
+                        human: yes / no / hold X
+                                 │
+                          yes → Joe deploys (kubectl set image,
+                                rollout status, smoke) + rolls back on failure
 ```
+
+`notify-prod` runs **after** `publish`, so the image + digest already exist —
+no race, no poll, no timeout.
 
 There is **no GitHub UI approval** and **no kubectl in this repo**. The Discord
 reply is the gate.
@@ -69,15 +75,20 @@ kubectl -n drugs rollout status deployment/drug-gate --timeout=120s
 > **First-ever deploy:** `rollout undo` has no prior revision; redeploy a known-good
 > tag instead (`kubectl -n drugs set image …` to the last good image, then `rollout status`).
 
-## Test the notification (no real release)
+## Testing the notification
 
-`notify-prod-promote` has a `workflow_dispatch` trigger:
-1. Actions → **notify prod promote** → Run workflow → `tag: v0.0.0-test`.
-2. Confirm with the homelab operator that the Discord message arrived.
-3. In the **Publish event** step log, the bridge should return **202**.
-   - `401` → `NATS_BRIDGE_KEY` missing/unknown · `403` → wrong app namespace
-   - `413` → payload too large · `5xx` → bridge down (ask operator)
-   - ⚠️ The workflow currently exits 0 even on 401/403 — check the step log, not just the job status.
+There is no separate dispatch tester — the notification only fires on a real `v*`
+tag (after a successful image build). To validate end-to-end, cut a throwaway
+prerelease tag, e.g. `git tag v0.11.0-rc1 && git push --tags`, and watch the
+`notify-prod` job in the CI run:
+
+- Bridge **202** → event published; confirm with the operator that the Discord
+  message arrived.
+- **401** (`NATS_BRIDGE_KEY` missing/unknown) / **403** (wrong namespace) / **5xx**
+  (bridge down) → the `notify-prod` job **fails red** with the HTTP code in the log.
+
+> Note: a `v*-rc` tag still runs the normal `publish` (it pushes `:latest`). Use a
+> real version when you actually intend to ship.
 
 ## Redis recovery
 

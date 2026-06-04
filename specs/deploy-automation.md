@@ -8,11 +8,12 @@
 ## 1. Feature Description
 
 drug-gate releases to production by **announcing** a new version, not by deploying
-it. Pushing a `v*.*.*` tag publishes a JSON event to the homelab NATS bridge; the
-homelab agent ("Joe") sees the event and asks a human operator in **Discord**
-whether to promote. On "yes", Joe runs the actual deploy on the K3s cluster
-(namespace `drugs`): `kubectl set image`, rollout health gate, smoke, and rollback
-on failure. The git tag is the deploy gate — same shape as `npm publish`.
+it. On a `v*` tag, CI builds + pushes the release image and then a **`notify-prod`
+job** publishes a JSON event to the homelab NATS bridge; the agent ("Joe") asks a
+human operator in **Discord** whether to promote. On "yes", Joe runs the actual
+deploy on the K3s cluster (namespace `drugs`): `kubectl set image`, rollout health
+gate, smoke, and rollback on failure. The git tag is the deploy gate — same shape
+as `npm publish`.
 
 **This repo's responsibility is the announcement only.** It runs no `kubectl`,
 pushes no manifests, and has no GitHub approval gate. The deploy, health gate,
@@ -20,9 +21,10 @@ smoke, and rollback are owned by Joe (out of scope here). The repo also exposes
 the `/livez` liveness endpoint and depends on a probe contract the cluster manifest
 must honor.
 
-Image build/publish is owned by `specs/docker-build-publish.md` (`:beta` on main,
-`:vX.Y.Z` + `:latest` on tags); the notification runs in parallel and does not
-depend on the image being ready.
+The notification is a job in **`ci.yml`** that runs **`needs: publish`** — i.e.
+*after* the release image is built and pushed (`specs/docker-build-publish.md`). It
+carries the **exact image digest** from the build (no registry polling, no race),
+and the job **fails (red CI)** if the bridge does not return 202.
 
 > **History:** an earlier draft of this spec deployed via `kubectl` from a
 > self-hosted in-cluster GitHub runner. That approach was replaced by the homelab
@@ -39,15 +41,15 @@ run kubectl or click a GitHub approval.
 
 | ID | Criterion | Priority |
 |----|-----------|----------|
-| AC-001 | Pushing a tag matching `v*.*.*` triggers `notify-prod-promote.yml` | Must |
-| AC-002 | The workflow POSTs a JSON event to `https://nats-publish.kube.calebdunn.tech/publish/joe.deploy.drug-gate.tag.<version>` | Must |
+| AC-001 | On a `v*` tag, the `notify-prod` job in `ci.yml` runs `needs: publish` (only after the release image is built + pushed) and only for release tags | Must |
+| AC-002 | The job POSTs a JSON event to `https://nats-publish.kube.calebdunn.tech/publish/joe.deploy.drug-gate.tag.<tag>` | Must |
 | AC-003 | The request authenticates with `NATS_BRIDGE_KEY` (Bearer), stored as a repo secret and never committed or echoed | Must |
 | AC-004 | The event payload includes: `tag`, `digest`, `registry_path`, `release_url`, `workflow_run_url`, `actor`, `sha` | Must |
-| AC-005 | The notification publishes regardless of image/digest availability — the digest is best-effort and is `"pending"` if unresolved (the build runs in parallel) | Must |
+| AC-005 | The event carries the exact image digest from the build step (`publish.outputs.image_digest`) — no registry polling; `"pending"` only if the build produced no digest | Must |
 | AC-006 | `GET /livez` is a dependency-free liveness probe (always 200). The cluster Deployment uses readiness → `/health` (200 incl. `degraded` = ready; 503/`error` = not-ready) and liveness → `/livez` (so a Redis outage doesn't crash-loop pods) | Must |
-| AC-007 | `workflow_dispatch` with a `tag` input fires the notification without cutting a real tag (end-to-end test) | Must |
-| AC-008 | The subject is namespaced `joe.deploy.drug-gate.*`; the key is scoped to that prefix (publishing elsewhere returns 403) | Should |
-| AC-009 | `ops/production-deploy.md` documents the tag→event→Discord→Joe flow, the `workflow_dispatch` test, rollback (operator/Joe), Redis recovery, and breaker reset | Must |
+| AC-007 | The `notify-prod` job **fails (non-zero / red CI)** if the bridge does not return 202 — a bad/misscoped key surfaces as a failed run, not a silent green | Must |
+| AC-008 | The subject is namespaced `joe.deploy.drug-gate.*`; the key is scoped to that prefix (publishing elsewhere returns 403 → job fails per AC-007) | Should |
+| AC-009 | `ops/production-deploy.md` documents the tag→publish→notify→Discord→Joe flow, rollback (operator/Joe), Redis recovery, and breaker reset | Must |
 | AC-010 | The repo performs NO deploy/rollback itself — kubectl, rollout health gate, smoke, and rollback are owned by the homelab agent (Joe) | Must |
 | AC-011 | Staging deploy behavior is unchanged (compose host + signed webhook + k6 smoke on push to `main`) | Should |
 
@@ -57,22 +59,22 @@ run kubectl or click a GitHub approval.
 **Precondition:** `NATS_BRIDGE_KEY` set; Joe + Discord pipeline live.
 **Steps:**
 1. `git tag v0.11.0 && git push --tags`
-2. `publish` builds `:0.11.0`; `notify-prod-promote` publishes the event (bridge 202)
+2. CI `publish` builds + pushes `:0.11.0`; then `notify-prod` publishes the event (bridge 202)
 3. Joe posts "drug-gate v0.11.0 published. Promote to prod?" in Discord
 4. Human replies `yes`; Joe deploys (set image → rollout status → smoke)
 5. `curl https://drug-gate.calebdunn.tech/version`
 **Expected Result:** `/version` shows the new build; on a failed deploy Joe rolls back and reports it.
 **Maps to:** TBD
 
-### TC-002: workflow_dispatch test (no real release)
+### TC-002: Notification carries the exact digest
 **Precondition:** `NATS_BRIDGE_KEY` set.
-**Steps:** Actions → notify prod promote → Run workflow → `tag: v0.0.0-test`.
-**Expected Result:** Publish-event step shows bridge **202**; operator confirms the Discord message arrived.
+**Steps:** Push a `v*` tag; inspect the `notify-prod` job log.
+**Expected Result:** The payload `digest` is the `sha256:…` from the build step (not `pending`); subject is `joe.deploy.drug-gate.tag.v…`; bridge returns **202**.
 **Maps to:** TBD
 
-### TC-003: Bad/misscoped key
-**Steps:** Run the workflow with a wrong or wrongly-scoped `NATS_BRIDGE_KEY`.
-**Expected Result:** Bridge returns **401** (unknown key) or **403** (wrong app namespace); no Discord message. Diagnosable in the Publish-event step log (note: the job may still exit 0 — a known bridge wart).
+### TC-003: Bad/misscoped key fails the job
+**Steps:** Push a `v*` tag with a wrong or wrongly-scoped `NATS_BRIDGE_KEY`.
+**Expected Result:** Bridge returns **401** (unknown key) or **403** (wrong namespace); the `notify-prod` job **fails (red CI)** with the HTTP code in the log; no Discord message.
 **Maps to:** TBD
 
 ### TC-004: Redis outage does not crash-loop pods
@@ -102,16 +104,19 @@ run kubectl or click a GitHub approval.
 
 ## 5. Mechanism
 
-**`notify-prod-promote.yml`** (`.github/workflows/`):
+Two jobs in **`ci.yml`**, on a `v*` tag:
 ```
-on: push tags v*.*.*  |  workflow_dispatch(tag)
-job publish-event (ubuntu-latest):
-  1. resolve tag (from ref or dispatch input)
-  2. best-effort digest pre-resolve from the registry (→ "pending" on miss)   (AC-005)
-  3. POST {tag,digest,registry_path,release_url,workflow_run_url,actor,sha}    (AC-002, AC-004)
-     to .../publish/joe.deploy.drug-gate.tag.<version>
-     Authorization: Bearer NATS_BRIDGE_KEY                                     (AC-003)
+test ──► publish (build + push :X.Y.Z / :latest; emit outputs.image_digest)
+              └──► notify-prod   needs: publish, if: v* tag && is_release   (AC-001)
+                     POST {tag,digest,registry_path,release_url,             (AC-002, AC-004)
+                           workflow_run_url,actor,sha}
+                       to .../publish/joe.deploy.drug-gate.tag.<tag>
+                       Authorization: Bearer NATS_BRIDGE_KEY                 (AC-003)
+                     digest = publish.outputs.image_digest (exact, no poll)  (AC-005)
+                     non-202 → exit 1 (red CI)                               (AC-007)
 ```
+Because `notify-prod` runs *after* `publish`, the image and its digest already
+exist — no polling, no race, no `timeout` hack.
 
 **Downstream (owned by Joe — out of scope here):** consumes the event, prompts in
 Discord, and on approval runs `kubectl -n drugs set image` → `rollout status` (health
@@ -121,12 +126,13 @@ gate via `/health` readiness) → smoke → `rollout undo` on failure.
 
 | Case | Expected Behavior |
 |------|-------------------|
-| Image not yet pushed when notify runs | Digest resolves to `"pending"`; event still publishes; Joe resolves the digest on promote (AC-005) |
-| Wrong / misscoped `NATS_BRIDGE_KEY` | Bridge 401/403; no Discord message; visible in the step log (job may still exit 0) |
-| Bridge down (5xx) | No event; operator owns the bridge — retry or ask in Discord |
-| Two tags pushed quickly | Two events; Joe asks twice (TC-005) |
+| Image build/push fails | `publish` fails → `notify-prod` is skipped (`needs: publish`); nothing announced |
+| Build produced no digest | Payload `digest: "pending"`; event still publishes; Joe resolves on promote (AC-005) |
+| Wrong / misscoped `NATS_BRIDGE_KEY` | Bridge 401/403 → `notify-prod` job **fails** with the code in the log; no Discord message (AC-007) |
+| Bridge down (5xx) | Job fails (non-202); operator owns the bridge — retry or ask in Discord |
+| Two tags pushed quickly | Two CI runs → two events; Joe asks twice |
 | Human replies `no` / `hold X` | Event archived / deferred; no deploy |
-| Non-`v*.*.*` tag (e.g. `v1`, `beta`) | Notify does not trigger (pattern `v*.*.*`) |
+| Non-`v*` tag / push to main | `notify-prod` does not run (gated on `v*` tag + `is_release`) |
 | Redis down at deploy time | Pods NotReady via `/health`; not crash-looped (liveness `/livez`); rollout won't promote until healthy (AC-006) |
 
 ## 7. Dependencies
@@ -151,3 +157,4 @@ gate via `/health` readiness) → smoke → `rollout undo` on failure.
 |------|---------|--------|---------|
 | 2026-06-02 | 0.1.0 | calebdunn | Initial spec: K3s production deploy via kubectl from a self-hosted in-cluster GitHub runner (tag v* + GitHub Environment approval, rollout gate, smoke, rollback). |
 | 2026-06-03 | 0.2.0 | calebdunn | **Pivot:** replaced repo-side kubectl deploy with the homelab notification model. A `v*.*.*` tag publishes a NATS event; Joe prompts in Discord and owns the deploy/gate/rollback. Removed `deploy-prod.yml`/`rollback-prod.yml`; added `notify-prod-promote.yml`. Kept `/livez` + the probe contract. |
+| 2026-06-03 | 0.3.0 | calebdunn | Sequenced publish→notify: deleted standalone `notify-prod-promote.yml` (its digest poll raced the build and timed out before publishing). Notification is now a `notify-prod` job in `ci.yml`, `needs: publish`, on `v*` tags only, carrying the exact build digest; fails CI on non-202 (replaces the silent exit-0 wart). |

@@ -13,7 +13,8 @@
 - [x] **Item 1 — execution surface** (2026-06-02): decided **Option A** — GitHub Actions (tag `v*` + `production` Environment approval), deploy job on self-hosted in-cluster runner `runs-on: [self-hosted, k3s]`.
 - ~~Item 3 `deploy-prod` workflow~~ / ~~Item 4 `rollback-prod` workflow~~ — **REMOVED in the pivot** (kubectl deploy/rollback now owned by the homelab agent "Joe", not this repo).
 - [x] **Item 5 — runbook** (2026-06-03): `ops/production-deploy.md` **rewritten** for the tag→NATS event→Discord→Joe flow.
-- [x] **PIVOT (2026-06-03)** — deploy model changed to homelab notification (spec v0.2.0). Added `.github/workflows/notify-prod-promote.yml` (`v*.*.*` → POST event to `nats-publish.kube.calebdunn.tech`); removed `deploy-prod.yml`, `rollback-prod.yml`, `.github/actionlint.yaml`. Spec + plan revised.
+- [x] **PIVOT (2026-06-03)** — deploy model changed to homelab notification (spec v0.2.0). Removed `deploy-prod.yml`, `rollback-prod.yml`, `.github/actionlint.yaml`.
+- [x] **Sequenced publish→notify (2026-06-03, spec v0.3.0)** — the standalone `notify-prod-promote.yml` raced the image build (digest poll timed out before publishing; verified via a `workflow_dispatch` test that was cancelled at 5m). **Deleted it**; the notification is now a **`notify-prod` job in `ci.yml`**, `needs: publish`, `v*` tags only, carrying the exact build digest, failing CI on non-202. actionlint clean.
 - [ ] **User: add `NATS_BRIDGE_KEY` secret** (operator-issued `NATS-gh-actions-drug-gate-…`).
 - [ ] **User: cluster Deployment probes** readiness=`/health`, liveness=`/livez`.
 - [ ] **User-supervised verify:** `workflow_dispatch` test → operator confirms Discord (bridge 202); then a real `v*.*.*` tag.

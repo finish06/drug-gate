@@ -30,7 +30,7 @@ workflow.
 | Task | Description | AC | Status |
 |------|-------------|-----|--------|
 | T-1 | `/livez` dependency-free liveness endpoint (TDD) | AC-006 | **DONE** (#31) |
-| T-2 | `notify-prod-promote.yml` — `v*.*.*` trigger + `workflow_dispatch`; POST event to the NATS bridge with the payload shape; Bearer `NATS_BRIDGE_KEY` | AC-001…AC-005, AC-007, AC-008 | **DONE** (this PR) |
+| T-2 | `notify-prod` job in `ci.yml` — `needs: publish`, `v*` tags only; POST event with the exact build digest; Bearer `NATS_BRIDGE_KEY`; fail CI on non-202 | AC-001…AC-005, AC-007, AC-008 | **DONE** (sequenced publish→notify; standalone workflow deleted) |
 | T-3 | Rewrite `ops/production-deploy.md` for the tag→event→Discord→Joe flow + rollback/Redis/breaker | AC-009 | **DONE** (this PR) |
 | T-4 | Remove obsolete kubectl workflows (`deploy-prod.yml`, `rollback-prod.yml`, `.github/actionlint.yaml`) | AC-010 | **DONE** (this PR) |
 | T-5 | Add repo secret `NATS_BRIDGE_KEY` (operator-issued) | AC-003 | **USER** — needs repo settings access |
@@ -39,9 +39,10 @@ workflow.
 
 ## Verification
 
-- **Static:** `actionlint` on `notify-prod-promote.yml`.
-- **End-to-end:** `workflow_dispatch` with `tag: v0.0.0-test` → operator confirms the
-  Discord message + bridge returns 202 (TC-002). Then a real `v*.*.*` tag (TC-001).
+- **Static:** `actionlint` on `ci.yml`.
+- **End-to-end:** cut a `v*` (or `v*-rc`) tag → CI `publish` then `notify-prod` →
+  bridge 202 + operator confirms the Discord message (TC-001/TC-002). A bad key →
+  `notify-prod` fails red (TC-003).
 - `/livez` already covered by its unit test (#31).
 
 ## Risks
@@ -55,10 +56,10 @@ workflow.
 
 ## Deliverables
 
-- `.github/workflows/notify-prod-promote.yml`
+- `notify-prod` job in `.github/workflows/ci.yml` (needs: publish, v* tags)
 - `ops/production-deploy.md` (rewritten)
 - `/livez` handler + test (shipped #31)
-- Removal of `deploy-prod.yml`, `rollback-prod.yml`, `.github/actionlint.yaml`
+- Removal of `deploy-prod.yml`, `rollback-prod.yml`, `.github/actionlint.yaml`, and the standalone `notify-prod-promote.yml`
 - (user) `NATS_BRIDGE_KEY` secret; probe wiring on the cluster manifest
 
 ## Success Criteria
