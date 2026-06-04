@@ -1,7 +1,19 @@
 # Session Handoff
 **Written:** 2026-06-03
 
-## Status: M9.5 cycle-11 — PIVOTED to homelab notification deploy model
+## Status: cycle-11 COMPLETE — M9.5 repo-side VERIFIED (ready to close)
+
+Production-release notification pipeline verified end-to-end: `v0.10.1-rc1` →
+CI `publish` → `notify-prod` → **bridge 202** → Joe's Discord prompt (confirmed).
+`/add:cycle --complete` ran: M9.5 hill chart updated, cycle-11 → COMPLETE,
+`cycle_history` reconciled (added 9 + 11; 10 was abandoned), `current_cycle` = null,
+learnings L-029 (process) + L-030 (CI race anti-pattern) written.
+
+**M9.5 next:** ready to close (suggest `/add:milestone` or `/add:retro`). It gates
+beta→GA with **M10 Admin Auth Hardening**. Remaining M9.5 work is downstream/user:
+cluster Deployment probe wiring (readiness=`/health`, liveness=`/livez`).
+
+## (historical) Deploy model journey
 
 The "other option" arrived and was adopted. Production deploy is now an
 **announcement**: a `v*.*.*` tag publishes a NATS event; the homelab agent ("Joe")

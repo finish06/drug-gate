@@ -156,7 +156,7 @@
   },
   "planning": {
     "current_milestone": "M9.5-production-deploy",
-    "current_cycle": "cycle-11",
+    "current_cycle": null,
     "wip_limit": 3,
     "parallel_agents": 1,
     "cycle_history": [
@@ -167,7 +167,9 @@
       "cycle-5",
       "cycle-6",
       "cycle-7",
-      "cycle-8"
+      "cycle-8",
+      "cycle-9",
+      "cycle-11"
     ]
   }
 }

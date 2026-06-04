@@ -5,6 +5,9 @@
 > Agents read JSON for filtering; this file is for human review.
 
 ## Anti-Patterns
+- **[high] Sequence publish→notify in CI; a parallel digest-poll races the build and times out** (L-030, 2026-06-03)
+  A standalone notify workflow polled the registry for the image digest (10x30s/variant) in parallel with the image build; with timeout-minutes:5 the job was cancelled mid-poll and the publish/POST step was SKIPPED — no event sent, masquerading as a key problem. Fix: make notify a needs:publish job in the same workflow so the image+digest already exist (publish.outputs.image_digest, no poll). Also fail CI on non-202 instead of the provider's silent exit-0. General lesson: order dependent CI steps with needs/outputs rather than racing + polling; and run a provided CI artifact for real before trusting it (the dispatch test is what exposed the bug).
+
 - **[high] Auth-before-CORS ordering breaks browser preflight (401 on keyless OPTIONS)** (L-028, 2026-06-02)
   On /v1/* the chain was APIKeyAuth → PerKeyCORS, so CORS preflight (OPTIONS) requests — which browsers send WITHOUT X-API-Key — hit auth first and got 401, blocking the real cross-origin request (surfaced to callers as a misleading 'TLS error'). Fix: a keyless CORSPreflight middleware ahead of auth that returns 204 + reflects Origin + advertises X-API-Key in Access-Control-Allow-Headers. Per-key origin locking can't run at preflight (no key present) — it must live on the actual request (PerKeyCORS sets ACAO there). Pattern: any auth middleware in front of a CORS-exposed route must let CORS preflights pass before authenticating. The spec already documented this (edge case 'preflight without API key') — code had drifted from spec.
 
@@ -69,6 +72,9 @@
   Replaced per-request 7.4MB JSON deserialize + O(n) linear scan with pre-sorted in-memory index + O(log n) binary search. 30ms→0.25μs, 29MB→1KB, 200K→5 allocs. Key insight: the bottleneck was JSON deserialization from Redis on every request, not the prefix matching itself. Pre-lowercasing entries during index build eliminates repeated ToLower calls during search.
 
 ## Process
+- **[medium] Cycle 11 complete: M9.5 production-deploy via homelab notification (pivoted twice)** (L-029, 2026-06-03)
+  Shipped /livez (TDD) + a v* tag → CI publish → notify-prod → NATS bridge announcement, verified end-to-end (v0.10.1-rc1, bridge 202, Discord prompt). Deploy model pivoted mid-cycle: kubectl-from-CI → homelab NATS notify → folded into ci.yml as a needs:publish job. Spec/plan/cycle docs kept in lockstep. Repo-side VERIFIED; cluster probe wiring is the remaining downstream user step. M9.5 ready to close (gates beta→GA with M10).
+
 - **[medium] docs manifest drift compounds fast when verify gates skip docs check** (L-027, 2026-05-16)
   Manifest sat 7 weeks (2026-03-25 → 2026-05-16) across cycles 7-10 + v0.10.0 release. 34 of 35 fingerprinted files changed, three new components (CacheAside w/ singleflight + GetWithStale, CircuitBreaker, NewSharedTransport) and a model split (internal/model/spl.go) landed without docs updates. Lesson: per-route diagrams are a poor place to document cross-cutting infra — one dedicated 'Upstream Resilience' diagram is cleaner. Action: consider adding `/add:docs --check` as a Gate 2 advisory so manifest drift surfaces before it compounds.
 
@@ -94,4 +100,4 @@
   All evidence items present: specs, 80%+ coverage, CI/CD, PR workflow, 2+ environments, conventional commits, TDD evidence, branch protection, release tags, quality gates.
 
 ---
-*28 entries. Last updated: 2026-06-02. Source: .add/learnings.json*
+*30 entries. Last updated: 2026-06-03. Source: .add/learnings.json*
