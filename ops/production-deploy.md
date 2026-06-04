@@ -1,95 +1,105 @@
 # Runbook: Production Deploy & Rollback
 
 Production runs on a **K3s** cluster in namespace **`drugs`** (Deployment
-`drug-gate`). Image registry: `dockerhub.calebdunn.tech/finish06/drug-gate`.
+`drug-gate`). **The repo does not deploy.** Deployment is owned by the homelab
+agent ("Joe") via a tag → event → human-approval pipeline. Your job from this
+repo is: **push a `v*.*.*` tag.** Joe asks a human in Discord whether to promote,
+and Joe runs the kubectl deploy, rollout gate, smoke, and rollback.
+
 Staging is a separate compose host and is **not** covered here (it deploys via
 the existing webhook + k6 smoke on push to `main`).
 
 Spec: `specs/deploy-automation.md` · Plan: `docs/plans/deploy-automation-plan.md`
 
-## Prerequisites
+## The flow
 
-- **GitHub `production` Environment** with a required reviewer (the approval gate) and secrets:
-  - `KUBECONFIG` — cluster credentials (kubeconfig or SA token) scoped to namespace `drugs`
-  - `PROD_API_KEY` — API key for the production k6 smoke test
-- **Self-hosted runner** labelled `[self-hosted, k3s]` registered inside the cluster (so `kubectl` reaches the API server). Needs `kubectl` and Docker (for `grafana/k6-action`) available.
-- **Deployment probes** (owned by the cluster manifest, not this repo):
-  - **readiness** → `GET /health` (HTTP 200 incl. `degraded` = ready; 503/`error` = not-ready)
+```
+git tag v0.11.0 && git push --tags
+   │
+   ├─ ci.yml (publish)            → builds + pushes image :0.11.0 / :latest
+   └─ notify-prod-promote.yml     → POSTs event to the homelab NATS bridge
+                                     subject: joe.deploy.drug-gate.tag.v0.11.0
+                                          │
+                                          ▼
+                                   Joe posts in Discord:
+                                   "drug-gate v0.11.0 published. Promote to prod?"
+                                          │
+                                 human: yes / no / hold X
+                                          │
+                                   yes → Joe deploys (kubectl set image,
+                                         rollout status, smoke) + rolls back
+                                         on failure
+```
+
+There is **no GitHub UI approval** and **no kubectl in this repo**. The Discord
+reply is the gate.
+
+## Prerequisites (one-time)
+
+- Repo secret **`NATS_BRIDGE_KEY`** = the `NATS-gh-actions-drug-gate-…` key from
+  the homelab operator (Settings → Secrets and variables → Actions). Paste exactly,
+  no trailing newline.
+- (Optional) `REGISTRY_USERNAME` / `REGISTRY_PASSWORD` — already present (used by
+  `publish`). Let the notify workflow attach the resolved image digest; otherwise
+  it publishes `digest: "pending"` and Joe resolves it on promote.
+- **Deployment probes** (owned by the cluster manifest, used by Joe's deploy):
+  - **readiness** → `GET /health` (200 incl. `degraded` = ready; 503/`error` = not-ready)
   - **liveness** → `GET /livez` (dependency-free; never 503 on a Redis outage)
 
 ## Deploy (normal release)
 
-1. Cut a release tag:
-   ```
-   git tag v0.11.0 && git push --tags
-   ```
-2. CI (`ci.yml` → `publish`) builds and pushes the release image `:0.11.0` + `:latest`.
-3. The **Deploy Production** workflow starts and waits at the `production`
-   Environment for approval. **Approve only once the release image build is green**
-   (the manual gate is what serializes the deploy after the build).
-4. On approval the deploy job:
-   - `kubectl -n drugs set image deployment/drug-gate drug-gate=…:0.11.0`
-   - `kubectl -n drugs rollout status … --timeout=120s` (readiness health gate)
-   - runs the k6 smoke suite against `https://drug-gate.calebdunn.tech`
-   - **auto-rolls back** (`kubectl rollout undo`) if the rollout or smoke fails
-5. Verify: `curl https://drug-gate.calebdunn.tech/version` shows the new `git_commit`.
+1. `git tag v0.11.0 && git push --tags`
+2. `publish` builds the image; `notify-prod-promote` publishes the event.
+3. Watch Discord. Reply `yes` to promote (`no` to skip, `hold X` to defer X min).
+4. Joe deploys and reports back. Verify: `curl https://drug-gate.calebdunn.tech/version`.
 
-## Automatic rollback
+## Rollback
 
-The deploy workflow rolls back automatically when:
-- the rollout does not become ready within `--timeout=120s` (e.g. `ImagePullBackOff`, failing readiness), or
-- the post-promote k6 smoke fails.
+Rollback is operator/Joe-side, not a repo workflow. In the Discord channel, ask
+the operator to roll back; Joe runs `kubectl -n drugs rollout undo deployment/drug-gate`
+(optionally `--to-revision=N`). For break-glass with direct cluster access:
 
-In both cases the job runs `kubectl -n drugs rollout undo deployment/drug-gate`,
-re-checks rollout status, and exits **failed**. Production stays on / returns to
-the previous revision.
-
-## Manual rollback
-
-### Audited (preferred) — `rollback-prod` workflow
 ```
-gh workflow run rollback-prod.yml                 # roll back to the previous revision
-gh workflow run rollback-prod.yml -f to_revision=7  # roll back to a specific revision
-```
-Then approve the `production` Environment gate. The workflow runs `kubectl rollout
-undo` (and `rollout status`) on the in-cluster runner.
-
-### Break-glass (direct kubectl, needs cluster access)
-```
-kubectl -n drugs rollout history deployment/drug-gate          # list revisions
-kubectl -n drugs rollout undo deployment/drug-gate             # previous revision
+kubectl -n drugs rollout history deployment/drug-gate
+kubectl -n drugs rollout undo deployment/drug-gate            # previous revision
 kubectl -n drugs rollout undo deployment/drug-gate --to-revision=7
 kubectl -n drugs rollout status deployment/drug-gate --timeout=120s
 ```
 
-> **First-ever deploy:** `rollout undo` has no prior revision to revert to.
-> Recover by redeploying a known-good tag: `git tag v0.10.0-redeploy <good-sha>`
-> … or `kubectl -n drugs set image …` to the last good image, then `rollout status`.
+> **First-ever deploy:** `rollout undo` has no prior revision; redeploy a known-good
+> tag instead (`kubectl -n drugs set image …` to the last good image, then `rollout status`).
+
+## Test the notification (no real release)
+
+`notify-prod-promote` has a `workflow_dispatch` trigger:
+1. Actions → **notify prod promote** → Run workflow → `tag: v0.0.0-test`.
+2. Confirm with the homelab operator that the Discord message arrived.
+3. In the **Publish event** step log, the bridge should return **202**.
+   - `401` → `NATS_BRIDGE_KEY` missing/unknown · `403` → wrong app namespace
+   - `413` → payload too large · `5xx` → bridge down (ask operator)
+   - ⚠️ The workflow currently exits 0 even on 401/403 — check the step log, not just the job status.
 
 ## Redis recovery
 
-Redis is the **critical** dependency: when it is down, `/health` returns 503 and
-pods go **NotReady** (removed from the Service), but `/livez` stays 200 so the
-liveness probe does **not** kill them.
+Redis is the **critical** dependency: when down, `/health` returns 503 and pods go
+**NotReady** (removed from the Service), but `/livez` stays 200 so liveness does
+**not** kill them.
 
-1. Check: `kubectl -n drugs get pods` (pods Running but NotReady) and `curl …/health` (`status: error`, Redis dep error).
-2. Restore Redis (restart the Redis pod/statefulset, check persistence/AOF — see `ops/redis-persistence.md`).
+1. Check: `kubectl -n drugs get pods` (Running but NotReady) and `curl …/health` (`status: error`).
+2. Restore Redis (restart pod/statefulset; check AOF — see `ops/redis-persistence.md`).
 3. Pods return to Ready automatically once `/health` recovers; no redeploy needed.
-4. If pods were killed/rescheduled, confirm with `kubectl -n drugs rollout status deployment/drug-gate`.
 
 ## Circuit-breaker reset
 
 The cash-drugs upstream breaker opens after 10 consecutive failures and serves
-stale cache; it **auto-recovers** via a half-open probe after a 30s cooldown — no
-manual reset is normally required.
+stale cache; it **auto-recovers** via a half-open probe after 30s — no manual reset
+normally needed.
 
 - Inspect: `curl …/health` → the `circuit_breaker` dependency reports `degraded` when open.
-- Force recovery: once upstream is healthy, the next half-open probe closes it.
-  To clear immediately, restart the pods: `kubectl -n drugs rollout restart deployment/drug-gate`
-  (breaker state is in-process, so a restart resets it).
+- Force-clear: `kubectl -n drugs rollout restart deployment/drug-gate` (breaker state is in-process).
 
 ## Notes
 
-- All `kubectl` runs in namespace `drugs` on the in-cluster self-hosted runner.
-- Production deploys **always** require the human approval gate — never autonomous (AC-012).
-- If the runner uses an in-cluster ServiceAccount instead of a `KUBECONFIG` secret, drop the "Configure kubectl" step in both workflows and rely on the runner's default config.
+- Subject convention: `joe.deploy.<app>.tag.<version>`; the key is scoped to `joe.deploy.drug-gate.*`.
+- Production deploys **always** require a human Discord reply — never autonomous.
+- Operator owns the bridge (`nats-publish.kube.calebdunn.tech`), the NATS broker, the Joe agent, and key issuance/rotation. Reach them in the deploy-promote Discord channel.

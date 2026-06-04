@@ -1,22 +1,31 @@
 # Session Handoff
-**Written:** 2026-06-02
+**Written:** 2026-06-03
 
-## In Progress
-- **M9.5 — Production Deploy** is now the active milestone (`planning.current_milestone`). Staging deploy automation exists in CI; remaining work is the production path: health-gated deploy, one-command rollback, runbook. Next step: `/add:spec deploy-automation` then `/add:cycle --plan`.
+## Status: M9.5 cycle-11 — PIVOTED to homelab notification deploy model
 
-## Completed This Session
-- **CORS preflight fix shipped** (PR #28, merged `e923eb7`, `--admin` override). `CORSPreflight` middleware answers keyless preflights before auth → 204 + reflected origin. Live on staging (`/version` = `beta-e923eb77`, git_commit `e923eb7`). Verified: unit (92.4%), e2e (regression tests green in CI), and a live staging preflight returning 204. Production not deployed (needs approval).
-- **Roadmap reorg** (PRD §6 → v0.4.0): split M9 into **M9 Upstream Resilience [DONE, v0.8.0]** + **M9.5 Production Deploy [NOW/IN_PROGRESS]**. Reconciled the stale M9 detail block and milestone file (was DONE but bundled production deploy with all criteria unchecked). Created `docs/milestones/M9.5-production-deploy.md`. GA path now gated on M9.5 + M10.
+The "other option" arrived and was adopted. Production deploy is now an
+**announcement**: a `v*.*.*` tag publishes a NATS event; the homelab agent ("Joe")
+prompts a human in Discord to promote and owns the cluster deploy/health-gate/rollback.
+This repo no longer runs kubectl.
 
-## Decisions Made
-- Preflight reflects origin; per-key origin locking enforced on the actual request (user-confirmed).
-- e2e CI job is full-suite but non-blocking (cash-drugs pulls live FDA/DailyMed; upstream hiccups must not block PRs).
-- M9.5 marked IN_PROGRESS (not NOT_STARTED) because CI already covers version-pinned builds + staging deploy + smoke.
+## This pivot PR (open / merging)
+- ADD `.github/workflows/notify-prod-promote.yml` (`v*.*.*` + `workflow_dispatch` → POST event to `nats-publish.kube.calebdunn.tech`, Bearer `NATS_BRIDGE_KEY`)
+- REMOVE `deploy-prod.yml`, `rollback-prod.yml`, `.github/actionlint.yaml` (kubectl approach)
+- REWRITE `ops/production-deploy.md` (tag→event→Discord→Joe)
+- REVISE `specs/deploy-automation.md` → v0.2.0, `docs/plans/deploy-automation-plan.md`, `cycle-11.md`, CHANGELOG
+- KEEP `/livez` (#31) + the readiness(`/health`)/liveness(`/livez`) probe contract
 
-## Blockers
-- None. (Pre-existing e2e failures `TestE2E_Health` + `AC010_DrugsbyClassMissingParam` are not data-dependent and look worth a separate look.)
+## Still needs the user
+- **Add repo secret `NATS_BRIDGE_KEY`** — the `NATS-gh-actions-drug-gate-…` key from the homelab operator (ask in the deploy-promote Discord channel). `REGISTRY_USERNAME`/`REGISTRY_PASSWORD` already exist (optional digest resolve).
+- **Cluster Deployment probes:** readiness=`/health`, liveness=`/livez` (infra manifest).
+- **Verify:** Actions → notify prod promote → Run workflow → `tag: v0.0.0-test` → operator confirms Discord (bridge **202**). Then a real `v*.*.*` tag.
 
-## Next Steps
-1. `/add:spec deploy-automation` — spec the production health-gate + rollback + runbook for M9.5.
-2. `/add:cycle --plan` to start M9.5 execution.
-3. Optionally fix the two pre-existing non-data e2e failures.
+## Completed earlier this session (all merged)
+- #28 CORS fix (live on staging) · #29 roadmap split · #30 deploy-automation spec+plan · #31 `/livez` · #32 kubectl deploy/rollback workflows (now superseded by this pivot)
+
+## Housekeeping debt (deferred)
+- `.add/config.json` `cycle_history` stale (missing cycle-9, cycle-10); `cycle-10.md` abandoned. Reconcile at `/add:cycle --complete` / `/add:retro`.
+- Swagger not regenerated for `/livez` (swag CLI not installed) — next `make swagger`.
+
+## Resume
+After the user wires `NATS_BRIDGE_KEY` + probes and the `workflow_dispatch` test passes, the cycle's repo-side work is VERIFIED → `/add:cycle --complete` (closes cycle-11, updates M9.5 hill chart).

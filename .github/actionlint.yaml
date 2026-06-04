@@ -1,6 +1,0 @@
-# Custom self-hosted runner labels used by this repo's workflows.
-# The `k3s` label marks the in-cluster runner that runs production deploys
-# (see .github/workflows/deploy-prod.yml / rollback-prod.yml).
-self-hosted-runner:
-  labels:
-    - k3s
