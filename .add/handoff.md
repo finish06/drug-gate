@@ -1,7 +1,16 @@
 # Session Handoff
 **Written:** 2026-06-03
 
-## Status: cycle-11 COMPLETE — M9.5 repo-side VERIFIED (ready to close)
+## Status: M9.5 DONE (repo-side) — cleaned up; GA now gated on M10 alone
+
+M9.5 reconciled to reality and closed (repo-side): PRD §6 row + detail block
+rewritten to the homelab notification model (was stale kubectl text), marked
+DONE; PRD → v0.5.0; milestone file Status → DONE; `current_milestone` → null.
+Downstream cluster-probe wiring tracked as an operator/infra follow-up (not a
+repo deliverable). **No active milestone.** Next: promote **M10 — Admin Auth
+Hardening** (the remaining beta→GA gate) via `/add:roadmap --edit` or `/add:spec`.
+
+## (earlier) cycle-11 close
 
 Production-release notification pipeline verified end-to-end: `v0.10.1-rc1` →
 CI `publish` → `notify-prod` → **bridge 202** → Joe's Discord prompt (confirmed).

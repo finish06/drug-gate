@@ -102,7 +102,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M8: Cache Architecture + Clinical Data | Generic CacheAside[T], expanded SPL sections | beta | DONE | 211 lines eliminated, configurable TTL, SPL sections 4-6, 81.1% coverage |
 | M8.5: Bugathon | Security, correctness, and DX fixes from 3-agent audit | beta | DONE | 13 bugs fixed (7 Tier 1, 6 Tier 2), v0.7.1 tagged |
 | M9: Upstream Resilience | Circuit breaker, stale-cache, parallel interactions, MaxBytesReader | beta | DONE | Circuit breaker (10 fails), stale-cache serving, errgroup(5), 10MB limit, v0.8.0 tagged |
-| M9.5: Production Deploy | Deploy automation with rollback | GA candidate | IN_PROGRESS | GH Actions deploy workflow with health gate, version-pinned deploys, one-command rollback, runbook |
+| M9.5: Production Deploy | Announce releases to the homelab bus; agent ("Joe") deploys after Discord approval | GA candidate | DONE (repo-side) | `notify-prod` CI job (`v*` tag → NATS event w/ exact digest, 202-or-fail), `/livez` liveness, runbook; verified `v0.10.1-rc1` → 202 → Discord. Cluster probe wiring = downstream |
 | M10: Admin Auth Hardening | HMAC-signed admin tokens, rotation, audit log | GA candidate | LATER | Static bearer token replaced, token rotation without restart, admin audit log, separate rate limits |
 | M10.5: Landing Page | Public marketing page, GitHub Pages, config-driven redirect | beta | DONE | dg.calebdunn.tech, LANDING_URL env var, Umami analytics, v0.9.0 tagged |
 | M11: Flagship Aggregation | Unified drug profile, batch drug lookup | GA | LATER | GET /v1/drugs/profile merges all data, POST /v1/drugs/batch handles 5-20 drugs with per-item errors |
@@ -367,26 +367,32 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
 
 > Production-deploy automation was originally bundled here; it is split out to **M9.5** below.
 
-#### M9.5: Production Deploy [NOW — IN_PROGRESS]
-**Goal:** Establish production-grade deployment automation with a health gate and one-command rollback
+#### M9.5: Production Deploy [DONE — repo-side, 2026-06-03]
+**Goal:** Production release path with a deploy gate + rollback, via the homelab notification model
 **Appetite:** 1 week
 **Target maturity:** GA candidate
 
-**Features:**
-- Production Deploy Automation + Rollback (M effort)
-  - Pin deployments to version tags (no `:latest` in production)
-  - GitHub Actions deploy workflow with health gate (deploy → health check → promote or rollback)
-  - One-command rollback to previous version
-  - Documented runbook for production operations
+**Model:** drug-gate **announces**; the homelab agent ("Joe") **deploys**. A `v*` tag →
+CI `publish` builds the image → `notify-prod` publishes a NATS event → Joe prompts a
+human in **Discord** → on "yes" Joe runs `kubectl` deploy + health gate (readiness
+`/health`) + rollback. The repo never runs `kubectl`. The Discord reply is the gate.
+
+**Features (repo-side):**
+- `notify-prod` job in `ci.yml` (`needs: publish`, `v*` tags) — POSTs the promote event with the **exact image digest**; fails CI on non-202
+- `/livez` dependency-free liveness endpoint (readiness=`/health`, liveness=`/livez` contract)
+- `ops/production-deploy.md` runbook
 
 **Success criteria:**
 - [x] Version-pinned release images built/pushed via GH Actions (`:vX.Y.Z` + `:latest`)
 - [x] Staging auto-deploy via CI webhook + k6 smoke (live)
-- [ ] Production deploy workflow with health gate (deploy → health check → promote or rollback)
-- [ ] One-command rollback to previous version, documented and tested
-- [ ] Runbook covers: deploy, rollback, Redis recovery, circuit breaker reset
+- [x] Production release **announced** via `notify-prod` — verified `v0.10.1-rc1` → bridge 202 → Discord
+- [x] `/livez` liveness endpoint
+- [x] Runbook covers: deploy, rollback (operator/Joe), Redis recovery, circuit-breaker reset
 
-> Partially covered by `.github/workflows/ci.yml` (publish job: beta/release builds, staging webhook deploy, k6 smoke). Remaining work is the **production** path: health gate, rollback command, runbook. Needs `specs/deploy-automation.md` via `/add:spec`.
+> Repo-side complete (spec `specs/deploy-automation.md` v0.3.0, cycle-11). Pivoted from
+> an earlier kubectl-from-CI approach. **Downstream (operator/infra — not this repo):**
+> readiness/liveness probe wiring on the cluster Deployment manifest + Joe's
+> deploy/rollback.
 
 #### M10: Admin Auth Hardening [LATER — week 7]
 **Goal:** Harden the highest-privilege credential in the system
@@ -448,7 +454,7 @@ SetID → spl-xml → Raw XML (~200KB) → Parse Section 7 → Interaction text
 | From | To | Requirements |
 |------|-----|-------------|
 | alpha → beta | Feature specs for all endpoints, 50%+ coverage, PR workflow active, TDD evidence | **PROMOTED 2026-03-17** (10/10 evidence) |
-| beta → GA | Circuit breaker on upstream (M9 ✓), production deploy automation with health gate and rollback (M9.5), HMAC admin auth replacing static tokens (M10), admin audit log (M10), 80%+ coverage sustained, 30+ days production stability, SLAs defined, full CI/CD pipeline with version-pinned deploys | Requires M9.5 + M10 complete |
+| beta → GA | Circuit breaker on upstream (M9 ✓), production release path (M9.5 ✓ repo-side; cluster probe wiring downstream), HMAC admin auth replacing static tokens (M10), admin audit log (M10), 80%+ coverage sustained, 30+ days production stability, SLAs defined, full CI/CD pipeline with version-pinned deploys | Requires M10 complete |
 
 ## 7. Key Features
 
@@ -519,3 +525,4 @@ Single tier for MVP or multiple from the start? Consider:
 | 2026-03-07 | 0.2.0 | calebdunn | Auth decision: publishable API keys (frontend-safe). Added Future Discovery section. |
 | 2026-03-18 | 0.3.0 | calebdunn | Beta promotion. M6 SPL Interactions added. RxNorm and SPL moved from out-of-scope to done/in-progress. |
 | 2026-06-02 | 0.4.0 | roadmap | Split M9 into M9 (Upstream Resilience — DONE, v0.8.0) and M9.5 (Production Deploy). Promoted M9.5 to Now/IN_PROGRESS. Reconciled stale M9 detail block + milestone file; GA path now gated on M9.5 + M10. |
+| 2026-06-03 | 0.5.0 | roadmap | Clean up M9.5: reconciled PRD to the delivered homelab notification model (the table/detail still described the removed kubectl approach). Marked DONE (repo-side) — verified `v0.10.1-rc1` → 202 → Discord; cluster probe wiring tracked as downstream. GA now gated on M10. |
