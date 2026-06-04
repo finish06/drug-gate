@@ -2,10 +2,31 @@
 
 **Milestone:** M9.5 — Production Deploy
 **Maturity:** beta
-**Status:** IN_PROGRESS
+**Status:** COMPLETE
 **Started:** 2026-06-02
-**Completed:** TBD
+**Completed:** 2026-06-03
 **Duration Budget:** 2-3 days
+
+## Retrospective
+
+Delivered `/livez` (TDD) + a working production-release announcement pipeline,
+verified end-to-end: `v0.10.1-rc1` → CI `publish` → `notify-prod` → **bridge 202**
+→ Joe's Discord prompt. Mid-cycle the deploy model **pivoted twice**: kubectl-from-CI
+(Option A) → homelab NATS notification → folded the notify into `ci.yml` as a
+`needs: publish` job. The pivots invalidated the kubectl workflows (built then
+removed) but the spec/plan/cycle docs were kept in lockstep each step.
+
+**What worked:** sequencing publish→notify (vs the operator's parallel digest-poll)
+removed a real race that had timed out at the 5-min job cap. Failing CI on non-202
+turned a silent wart into a visible signal. Static validation (actionlint) caught
+issues before merge each time.
+
+**What was harder:** the operator's handoff workflow had a latent timeout bug only
+exposed by actually running it — the `workflow_dispatch` test is what surfaced it.
+Lesson: run the real path early; don't trust a provided CI artifact until it's fired.
+
+**Follow-ups:** `:latest` now points at `v0.10.1-rc1` (corrects on the next real
+release). Cluster probe wiring (readiness/liveness) is the last downstream user step.
 
 ## Progress
 

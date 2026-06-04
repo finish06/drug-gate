@@ -429,6 +429,37 @@
       "date": "2026-06-02",
       "classified_by": "agent",
       "checkpoint_type": "post-tdd"
+    },
+    {
+      "id": "L-029",
+      "title": "Cycle 11 complete: M9.5 production-deploy via homelab notification (pivoted twice)",
+      "body": "Shipped /livez (TDD) + a v* tag \u2192 CI publish \u2192 notify-prod \u2192 NATS bridge announcement, verified end-to-end (v0.10.1-rc1, bridge 202, Discord prompt). Deploy model pivoted mid-cycle: kubectl-from-CI \u2192 homelab NATS notify \u2192 folded into ci.yml as a needs:publish job. Spec/plan/cycle docs kept in lockstep through each pivot. Repo-side VERIFIED; cluster probe wiring is the remaining downstream user step. M9.5 ready to close (gates beta\u2192GA with M10).",
+      "scope": "project",
+      "stack": [
+        "go",
+        "chi"
+      ],
+      "category": "process",
+      "severity": "medium",
+      "source": "drug-gate",
+      "date": "2026-06-03",
+      "classified_by": "agent",
+      "checkpoint_type": "retro"
+    },
+    {
+      "id": "L-030",
+      "title": "Sequence publish\u2192notify in CI; a parallel digest-poll races the build and times out",
+      "body": "A standalone notify workflow polled the registry for the image digest (10x30s/variant) in parallel with the image build; with timeout-minutes:5 the job was cancelled mid-poll and the publish/POST step was SKIPPED \u2014 no event sent, masquerading as a key problem. Fix: make notify a needs:publish job in the same workflow so the image+digest already exist (publish.outputs.image_digest, no poll). Also fail CI on non-202 instead of the provider's silent exit-0. General lesson: order dependent CI steps with needs/outputs rather than racing + polling; and run a provided CI artifact for real before trusting it (the dispatch test is what exposed the bug).",
+      "scope": "workstation",
+      "stack": [
+        "github-actions"
+      ],
+      "category": "anti-pattern",
+      "severity": "high",
+      "source": "drug-gate",
+      "date": "2026-06-03",
+      "classified_by": "agent",
+      "checkpoint_type": "retro"
     }
   ]
 }
