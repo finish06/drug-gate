@@ -7,188 +7,147 @@
 
 ## 1. Feature Description
 
-Automate production deployment of drug-gate to the **K3s cluster** with a
-health gate and automatic rollback, plus an audited manual rollback path and an
-operational runbook. A production deploy is cut by pushing a `v*` release tag;
-the deploy runs only after manual approval via a GitHub **production**
-Environment. The deploy job points the cluster Deployment at the version-pinned
-image, waits for the Kubernetes rollout to pass the readiness gate, runs a k6
-smoke test against production, and automatically rolls back (`kubectl rollout
-undo`) if either the rollout or the smoke test fails.
+drug-gate releases to production by **announcing** a new version, not by deploying
+it. Pushing a `v*.*.*` tag publishes a JSON event to the homelab NATS bridge; the
+homelab agent ("Joe") sees the event and asks a human operator in **Discord**
+whether to promote. On "yes", Joe runs the actual deploy on the K3s cluster
+(namespace `drugs`): `kubectl set image`, rollout health gate, smoke, and rollback
+on failure. The git tag is the deploy gate — same shape as `npm publish`.
 
-Image build and publish are already owned by `specs/docker-build-publish.md`
-(`:beta` on main, `:vX.Y.Z` + `:latest` on tags); this spec consumes those
-images and is **not** responsible for building them. The K8s manifests
-(Deployment/Service/probes) are owned **outside this repo** (infra repo /
-cluster); this spec defines the deploy job and the `/health` probe **contract**
-it depends on, not the manifest files.
+**This repo's responsibility is the announcement only.** It runs no `kubectl`,
+pushes no manifests, and has no GitHub approval gate. The deploy, health gate,
+smoke, and rollback are owned by Joe (out of scope here). The repo also exposes
+the `/livez` liveness endpoint and depends on a probe contract the cluster manifest
+must honor.
+
+Image build/publish is owned by `specs/docker-build-publish.md` (`:beta` on main,
+`:vX.Y.Z` + `:latest` on tags); the notification runs in parallel and does not
+depend on the image being ready.
+
+> **History:** an earlier draft of this spec deployed via `kubectl` from a
+> self-hosted in-cluster GitHub runner. That approach was replaced by the homelab
+> notification model below (the operator owns deploy/rollback). See §9.
 
 ### User Story
 
-As the operator of drug-gate, I want production deploys to be tag-triggered,
-human-approved, health-gated, and automatically rolled back on failure — with a
-one-command manual rollback and a runbook — so that I can release to the K3s
-cluster confidently and recover fast when a deploy goes bad.
+As the operator of drug-gate, I want to cut a `v*` release tag and be asked in
+Discord whether to promote — with the homelab agent handling the cluster deploy,
+health gate, and rollback — so that releasing is a one-line `git push` and I never
+run kubectl or click a GitHub approval.
 
 ## 2. Acceptance Criteria
 
 | ID | Criterion | Priority |
 |----|-----------|----------|
-| AC-001 | A production deploy is initiated by pushing a git tag matching `v*`; the deploy targets the corresponding version-pinned release image (`<registry>/drug-gate:vX.Y.Z`) built by the existing publish pipeline | Must |
-| AC-002 | The deploy job executes only after manual approval is granted on a GitHub **production** Environment (required reviewer); no production change occurs before approval | Must |
-| AC-003 | The deploy job updates the cluster via `kubectl -n drugs set image deployment/drug-gate drug-gate=<registry>/drug-gate:vX.Y.Z` (namespace `drugs`), authenticating with cluster credentials stored in the production Environment secret | Must |
-| AC-004 | The deploy waits on `kubectl rollout status deployment/drug-gate --timeout=120s`; the rollout completes only when new pods pass their readiness probe within the timeout | Must |
-| AC-005 | **Readiness contract:** the production Deployment's readiness probe targets `/health`; HTTP 200 (including `status: "degraded"`) counts as ready, HTTP 503 (`status: "error"`, e.g. Redis down) counts as not-ready | Must |
-| AC-006 | **Liveness contract:** the liveness probe uses a lightweight, dependency-free check (NOT the dependency-aware `/health`), so a Redis outage marks pods not-ready without crash-looping them | Must |
-| AC-007 | If the rollout health gate fails (timeout or pods not ready), the deploy job automatically runs `kubectl rollout undo deployment/drug-gate` and the job is marked failed | Must |
-| AC-008 | After a successful rollout, the job runs the k6 smoke suite (`tests/k6/staging.js`, smoke scenario) against the production URL using a production API key | Must |
-| AC-009 | If the post-promote smoke test fails, the job automatically runs `kubectl rollout undo deployment/drug-gate` and is marked failed | Must |
-| AC-010 | A separate `rollback-prod` workflow (`workflow_dispatch`) runs `kubectl rollout undo deployment/drug-gate` (optionally `--to-revision=N`) through the same production Environment approval gate | Must |
-| AC-011 | A runbook at `ops/production-deploy.md` documents: deploy, automatic rollback, manual rollback (workflow + `kubectl rollout undo` break-glass), Redis recovery, and circuit-breaker reset | Must |
-| AC-012 | No path deploys to production without the human approval gate — not on merge to main, not on tag push alone | Must |
-| AC-013 | Cluster credentials and the production API key live only in the **production** GitHub Environment (not repo-wide secrets) and are never echoed in job logs | Must |
-| AC-014 | Production deploys are serialized — a concurrency group prevents two prod deploys/rollbacks from running simultaneously | Should |
-| AC-015 | The deploy and rollback jobs report the target version and final rollout outcome in the job summary/logs | Should |
-| AC-016 | Staging deploy behavior is unchanged (compose host + signed webhook + k6 smoke); this milestone is production-only | Should |
+| AC-001 | Pushing a tag matching `v*.*.*` triggers `notify-prod-promote.yml` | Must |
+| AC-002 | The workflow POSTs a JSON event to `https://nats-publish.kube.calebdunn.tech/publish/joe.deploy.drug-gate.tag.<version>` | Must |
+| AC-003 | The request authenticates with `NATS_BRIDGE_KEY` (Bearer), stored as a repo secret and never committed or echoed | Must |
+| AC-004 | The event payload includes: `tag`, `digest`, `registry_path`, `release_url`, `workflow_run_url`, `actor`, `sha` | Must |
+| AC-005 | The notification publishes regardless of image/digest availability — the digest is best-effort and is `"pending"` if unresolved (the build runs in parallel) | Must |
+| AC-006 | `GET /livez` is a dependency-free liveness probe (always 200). The cluster Deployment uses readiness → `/health` (200 incl. `degraded` = ready; 503/`error` = not-ready) and liveness → `/livez` (so a Redis outage doesn't crash-loop pods) | Must |
+| AC-007 | `workflow_dispatch` with a `tag` input fires the notification without cutting a real tag (end-to-end test) | Must |
+| AC-008 | The subject is namespaced `joe.deploy.drug-gate.*`; the key is scoped to that prefix (publishing elsewhere returns 403) | Should |
+| AC-009 | `ops/production-deploy.md` documents the tag→event→Discord→Joe flow, the `workflow_dispatch` test, rollback (operator/Joe), Redis recovery, and breaker reset | Must |
+| AC-010 | The repo performs NO deploy/rollback itself — kubectl, rollout health gate, smoke, and rollback are owned by the homelab agent (Joe) | Must |
+| AC-011 | Staging deploy behavior is unchanged (compose host + signed webhook + k6 smoke on push to `main`) | Should |
 
 ## 3. User Test Cases
 
-### TC-001: Tag-triggered, approved production deploy (happy path)
-**Precondition:** Release image `:v0.11.0` exists in the registry; production Environment configured with a required reviewer; cluster reachable.
+### TC-001: Tag-triggered promote (happy path)
+**Precondition:** `NATS_BRIDGE_KEY` set; Joe + Discord pipeline live.
 **Steps:**
 1. `git tag v0.11.0 && git push --tags`
-2. Observe the production Environment enter "waiting for review"; approve it
-3. Deploy job runs `kubectl set image …:v0.11.0`, then `kubectl rollout status`
-4. Rollout completes (pods ready); k6 smoke runs against the prod URL and passes
+2. `publish` builds `:0.11.0`; `notify-prod-promote` publishes the event (bridge 202)
+3. Joe posts "drug-gate v0.11.0 published. Promote to prod?" in Discord
+4. Human replies `yes`; Joe deploys (set image → rollout status → smoke)
 5. `curl https://drug-gate.calebdunn.tech/version`
-**Expected Result:** Job succeeds; `/version` reports `git_commit`/version for `v0.11.0`; no rollback triggered.
+**Expected Result:** `/version` shows the new build; on a failed deploy Joe rolls back and reports it.
 **Maps to:** TBD
 
-### TC-002: Failed rollout → automatic rollback
-**Precondition:** A `v*` image that never becomes ready (e.g., bad config / ImagePullBackOff).
-**Steps:**
-1. Tag + approve the deploy
-2. `kubectl rollout status` does not complete within `--timeout=120s`
-**Expected Result:** Deploy job runs `kubectl rollout undo deployment/drug-gate`, job is marked failed, production continues serving the previous version.
+### TC-002: workflow_dispatch test (no real release)
+**Precondition:** `NATS_BRIDGE_KEY` set.
+**Steps:** Actions → notify prod promote → Run workflow → `tag: v0.0.0-test`.
+**Expected Result:** Publish-event step shows bridge **202**; operator confirms the Discord message arrived.
 **Maps to:** TBD
 
-### TC-003: Smoke failure → automatic rollback
-**Precondition:** A `v*` image whose pods become ready but fail the smoke suite (e.g., a broken route or wrong data).
-**Steps:**
-1. Tag + approve the deploy
-2. Rollout completes (pods ready); k6 smoke fails
-**Expected Result:** Job runs `kubectl rollout undo`, marks the deploy failed, production stays on the previous version.
+### TC-003: Bad/misscoped key
+**Steps:** Run the workflow with a wrong or wrongly-scoped `NATS_BRIDGE_KEY`.
+**Expected Result:** Bridge returns **401** (unknown key) or **403** (wrong app namespace); no Discord message. Diagnosable in the Publish-event step log (note: the job may still exit 0 — a known bridge wart).
 **Maps to:** TBD
 
-### TC-004: Manual rollback workflow
-**Precondition:** Production is on `v0.11.0`; previous revision exists.
-**Steps:**
-1. `gh workflow run rollback-prod.yml` (optionally `-f to_revision=N`)
-2. Approve the production Environment gate
-3. Workflow runs `kubectl rollout undo deployment/drug-gate [--to-revision=N]`
-**Expected Result:** Production reverts to the prior (or specified) revision; `/version` reflects the rolled-back build; outcome reported in the job summary.
+### TC-004: Redis outage does not crash-loop pods
+**Precondition:** liveness=`/livez`, readiness=`/health` on the Deployment.
+**Steps:** Make Redis unreachable; observe pod conditions.
+**Expected Result:** `/health` → 503/`error`; pods go **NotReady** (off the Service) but are **not** killed by liveness; they recover when Redis returns.
 **Maps to:** TBD
 
-### TC-005: Approval gate enforced
-**Precondition:** Required reviewer configured on the production Environment.
-**Steps:**
-1. Push a `v*` tag
-2. Do not approve the production Environment
-**Expected Result:** The deploy job stays pending; no `kubectl` command runs and production is unchanged until approval is granted (or the wait times out / is rejected).
-**Maps to:** TBD
-
-### TC-006: Redis outage does not crash-loop pods
-**Precondition:** Liveness probe is a lightweight non-dependency check; readiness probe targets `/health`.
-**Steps:**
-1. With drug-gate running in the cluster, make Redis unreachable
-2. Observe pod conditions
-**Expected Result:** `/health` returns 503/`error`; pods go **NotReady** (removed from Service endpoints) but are **not** killed/restarted by liveness; when Redis recovers, pods return to Ready.
+### TC-005: Two tags in quick succession
+**Steps:** Push `v0.11.0` then `v0.11.1` quickly.
+**Expected Result:** Two events publish; Joe asks twice; the human can promote one and skip the other.
 **Maps to:** TBD
 
 ## 4. Configuration & Secrets
 
-**Production GitHub Environment (`production`):**
+| Secret (repo) | Purpose |
+|---------------|---------|
+| `NATS_BRIDGE_KEY` | Bearer token for the NATS bridge (`NATS-gh-actions-drug-gate-…`, from the homelab operator) |
+| `REGISTRY_USERNAME` / `REGISTRY_PASSWORD` (optional, already present) | Let the workflow resolve the image digest; otherwise `digest: "pending"` |
 
-| Secret / Setting | Purpose |
-|------------------|---------|
-| `KUBECONFIG` (or `K8S_SERVER` + `K8S_SA_TOKEN` + `K8S_CA`) | Authenticate `kubectl` to the K3s cluster |
-| `PROD_API_KEY` | API key for the k6 production smoke test |
-| Required reviewer(s) | Manual approval gate |
-| (reuse) `REGISTRY_USERNAME` / `REGISTRY_PASSWORD` | Pull access if needed by the cluster |
+| Parameter | Value |
+|-----------|-------|
+| `APP_NAME` | `drug-gate` |
+| `IMAGE_PATH` | `dockerhub.calebdunn.tech/finish06/drug-gate` |
+| Bridge | `https://nats-publish.kube.calebdunn.tech/publish/<subject>` |
+| Subject | `joe.deploy.drug-gate.tag.<version>` |
 
-**Deploy parameters (defaults — confirm in plan):**
+## 5. Mechanism
 
-| Parameter | Default |
-|-----------|---------|
-| Deployment name | `drug-gate` |
-| Container name | `drug-gate` |
-| Namespace | `drugs` |
-| Rollout timeout | `120s` |
-| Smoke suite | `tests/k6/staging.js` (smoke scenario) |
-| Production URL | `https://drug-gate.calebdunn.tech` |
-
-## 5. Deploy/CI Contract
-
-Two GitHub Actions workflows (or jobs), both pinned to the `production` Environment:
-
-All `kubectl` commands run in namespace `drugs` (`-n drugs`).
-
-**`deploy-prod` (trigger: push tag `v*`)**
+**`notify-prod-promote.yml`** (`.github/workflows/`):
 ```
-1. (publish) release image :vX.Y.Z built + pushed   ← existing docker-build-publish
-2. environment: production  → await manual approval  (AC-002, AC-012)
-3. kubectl -n drugs set image deployment/drug-gate drug-gate=<reg>/drug-gate:vX.Y.Z   (AC-003)
-4. kubectl -n drugs rollout status deployment/drug-gate --timeout=120s               (AC-004)
-   └─ fail → kubectl -n drugs rollout undo deployment/drug-gate → job fails          (AC-007)
-5. k6 run tests/k6/staging.js --env SCENARIO=smoke --env BASE_URL=<prod>             (AC-008)
-   └─ fail → kubectl -n drugs rollout undo deployment/drug-gate → job fails          (AC-009)
-6. report version + outcome                                                         (AC-015)
-concurrency: group=prod-deploy (serialize)                                          (AC-014)
+on: push tags v*.*.*  |  workflow_dispatch(tag)
+job publish-event (ubuntu-latest):
+  1. resolve tag (from ref or dispatch input)
+  2. best-effort digest pre-resolve from the registry (→ "pending" on miss)   (AC-005)
+  3. POST {tag,digest,registry_path,release_url,workflow_run_url,actor,sha}    (AC-002, AC-004)
+     to .../publish/joe.deploy.drug-gate.tag.<version>
+     Authorization: Bearer NATS_BRIDGE_KEY                                     (AC-003)
 ```
 
-**`rollback-prod` (trigger: workflow_dispatch, input `to_revision` optional)**
-```
-1. environment: production  → await manual approval
-2. kubectl -n drugs rollout undo deployment/drug-gate [--to-revision=N]               (AC-010)
-3. kubectl -n drugs rollout status deployment/drug-gate + report outcome
-```
-
-The readiness/liveness probes (AC-005, AC-006) are defined in the externally-owned
-Deployment manifest; this spec asserts the contract the deploy depends on.
+**Downstream (owned by Joe — out of scope here):** consumes the event, prompts in
+Discord, and on approval runs `kubectl -n drugs set image` → `rollout status` (health
+gate via `/health` readiness) → smoke → `rollout undo` on failure.
 
 ## 6. Edge Cases
 
 | Case | Expected Behavior |
 |------|-------------------|
-| Tagged image not present in registry | Pods `ImagePullBackOff` → rollout status times out → auto `rollout undo` (AC-007) |
-| Rollback with no previous revision (first-ever deploy) | `kubectl rollout undo` has nothing to revert to; runbook documents the manual recovery (redeploy a known-good tag) |
-| Smoke test flaky vs. a real regression | Smoke uses the same suite as staging; a smoke failure rolls back. Accept that flaky smoke can trigger a rollback; tune the smoke scenario to be deterministic |
-| Approval not granted / times out | Deploy job stays pending then is cancelled; no cluster change |
-| Two deploys (or deploy + rollback) at once | Concurrency group serializes; the second waits or is superseded (AC-014) |
-| Invalid/expired kubeconfig | Job fails at the auth step before any change is applied |
-| Deployment name / namespace mismatch | `kubectl` fails fast; no partial change; surfaced in logs |
-| Redis down during deploy | New pods are NotReady (503) → rollout never completes → auto rollback; existing pods keep serving per liveness contract (AC-006) |
+| Image not yet pushed when notify runs | Digest resolves to `"pending"`; event still publishes; Joe resolves the digest on promote (AC-005) |
+| Wrong / misscoped `NATS_BRIDGE_KEY` | Bridge 401/403; no Discord message; visible in the step log (job may still exit 0) |
+| Bridge down (5xx) | No event; operator owns the bridge — retry or ask in Discord |
+| Two tags pushed quickly | Two events; Joe asks twice (TC-005) |
+| Human replies `no` / `hold X` | Event archived / deferred; no deploy |
+| Non-`v*.*.*` tag (e.g. `v1`, `beta`) | Notify does not trigger (pattern `v*.*.*`) |
+| Redis down at deploy time | Pods NotReady via `/health`; not crash-looped (liveness `/livez`); rollout won't promote until healthy (AC-006) |
 
 ## 7. Dependencies
 
-- **M9 — Upstream Resilience (DONE):** three-tier `/health` status (`ok`/`degraded`/`error`, 503 on Redis down) is the basis for the readiness contract
-- **docker-build-publish:** produces the version-pinned `:vX.Y.Z` release images this spec deploys
-- **K3s cluster** with an existing `drug-gate` Deployment + Service + probes (manifests owned outside this repo)
-- **GitHub `production` Environment** with required reviewer(s) and the secrets above
-- **`tests/k6/staging.js`** smoke suite (reused against the prod URL)
-- **`kubectl` in CI** (e.g., `azure/setup-kubectl`)
-- **`ops/`** runbook directory (existing: `redis-persistence.md`, `prometheus-alerts.md`)
+- **Homelab NATS bridge** (`nats-publish.kube.calebdunn.tech`), the **Joe** agent, and the **Discord** approval channel — operator-owned
+- **`NATS_BRIDGE_KEY`** issued by the operator (scoped `joe.deploy.drug-gate.*`)
+- **docker-build-publish** — produces the release images Joe deploys
+- **M9 health endpoint** — `/health` three-tier status backs the readiness probe / Joe's health gate
+- **`/livez`** liveness endpoint (this repo) + the cluster Deployment probe wiring
 
 ## 8. Out of Scope
 
-- The K8s manifest files themselves (Deployment/Service/probes) — owned by the infra repo / cluster
-- Any change to the staging deploy (remains compose host + signed webhook + k6 smoke)
-- Canary / blue-green deploys — standard rolling update via the Deployment only
-- Horizontal Pod Autoscaling / multi-cluster / multi-region
-- Image building/publishing (owned by `docker-build-publish`)
+- The deploy itself — kubectl, rollout health gate, smoke, rollback (owned by Joe)
+- The K8s manifest files (infra repo / cluster)
+- The NATS bridge, Joe agent, and Discord integration (operator-owned)
+- Image building/publishing (`docker-build-publish`)
+- Staging deploy (unchanged)
 
 ## 9. Revision History
 
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
-| 2026-06-02 | 0.1.0 | calebdunn | Initial spec from /add:spec interview. K3s production deploy: tag-triggered + GitHub Environment approval, kubectl rollout health gate, k6 smoke gate, auto-rollback, rollback-prod workflow + break-glass, runbook. Manifests owned externally. |
+| 2026-06-02 | 0.1.0 | calebdunn | Initial spec: K3s production deploy via kubectl from a self-hosted in-cluster GitHub runner (tag v* + GitHub Environment approval, rollout gate, smoke, rollback). |
+| 2026-06-03 | 0.2.0 | calebdunn | **Pivot:** replaced repo-side kubectl deploy with the homelab notification model. A `v*.*.*` tag publishes a NATS event; Joe prompts in Discord and owns the deploy/gate/rollback. Removed `deploy-prod.yml`/`rollback-prod.yml`; added `notify-prod-promote.yml`. Kept `/livez` + the probe contract. |

@@ -1,0 +1,100 @@
+# Notify the homelab event bus when a v* tag publishes a new image.
+# Drops a JSON event on subject `joe.deploy.<app>.tag.<version>` via the
+# nats-publish bridge. The homelab agent picks it up and asks the human
+# operator in Discord whether to promote the new version to production.
+
+name: notify prod promote
+on:
+  push:
+    tags: ["v*.*.*"]
+  # workflow_dispatch lets you fire the notification without cutting a
+  # real tag — useful for end-to-end testing.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "tag to announce (e.g. v0.11.0)"
+        required: true
+        type: string
+
+jobs:
+  publish-event:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # CUSTOMIZE: the app name as the homelab operator knows it.
+      # This becomes part of the NATS subject (joe.deploy.<APP>.tag.<ver>).
+      # Must match the prefix scope of your NATS_BRIDGE_KEY — confirm
+      # with the operator if unsure.
+      APP_NAME: drug-gate
+
+      # CUSTOMIZE: the registry path where your image actually lives.
+      # Used only for the digest pre-resolve step; the notification
+      # publishes even if this is wrong or unreachable.
+      IMAGE_PATH: dockerhub.calebdunn.tech/finish06/drug-gate
+
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: $TAG"
+
+      - name: Pre-resolve image digest (best-effort)
+        # The release-publish workflow runs in parallel and the image
+        # typically lands on the registry within ~3-5 min. We poll for
+        # it so the notification can carry the exact digest. If it's not
+        # there yet, we still publish the event with digest="pending".
+        id: wait
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          STRIPPED="${TAG#v}"
+          DIGEST="pending"
+          for TRY in "$TAG" "$STRIPPED" latest; do
+            for attempt in $(seq 1 10); do
+              CODE=$(curl -sI -o /dev/null -w "%{http_code}" \
+                ${{ secrets.REGISTRY_USERNAME && secrets.REGISTRY_PASSWORD && format('-u "{0}:{1}"', secrets.REGISTRY_USERNAME, secrets.REGISTRY_PASSWORD) || '' }} \
+                -H 'Accept: application/vnd.oci.image.index.v1+json' \
+                -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' \
+                "https://${IMAGE_PATH#*/v2/}/${IMAGE_PATH##*/}/manifests/$TRY" 2>/dev/null || true)
+              if [ "$CODE" = "200" ]; then
+                DIGEST=$(curl -sI \
+                  ${{ secrets.REGISTRY_USERNAME && secrets.REGISTRY_PASSWORD && format('-u "{0}:{1}"', secrets.REGISTRY_USERNAME, secrets.REGISTRY_PASSWORD) || '' }} \
+                  -H 'Accept: application/vnd.oci.image.index.v1+json' \
+                  -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' \
+                  "https://${IMAGE_PATH%/v2/*}/v2/${IMAGE_PATH##*/}/manifests/$TRY" \
+                  | tr -d '\r\n' | grep -oiE 'docker-content-digest: [^ ]+' | awk '{print $2}')
+                break
+              fi
+              sleep 30
+            done
+            if [ "$DIGEST" != "pending" ]; then break; fi
+          done
+          echo "tag_resolved=$TRY" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "Resolved: $TRY → $DIGEST"
+
+      - name: Publish event to NATS bridge
+        run: |
+          SUBJECT="joe.deploy.${APP_NAME}.tag.${{ steps.tag.outputs.tag }}"
+          PAYLOAD=$(jq -nc \
+            --arg tag "${{ steps.tag.outputs.tag }}" \
+            --arg digest "${{ steps.wait.outputs.digest }}" \
+            --arg image "${IMAGE_PATH}:${{ steps.wait.outputs.tag_resolved }}" \
+            --arg release_url "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.tag }}" \
+            --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg sha "${{ github.sha }}" \
+            '{tag:$tag, digest:$digest, registry_path:$image, release_url:$release_url, workflow_run_url:$run_url, actor:$actor, sha:$sha}')
+          echo "Publishing to subject: $SUBJECT"
+          echo "Payload: $PAYLOAD"
+
+          curl -sS --fail-with-body -X POST \
+            "https://nats-publish.kube.calebdunn.tech/publish/$SUBJECT" \
+            -H "Authorization: Bearer ${{ secrets.NATS_BRIDGE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
