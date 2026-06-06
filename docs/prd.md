@@ -106,6 +106,7 @@ Both drug-gate and cash-drugs run in the same physical environment behind the fi
 | M10: Admin Auth Hardening | HMAC-signed admin tokens, rotation, audit log | GA candidate | LATER | Static bearer token replaced, token rotation without restart, admin audit log, separate rate limits |
 | M10.5: Landing Page | Public marketing page, GitHub Pages, config-driven redirect | beta | DONE | dg.calebdunn.tech, LANDING_URL env var, Umami analytics, v0.9.0 tagged |
 | M11: Flagship Aggregation | Unified drug profile, batch drug lookup | GA | LATER | GET /v1/drugs/profile merges all data, POST /v1/drugs/batch handles 5-20 drugs with per-item errors |
+| M12: Drug Market Timeline | "What entered the market when" — newest-first, grouped by period + category | beta | IN_PROGRESS | Market-timeline query API over openFDA marketing_start_date/category; category filtering (NDA/BLA vs OTC/ANDA); caching |
 
 ### Engineering Backlog (from 2026-03-27 code review)
 
@@ -449,6 +450,27 @@ human in **Discord** → on "yes" Joe runs `kubectl` deploy + health gate (readi
 - [ ] 80%+ test coverage on new code
 - [ ] E2E tests cover happy path and partial failure scenarios
 
+#### M12: Drug Market Timeline [NOW — IN_PROGRESS]
+**Goal:** A discovery view of *what drugs entered the market when* — newest-first, grouped by period and marketing category — so users can see what types of drugs are coming to market and when.
+**Appetite:** ~1 week
+**Target maturity:** beta
+
+**Feature:** Drug Market Timeline (spec: `specs/drug-market-timeline.md`)
+- Query API over the FDA NDC `marketing_start_date` + `marketing_category` fields
+- Date-range filtering + grouping by period (year/month); breakdown by category
+- Category/quality filtering — NDA/BLA (novel brand/biologic) vs OTC monograph / ANDA generics
+
+**Spike findings (2026-06-06):**
+- Source is **openFDA** (`/drug/ndc.json`); it supports date-range `search` + `count` aggregation **server-side** → **no indexer needed** (unlike the SPL indexer).
+- **cash-drugs `fda-ndc` is lookup-only** (search params: name/ndc/class; no date/`count`) and drug-gate drops the marketing fields today. **Central decision for the spec:** (A) drug-gate → openFDA directly (cached, circuit-broken) vs (B) extend cash-drugs to expose date-range/`count`.
+- "New to market" is noise-dominated: 2025 = 6,207 OTC + 3,964 ANDA vs only 398 NDA + 214 BLA → **category filtering is essential**; default to finished/prescription.
+
+**Success criteria (refined by spec):**
+- [ ] `GET /v1/drugs/market-timeline` returns counts by period + `by_category`, date-range filtered
+- [ ] Category + quality filtering (NDA/BLA vs OTC/ANDA; finished/prescription)
+- [ ] Upstream decision (A vs B) implemented with caching + circuit breaking
+- [ ] 80%+ test coverage on new code
+
 ### Maturity Promotion Path
 
 | From | To | Requirements |
@@ -526,3 +548,4 @@ Single tier for MVP or multiple from the start? Consider:
 | 2026-03-18 | 0.3.0 | calebdunn | Beta promotion. M6 SPL Interactions added. RxNorm and SPL moved from out-of-scope to done/in-progress. |
 | 2026-06-02 | 0.4.0 | roadmap | Split M9 into M9 (Upstream Resilience — DONE, v0.8.0) and M9.5 (Production Deploy). Promoted M9.5 to Now/IN_PROGRESS. Reconciled stale M9 detail block + milestone file; GA path now gated on M9.5 + M10. |
 | 2026-06-03 | 0.5.0 | roadmap | Clean up M9.5: reconciled PRD to the delivered homelab notification model (the table/detail still described the removed kubectl approach). Marked DONE (repo-side) — verified `v0.10.1-rc1` → 202 → Discord; cluster probe wiring tracked as downstream. GA now gated on M10. |
+| 2026-06-06 | 0.6.0 | roadmap | Added M12 — Drug Market Timeline (beta, Now/IN_PROGRESS): discovery view of what drugs entered the market when, over openFDA marketing_start_date/category. Spike confirmed source-side aggregation (no indexer). |

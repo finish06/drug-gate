@@ -1,7 +1,18 @@
 # Session Handoff
 **Written:** 2026-06-03
 
-## Status: M9.5 DONE (repo-side) — cleaned up; GA now gated on M10 alone
+## Status: M12 — Drug Market Timeline (NEW, active) — specced; blocked on cash-drugs
+
+Added **M12** (beta, Now/IN_PROGRESS, `current_milestone`) + spec
+`specs/drug-market-timeline.md` (13 ACs, 7 TCs, 2 endpoints). Spike confirmed
+openFDA aggregates server-side → **no indexer**. Data path = **B (proxy cash-drugs)**;
+spec §6 defines the cash-drugs contract (fda-ndc date-range + `count` + category/finished).
+**drug-gate impl is BLOCKED until cash-drugs ships §6.** Endpoints:
+`GET /v1/drugs/market-timeline` (periods + by_category) + `GET /v1/drugs/new` (newest-first
+drill-down); novel-category default (NDA/BLA/NDA-auth-generic), filterable. Next:
+`/add:plan specs/drug-market-timeline.md`.
+
+## (earlier) M9.5 DONE (repo-side) — GA gated on M10
 
 M9.5 reconciled to reality and closed (repo-side): PRD §6 row + detail block
 rewritten to the homelab notification model (was stale kubectl text), marked
