@@ -55,8 +55,9 @@ REDIS_URL=localhost:6379 ADMIN_SECRET=your-secret make run
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Health check with version |
-| GET | `/version` | Build version, git commit, branch, Go version |
+| GET | `/` | 302 → `LANDING_URL` (only registered when env var is set — see [Landing Page Redirect](#landing-page-redirect)) |
+| GET | `/health` | Health check with version, uptime, and dependency status (Redis, upstream, circuit breaker) |
+| GET | `/version` | Build version, git commit, branch, Go version, OS, arch, build time |
 | GET | `/metrics` | Prometheus metrics endpoint |
 | GET | `/swagger/*` | Swagger UI |
 | GET | `/openapi.json` | OpenAPI spec |
@@ -196,6 +197,7 @@ graph TD
     CMD --> AK[apikey/]
     CMD --> RL[ratelimit/]
     CMD --> MET[metrics/]
+    CMD --> V[version/]
 
     H --> |drug lookup| CL[client/]
     H --> |NDC parsing| NDC[ndc/]
@@ -205,9 +207,13 @@ graph TD
     H --> |class parsing| PH[pharma/]
     H --> |SPL data| SPLSVC[spl/service]
 
+    SVC --> CA[cache/]
+    SPLSVC --> CA
+    CA --> Redis
+    CL --> CB[client/breaker]
+
     SVC --> CL
     SPLSVC --> CL
-    SVC --> Redis
 
     MW --> |auth| AK
     MW --> |rate limit| RL
@@ -217,6 +223,8 @@ graph TD
     RL --> Redis
     CL --> CD[cash-drugs]
 ```
+
+> `cache/` is a generic CacheAside utility (sliding TTL via `GetEx`, singleflight coalescing, optional stale-on-circuit-open fallback). `client/breaker.go` is a circuit breaker shared across all upstream clients. `version/` holds build metadata injected via ldflags.
 
 ## Landing Page Redirect
 
